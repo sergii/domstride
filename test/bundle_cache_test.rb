@@ -48,7 +48,7 @@ class BundleCacheTest < Minitest::Test
 
   def test_compiled_script_runs_in_fresh_document_context
     skip "Compiled cache is jsdom-only" if ENV["DOMSTRIDE_ENGINE"] == "happy-dom"
-    script = 'window.count = (window.count || 0) + 1; document.querySelector("#count").textContent = String(window.count);'
+    script = 'window.__domstrideMountCount = (window.__domstrideMountCount || 0) + 1; document.querySelector("#count").textContent = String(window.__domstrideMountCount);'
     Domstride::Session.open(bundle_cache: "compiled", profile: true) do |page|
       2.times do
         page.mount_html(html(script))
