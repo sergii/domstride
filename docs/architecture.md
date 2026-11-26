@@ -107,3 +107,7 @@ Keep the original real-browser baseline and retry only the specific observed Chr
 ## ADR-024: framework-independent BDD scenario lifecycle
 
 Use a separate Capybara session per tagged scenario and explicit framework hooks. No global Capybara driver mutation, framework runtime dependency, automatic database cleaning or retry. Share the same Gherkin reference feature and Ruby actions, with runner-specific bindings and isolated dependency manifests. Add opt-in, metadata-only semantic step lifecycle events through explicit wrappers as a future recording seam; no automatic step source mapping or DOM snapshots. Validate exact scenario counts with Cucumber and Turnip JSON output across all three Node engines. No performance claim for BDD until measured.
+
+## ADR-025: explicit functional-vs-browser-security separation for Fizzy
+
+Do not fake driver.browser or CDP. Keep Chromium Trusted Types inventory on browser baselines; remove only its report-only include in temporary candidate helper with explicit not_measured metadata. Four isolated original-test groups, exact case/assertion parity, source digest and helper restoration, retained logs, strict per-group gate. Product runtime unchanged; use observed next failures to prioritize genuine fixes.
