@@ -43,6 +43,6 @@ class DeveloperExperienceTest < Minitest::Test
     driver = Domstride::CapybaraAdapter::Driver.new(->(_) { [200, {}, []] })
     assert_equal [driver.current_window_handle], driver.window_handles
     driver.switch_to_window(driver.current_window_handle)
-    assert_raises(Capybara::NoSuchWindowError) { driver.switch_to_window("missing") }
+    assert_raises(Capybara::WindowError) { driver.switch_to_window("missing") }
   end
 end

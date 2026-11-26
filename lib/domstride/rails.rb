@@ -10,7 +10,7 @@ module Domstride
       when "browser"
         name = env.fetch("DOMSTRIDE_BROWSER_DRIVER", "selenium_chrome_headless").to_sym
         raise ArgumentError, "Browser driver must differ from Domstride" if name == :domstride
-        raise ArgumentError, "Browser driver is not registered: #{name}" unless Capybara.drivers.key?(name)
+        raise ArgumentError, "Browser driver is not registered: #{name}" unless Capybara.drivers[name]
         name
       else
         raise ArgumentError, "DOMSTRIDE_DRIVER must be domstride or browser"

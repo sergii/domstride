@@ -113,7 +113,7 @@ module Domstride
       def window_handles = [current_window_handle]
 
       def switch_to_window(handle)
-        raise ::Capybara::NoSuchWindowError, "Unknown window" unless handle == current_window_handle
+        raise ::Capybara::WindowError, "Unknown window" unless handle == current_window_handle
       end
 
       def wait? = true
