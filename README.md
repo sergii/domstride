@@ -106,3 +106,7 @@ The support module suppresses automatic failure screenshots for Domstride becaus
 ## Installed gem preview
 
 Build/install the gem locally, then run `domstride setup` and `domstride doctor`. Setup explicitly installs pinned direct runtime dependencies using npm into a content-addressed user cache (default ~/.cache/domstride; override DOMSTRIDE_RUNTIME_HOME). Test execution never installs packages implicitly. Development checkout uses root node_modules when available. Node 22.23.5 is the verified runtime; npm is required for setup. Direct dependency versions are pinned; transitive npm resolution is not locked yet. No RubyGems release is published.
+
+## Capybara contract
+
+See [compatibility matrix](docs/compatibility.md). Checkbox/radio state changes use native DOM activation and generation-scoped handles prevent old driver nodes from aliasing new elements after reset. The CI matrix covers all three engines with prefetch off/on. Full upstream Capybara conformance and real-world Rails asset loading are not yet established.

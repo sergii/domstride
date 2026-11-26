@@ -8,6 +8,7 @@ module Domstride
     class Driver < ::Capybara::Driver::Base
       def initialize(app, performance_profile: nil, **options)
         @app = app
+        @generation = 0
         @settings = Configuration.resolve(performance_profile: performance_profile, **options)
         name = performance_profile || ENV["DOMSTRIDE_PERFORMANCE_PROFILE"]
         if name.to_s == "deterministic" && @settings[:clock] == "virtual"
@@ -15,6 +16,8 @@ module Domstride
         end
         @query_prefetch = @settings[:query_prefetch]
       end
+
+      attr_reader :generation
 
       def worker
         @worker ||= Domstride::Session.new(app: @app, **@settings)
@@ -73,12 +76,25 @@ module Domstride
       def reset!
         @worker&.close
         @worker = nil
+        @generation += 1
       end
       alias quit reset!
     end
 
     class Node < ::Capybara::Driver::Node
+      def initialize(driver, native, initial_cache = {})
+        super
+        @generation = driver.generation
+      end
+
+      attr_reader :generation
+
+      def ensure_current_generation!
+        raise StaleElement, "STALE_ELEMENT" unless generation == driver.generation
+      end
+
       def operation(name, **args)
+        ensure_current_generation!
         driver.command("node_action", handle: native, operation: name, **args)
       end
 
@@ -109,15 +125,17 @@ module Domstride
       end
 
       def find_css(query, **hints)
+        ensure_current_generation!
         driver.find_nodes("css", query, root: native, **hints)
       end
 
       def find_xpath(query, **hints)
+        ensure_current_generation!
         driver.find_nodes("xpath", query, root: native, **hints)
       end
 
       def ==(other)
-        other.is_a?(Node) && driver.equal?(other.driver) && native == other.native
+        other.is_a?(Node) && driver.equal?(other.driver) && generation == other.generation && native == other.native
       end
     end
   end

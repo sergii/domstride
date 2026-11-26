@@ -109,6 +109,13 @@ function nodeAction(message) {
     case "selected": return Boolean(node.selected);
     case "click": node.click(); return true;
     case "set":
+      if (node.tagName === "INPUT" && ["checkbox", "radio"].includes(node.type)) {
+        if (typeof message.value !== "boolean" || (node.type === "radio" && !message.value)) throw new Error("UNSUPPORTED_SET");
+        if (node.matches(":disabled")) throw new Error("Element is disabled");
+        // Preserve native activation events and radio-group behavior.
+        if (node.checked !== message.value) node.click();
+        return true;
+      }
       if (!["INPUT", "TEXTAREA"].includes(node.tagName) || ["checkbox", "radio", "file", "button", "submit"].includes(node.type)) throw new Error("UNSUPPORTED_SET");
       if (node.disabled || node.readOnly) throw new Error("Element is disabled or readonly");
       node.value = String(message.value);
