@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "dependencies": {
-    "jsdom": "26.1.0"
+    "jsdom": "26.1.0",
+    "happy-dom": "20.11.15"
   }
 }

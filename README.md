@@ -17,3 +17,17 @@ Requires Ruby 3.3+, Node 22+ (or experimental Bun) and npm.
 Set DOMSTRIDE_RUNTIME=bun to try the alternative runtime.
 
 The initial milestone exercises real JavaScript DOM events via a persistent JSON-lines worker. No Rails, Turbo, Stimulus, navigation or browser parity is claimed yet. Benchmarks compare identical synthetic counter interactions, not Rails system tests. See docs/architecture.md.
+
+## Experimental performance matrix
+
+    DOMSTRIDE_ENGINE=happy-dom bundle exec rake test
+    bundle exec ruby benchmarks/matrix.rb
+
+Batching preserves synchronous command order and asserts each intermediate value:
+
+    page.batch do |b|
+      b.click("#increment")
+      b.assert_text("#count", "1")
+    end
+
+Happy DOM and Bun are experimental. Only trusted fixture code is allowed. This is not an asynchronous browser emulator.
