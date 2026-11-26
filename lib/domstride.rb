@@ -6,6 +6,7 @@ require_relative "domstride/version"
 
 module Domstride
   class Error < StandardError; end
+  class JavaScriptError < Error; end
   class Session
     WORKER = File.expand_path("../runtime/worker.cjs", __dir__)
 
@@ -41,6 +42,11 @@ module Domstride
 
     def wait_for_text(selector, expected, timeout: 2)
       call("wait_for_text", selector: selector, expected: expected, timeout: timeout)
+    end
+
+    # Check errors already delivered by the JavaScript event loop.
+    def check_javascript!
+      call("check_javascript")
     end
 
     def fill(selector, value)
@@ -147,7 +153,10 @@ module Domstride
           end
         end
         raise Error, "Protocol ID mismatch" unless response["id"] == @sequence
-        raise Error, response["error"] unless response["ok"]
+        unless response["ok"]
+          error_class = response["error_type"] == "javascript" ? JavaScriptError : Error
+          raise error_class, response["error"]
+        end
         response["value"]
       end
     rescue IOError, SystemCallError, JSON::ParserError => e

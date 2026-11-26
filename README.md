@@ -58,3 +58,7 @@ CSS lookup, scoped elements, basic text fields, click, async query retry and ses
 ## Upstream comparison
 
 The upstream workflow pins rails-jsdom 0.2.1 at commit 66dc701a48df7038db8e56e8d44e8c36874dae78, uses the same stateful Rails fixture and shared Stimulus controller, with upstream's normal importmap boot and jsdom 31.0.0. Domstride uses its own bundle and jsdom 26.1.0 or Happy DOM. The upstream importmap aliases its Turbo Rails entry to the same npm Turbo core build used by the fixture; Action Cable is not exercised. This compares current configurations, not isolated engine or transport performance. No upstream code is copied.
+
+## JavaScript failures
+
+Domstride raises `Domstride::JavaScriptError` for captured JavaScript exceptions and unhandled rejections at command checkpoints. Use `page.check_javascript!` for an explicit checkpoint. This does not drain all timers or guarantee deterministic settling. Plain console.error strings remain diagnostic; Error objects logged by frameworks are treated as failures.

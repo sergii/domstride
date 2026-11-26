@@ -1,6 +1,38 @@
 const readline = require("node:readline");
 const engine = process.argv[2] || "jsdom";
 let window, closeWindow, createWindow;
+const javascriptErrors = [];
+class JavaScriptFailure extends Error {}
+function reportJavaScript(error, source) {
+  const message = error?.stack || error?.message || String(error);
+  if (!javascriptErrors.some(item => item.message === message)) {
+    javascriptErrors.push({ source, message });
+  }
+}
+function checkJavaScript() {
+  if (!javascriptErrors.length) return;
+  const errors = javascriptErrors.splice(0);
+  throw new JavaScriptFailure(errors.map(e => "[" + e.source + "] " + e.message).join("\n"));
+}
+function installErrorCapture(win) {
+  win.addEventListener("error", event => {
+    reportJavaScript(event.error || event.message || "Window error", "window.error");
+  });
+  win.addEventListener("unhandledrejection", event => {
+    reportJavaScript(event.reason, "window.unhandledrejection");
+  });
+  // Keep plain console messages diagnostic, but catch Error objects logged by frameworks.
+  const originalError = win.console.error.bind(win.console);
+  win.console.error = (...args) => {
+    for (const arg of args) {
+      if (arg && typeof arg === "object" && typeof arg.stack === "string") {
+        reportJavaScript(arg, "console.error");
+      }
+    }
+    originalError(...args);
+  };
+}
+process.on("unhandledRejection", reason => reportJavaScript(reason, "process.unhandledRejection"));
 let nextHandle = 0;
 let handles = new Map(), identities = new WeakMap();
 function handle(node) {
@@ -100,8 +132,8 @@ async function boot() {
     const { JSDOM, VirtualConsole } = require("jsdom");
     createWindow = (html, url, bridge) => {
       const virtualConsole = new VirtualConsole();
-      virtualConsole.on("jsdomError", error => process.stderr.write(error.message + "\n"));
-      const dom = new JSDOM(html, { runScripts: "dangerously", url, virtualConsole, pretendToBeVisual: true, beforeParse: win => { if (bridge) installBridge(win); } });
+      virtualConsole.on("jsdomError", error => reportJavaScript(error.detail || error, "jsdom"));
+      const dom = new JSDOM(html, { runScripts: "dangerously", url, virtualConsole, pretendToBeVisual: true, beforeParse: win => { installErrorCapture(win); if (bridge) installBridge(win); } });
       return dom.window;
     };
     closeWindow = win => win.close();
@@ -113,6 +145,7 @@ async function boot() {
         disableJavaScriptFileLoading: true,
         disableCSSFileLoading: true
       } });
+      installErrorCapture(win);
       if (bridge) installBridge(win);
       win.document.write(html);
       return win;
@@ -132,6 +165,7 @@ function element(selector) {
 
 function action(message) {
   switch (message.command) {
+    case "check_javascript": checkJavaScript(); return true;
     case "find_handles": return findHandles(message);
     case "node_action": return nodeAction(message);
     case "current_url": return window.location.href;
@@ -168,6 +202,7 @@ async function execute(message) {
     const deadline = Date.now() + message.timeout * 1000;
     let actual;
     do {
+      checkJavaScript();
       actual = window.document.querySelector(message.selector)?.textContent;
       if (actual === message.expected) return true;
       await new Promise(resolve => setTimeout(resolve, 5));
@@ -176,8 +211,13 @@ async function execute(message) {
   }
   if (message.command === "batch") {
     for (const [index, command] of message.commands.entries()) {
-      try { action(command); }
-      catch (error) { throw new Error("Batch command " + index + ": " + error.message); }
+      try {
+        action(command);
+        checkJavaScript();
+      } catch (error) {
+        const ErrorClass = error instanceof JavaScriptFailure ? JavaScriptFailure : Error;
+        throw new ErrorClass("Batch command " + index + ": " + error.message);
+      }
     }
     return true;
   }
@@ -200,8 +240,20 @@ async function main() {
       return;
     }
     queue = queue.then(async () => {
-      try { send({ id: message.id, ok: true, value: await execute(message) }); }
-      catch (error) { send({ id: message.id, ok: false, error: error.message }); }
+      try {
+        checkJavaScript();
+        const value = await execute(message);
+        // One event-loop checkpoint, not a deterministic timer/network drain.
+        await new Promise(resolve => setImmediate(resolve));
+        checkJavaScript();
+        send({ id: message.id, ok: true, value });
+      } catch (error) {
+        // Prefer a captured JavaScript exception over a generic action failure.
+        if (javascriptErrors.length) {
+          try { checkJavaScript(); } catch (captured) { error = captured; }
+        }
+        send({ id: message.id, ok: false, error: error.message, error_type: error instanceof JavaScriptFailure ? "javascript" : "command" });
+      }
     });
   });
   await new Promise(resolve => lines.on("close", resolve));

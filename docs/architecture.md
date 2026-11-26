@@ -31,3 +31,7 @@ Expose a limited driver using document-scoped element handles with stale detecti
 ## ADR-006: upstream benchmark
 
 Compare upstream's public interaction API against the same Capybara-based Domstride scenario on one VM, with equal warm-session repetitions and database persistence checks. Pin upstream commit and JS versions. Upstream uses a separate Rails root for importmap and node_modules and its real settling/clock; the shared controller is identical, but JS boot, jsdom versions and assertion implementations differ. Turbo core is aliased for this fixture; no Action Cable or full upstream compatibility claims. Record errors rather than extrapolating failed runs.
+
+## ADR-007: JavaScript errors
+
+Capture window error/unhandledrejection events, jsdom error events, Node unhandled rejections, and Error objects passed to console.error (including Stimulus). Surface a typed Ruby JavaScriptError with source and message/stack. Check before commands, after one event-loop turn, inside polling waits and after each synchronous batch step. Plain console.error strings remain diagnostic. This is bounded checkpoint detection, not full deterministic settling, virtual time, or proof of absence of errors after the final command. Worker-level rejection attribution and Happy DOM behavior are experimental. Tests cover inline scripts, click handlers, rejected promises, timers, batching and Stimulus actions.

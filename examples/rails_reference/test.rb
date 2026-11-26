@@ -13,6 +13,15 @@ class RailsReferenceTest < Minitest::Test
       2.times { assert ExpenseScenario.run(page) }
     end
   end
+  def test_stimulus_action_error_is_raised
+    Domstride::Session.open(app: Rails.application) do |page|
+      page.visit("/")
+      page.wait_for_text("#expense[data-ready=true] #total", "0")
+      error = assert_raises(Domstride::JavaScriptError) { page.click("#fail") }
+      assert_includes error.message, "Stimulus action failure"
+    end
+  end
+
   def test_session_isolation
     Domstride::Session.open(app: Rails.application) do |page|
       ExpenseScenario.run(page)

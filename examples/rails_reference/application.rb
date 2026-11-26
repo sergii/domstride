@@ -56,6 +56,7 @@ module ExpenseReference
           </form>
           <section data-controller="expense" id="expense">
             <button id="add" data-action="expense#add">Add 25 EUR</button>
+            <button id="fail" data-action="expense#fail">Fail</button>
             <output id="total" data-expense-target="total">0</output>
           </section>
           <turbo-frame id="details">
