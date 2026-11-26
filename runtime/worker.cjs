@@ -1,6 +1,10 @@
 const readline = require("node:readline");
 const { createHash } = require("node:crypto");
 const vm = require("node:vm");
+const { VirtualClock } = require("./virtual_clock.cjs");
+let pageState;
+const turn = () => new Promise(resolve => setImmediate(resolve));
+const pause = () => new Promise(resolve => setTimeout(resolve, 1));
 let bundleEntry = null;
 let bundleOutcome = null;
 const BUNDLE_MARKER = '<script data-domstride-cache="bundle"></script>';
@@ -117,11 +121,13 @@ function nodeAction(message) {
 let requestId = 0;
 const pending = new Map();
 const send = message => process.stdout.write(JSON.stringify(message) + "\n");
-function installBridge(win) {
+function installBridge(win, state) {
   win.Headers = globalThis.Headers;
   win.Request = globalThis.Request;
   win.Response = globalThis.Response;
   win.fetch = async (input, init = {}) => {
+    state.fetches += 1; state.activity += 1;
+    try {
     const options = { ...init };
     if (options.body instanceof win.URLSearchParams) {
       options.body = new URLSearchParams(options.body.toString());
@@ -136,6 +142,7 @@ function installBridge(win) {
     const response = new Response(reply.body, { status: reply.status, headers: reply.headers });
     Object.defineProperty(response, "url", { value: reply.url });
     return response;
+    } finally { state.fetches -= 1; state.activity += 1; }
   };
   if (!win.IntersectionObserver) win.IntersectionObserver = class {
     observe() {} unobserve() {} disconnect() {}
@@ -146,13 +153,100 @@ function installBridge(win) {
   if (!win.cancelAnimationFrame) win.cancelAnimationFrame = id => win.clearTimeout(id);
 }
 
+function prepareWindow(win, bridge, state) {
+  installErrorCapture(win);
+  if (bridge) installBridge(win, state);
+  if (state.mode === "virtual") state.clock = new VirtualClock(win, state.epoch);
+  // Observe before application scripts, including parser-time DOM changes.
+  if (state.tracked || state.clock) {
+    state.observer = new win.MutationObserver(() => { state.activity += 1; });
+    state.observer.observe(win.document, { subtree: true, childList: true, characterData: true, attributes: true });
+  }
+}
+
+function budget() {
+  return { callbacks: 0, deadline: performance.now() + 3000 };
+}
+
+function ensureBudget(b) {
+  if (performance.now() >= b.deadline) throw new Error("Settling deadline exceeded");
+}
+
+async function drainDue(state, b) {
+  let timer;
+  while (state.clock && (timer = state.clock.next()) && timer.due <= state.clock.now) {
+    ensureBudget(b);
+    if (++b.callbacks > 1000) throw new Error("Virtual timer callback limit exceeded");
+    try { state.clock.fire(timer); }
+    catch (error) { reportJavaScript(error, "virtual.timer"); }
+    await turn();
+    checkJavaScript();
+  }
+}
+
+async function settle(state, b = budget()) {
+  if (!state) throw new Error("No document mounted");
+  let quiet = 0;
+  while (quiet < 3) {
+    ensureBudget(b);
+    const activity = state.activity;
+    await drainDue(state, b);
+    await turn();
+    checkJavaScript();
+    const due = state.clock?.next();
+    const busy = state.fetches > 0 || (due && due.due <= state.clock.now);
+    quiet = !busy && activity === state.activity ? quiet + 1 : 0;
+    if (state.fetches > 0) await pause();
+  }
+  return true;
+}
+
+async function advance(state, milliseconds, b = budget()) {
+  if (!state?.clock) throw new Error("Virtual clock is not enabled");
+  if (!Number.isSafeInteger(milliseconds) || milliseconds < 0 || !Number.isSafeInteger(state.clock.now + milliseconds)) throw new Error("Invalid time advance");
+  const target = state.clock.now + milliseconds;
+  await settle(state, b);
+  let next;
+  while ((next = state.clock.next()) && next.due <= target) {
+    state.clock.now = next.due;
+    await settle(state, b);
+  }
+  state.clock.now = target;
+  await settle(state, b);
+  return true;
+}
+
+async function waitVirtual(message) {
+  const state = pageState;
+  const b = budget();
+  const duration = Math.round(message.timeout * 1000);
+  if (!Number.isSafeInteger(duration) || duration < 0) throw new Error("Invalid wait timeout");
+  const target = state.clock.now + duration;
+  await settle(state, b);
+  for (;;) {
+    checkJavaScript();
+    const actual = window.document.querySelector(message.selector)?.textContent;
+    if (actual === message.expected) return true;
+    const next = state.clock.next();
+    if (next && next.due <= target) {
+      state.clock.now = next.due;
+      await settle(state, b);
+    } else {
+      state.clock.now = target;
+      await settle(state, b);
+      if (window.document.querySelector(message.selector)?.textContent === message.expected) return true;
+      throw new Error("Timed out waiting for " + message.selector + " in virtual time");
+    }
+  }
+}
+
 async function boot() {
   if (engine === "jsdom" || engine === "jsdom31") {
     const { JSDOM, VirtualConsole } = require(engine);
-    createWindow = (html, url, bridge, compiledBundle) => {
+    createWindow = (html, url, bridge, compiledBundle, state) => {
       const virtualConsole = new VirtualConsole();
       virtualConsole.on("jsdomError", error => reportJavaScript(error.cause || error.detail || error, "jsdom"));
-      const dom = new JSDOM(html, { runScripts: "dangerously", url, virtualConsole, pretendToBeVisual: true, beforeParse: win => { installErrorCapture(win); if (bridge) installBridge(win); } });
+      const dom = new JSDOM(html, { runScripts: "dangerously", url, virtualConsole, pretendToBeVisual: true, beforeParse: win => prepareWindow(win, bridge, state) });
       if (compiledBundle) {
         try { compiledBundle.runInContext(dom.getInternalVMContext()); }
         catch (error) { reportJavaScript(error, "compiled.bundle"); }
@@ -162,14 +256,13 @@ async function boot() {
     closeWindow = win => win.close();
   } else if (engine === "happy-dom") {
     const { Window } = await import("happy-dom");
-    createWindow = (html, url, bridge) => {
+    createWindow = (html, url, bridge, compiledBundle, state) => {
       const win = new Window({ url, settings: {
         enableJavaScriptEvaluation: true,
         disableJavaScriptFileLoading: true,
         disableCSSFileLoading: true
       } });
-      installErrorCapture(win);
-      if (bridge) installBridge(win);
+      prepareWindow(win, bridge, state);
       win.document.write(html);
       return win;
     };
@@ -274,12 +367,21 @@ function prepareBundle(message) {
 async function execute(message) {
   if (message.command === "mount") {
     const prepared = prepareBundle(message);
-    if (window) await closeWindow(window);
+    if (window) {
+      pageState?.observer?.disconnect();
+      pageState?.clock?.timers.clear();
+      await closeWindow(window);
+    }
     handles.clear(); identities = new WeakMap();
-    window = createWindow(prepared.html, message.url || "https://example.test/", message.bridge, prepared.compiled);
+    pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, fetches: 0, activity: 0 };
+    window = createWindow(prepared.html, message.url || "https://example.test/", message.bridge, prepared.compiled, pageState);
     return true;
   }
+  if (message.command === "settle") return settle(pageState);
+  if (message.command === "advance_time") return advance(pageState, message.milliseconds);
+  if (message.command === "clock_state") return pageState?.clock ? { now_ms: pageState.clock.now, epoch_ms: pageState.clock.epoch, pending_timers: pageState.clock.timers.size } : null;
   if (message.command === "wait_for_text") {
+    if (pageState?.clock) return waitVirtual(message);
     if (message.strategy === "observer") return observeText(message);
     if (message.strategy !== "poll") throw new Error("Unsupported wait strategy: " + message.strategy);
     const deadline = Date.now() + message.timeout * 1000;
@@ -296,6 +398,7 @@ async function execute(message) {
     for (const [index, command] of message.commands.entries()) {
       try {
         action(command);
+        if (message.settling === "tracked") await settle(pageState);
         checkJavaScript();
       } catch (error) {
         const ErrorClass = error instanceof JavaScriptFailure ? JavaScriptFailure : Error;
@@ -330,7 +433,9 @@ async function main() {
         checkJavaScript();
         const value = await execute(message);
         // One event-loop checkpoint, not a deterministic timer/network drain.
-        await new Promise(resolve => setImmediate(resolve));
+        const mutating = ["mount", "click", "fill"].includes(message.command) || (message.command === "node_action" && ["click", "set"].includes(message.operation));
+        if (message.settling === "tracked" && mutating) await settle(pageState);
+        else await turn();
         checkJavaScript();
         send({ id: message.id, ok: true, value, ...(bundleOutcome ? { bundle_cache: bundleOutcome } : {}), ...timing() });
       } catch (error) {
@@ -344,6 +449,6 @@ async function main() {
   });
   await new Promise(resolve => lines.on("close", resolve));
   await queue;
-  if (window) await closeWindow(window);
+  if (window) { pageState?.observer?.disconnect(); pageState?.clock?.timers.clear(); await closeWindow(window); }
 }
 main().catch(error => { process.stderr.write(error.stack + "\n"); process.exitCode = 1; });

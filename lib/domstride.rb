@@ -18,11 +18,14 @@ module Domstride
       session&.close
     end
 
-    def initialize(runtime: ENV.fetch("DOMSTRIDE_RUNTIME", "node"), engine: ENV.fetch("DOMSTRIDE_ENGINE", "jsdom"), app: nil, profile: ENV["DOMSTRIDE_PROFILE"] == "1", wait_strategy: ENV.fetch("DOMSTRIDE_WAIT", "poll"), bundle_cache: ENV.fetch("DOMSTRIDE_BUNDLE_CACHE", "off"))
+    def initialize(runtime: ENV.fetch("DOMSTRIDE_RUNTIME", "node"), engine: ENV.fetch("DOMSTRIDE_ENGINE", "jsdom"), app: nil, profile: ENV["DOMSTRIDE_PROFILE"] == "1", wait_strategy: ENV.fetch("DOMSTRIDE_WAIT", "poll"), bundle_cache: ENV.fetch("DOMSTRIDE_BUNDLE_CACHE", "off"), settling: ENV.fetch("DOMSTRIDE_SETTLING", "checkpoint"), clock: ENV.fetch("DOMSTRIDE_CLOCK", "real"), clock_epoch_ms: 1_700_000_000_000)
       raise ArgumentError, "Unknown bundle cache mode" unless %w[off source compiled].include?(bundle_cache)
       if bundle_cache == "compiled" && !%w[jsdom jsdom31].include?(engine)
         raise ArgumentError, "Compiled bundles require jsdom"
       end
+      raise ArgumentError, "Unknown settling mode" unless %w[checkpoint tracked].include?(settling)
+      raise ArgumentError, "Unknown clock mode" unless %w[real virtual].include?(clock)
+      @settling, @clock, @clock_epoch_ms = settling, clock, Integer(clock_epoch_ms)
       @bundle_cache = bundle_cache
       @bundle_digest = nil
       @input, @output, @wait = Open3.popen2(runtime, WORKER, engine)
@@ -40,14 +43,15 @@ module Domstride
 
     def mount_html(html, url: "https://example.test/", bridge: false)
       # Only explicitly marked final classic scripts are eligible.
+      clock_options = { clock: @clock, clock_epoch_ms: @clock_epoch_ms }
       match = @bundle_cache != "off" && /<script data-domstride-cache="bundle">([^<]*(?:<(?!\/script\b)[^<]*)*)<\/script>\s*<\/body>\s*<\/html>\s*\z/i.match(html)
-      return call("mount", html: html, url: url, bridge: bridge) unless match
+      return call("mount", html: html, url: url, bridge: bridge, **clock_options) unless match
 
       source = match[1]
       digest = Digest::SHA256.hexdigest(source)
       cached = digest == @bundle_digest
       args = { html: html[0...match.begin(1)] + html[match.end(1)..], url: url, bridge: bridge,
-               bundle: { digest: digest, mode: @bundle_cache, source: cached ? nil : source } }
+               bundle: { digest: digest, mode: @bundle_cache, source: cached ? nil : source }, **clock_options }
       result = call("mount", **args)
       @bundle_digest = digest
       result
@@ -67,6 +71,20 @@ module Domstride
 
     def wait_for_text(selector, expected, timeout: 2)
       call("wait_for_text", selector: selector, expected: expected, timeout: timeout, strategy: @wait_strategy)
+    end
+
+    # Drain tracked fetches, due timers and a bounded quiet event-loop window.
+    def settle!
+      call("settle")
+    end
+
+    # Advance document JavaScript time, not Ruby or Rails time.
+    def advance_time(milliseconds)
+      call("advance_time", milliseconds: milliseconds)
+    end
+
+    def clock_state
+      call("clock_state")
     end
 
     # Check errors already delivered by the JavaScript event loop.
@@ -188,7 +206,7 @@ module Domstride
         started = monotonic_ms if @profiling
         label = command == "node_action" ? "node_action.#{arguments[:operation]}" : command
         @sequence += 1
-        write_message(id: @sequence, command: command, profile: @profiling, **arguments)
+        write_message(id: @sequence, command: command, profile: @profiling, settling: @settling, **arguments)
         response = Timeout.timeout(15) do
           loop do
             line = @output.gets

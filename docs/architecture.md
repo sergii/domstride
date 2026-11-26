@@ -47,3 +47,7 @@ Separate transport deduplication (source mode) from compiled script reuse (jsdom
 ## ADR-010: Capybara query metadata coalescing
 
 Use Capybara 3.40's existing initial_cache and uses_visibility query hint, without monkeypatching query classes. Prefetch tag name and initial visibility with handles; never cache mutable attributes or visible text for later reads. Visibility is an initial snapshot, not an ongoing truth; Capybara handles filters and retries. Preserve hidden/all visibility, exact text, regexp and custom filters. No speculative text pruning, layout or remote predicate translation. Benchmark same Capybara scenario with prefetch off/on for each engine, bundle cache off, profiling enabled, fixed order. Experimental default off.
+
+## ADR-011: bounded settling and document-local virtual time
+
+Track bridged fetch lifetime from invocation through response creation, DOM mutation activity, due virtual timers and quiet event-loop turns. Bound settling by monotonic real deadline and callback count. Virtual clock uses a document-local timer queue with deterministic due-time/id ordering, explicit advance, Date and requestAnimationFrame shims; remount discards state. No automatic future timer drain after normal actions; wait_for_text advances only within its virtual deadline. Ruby time, performance.now, engine-internal tasks and arbitrary unresolved promises are not virtualized. No claims of full deterministic browser or Rails semantics. Compare real vs virtual timer workload separately from real stateful Rails scenario. Default modes unchanged.

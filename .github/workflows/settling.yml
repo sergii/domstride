@@ -1,0 +1,63 @@
+name: Domstride settling and virtual clock
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'runtime/**'
+      - 'test/**'
+      - 'examples/rails_reference/**'
+      - 'benchmarks/**'
+      - '.github/workflows/settling.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  settling:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      RAILS_ENV: test
+      DOMSTRIDE_WAIT: observer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:reference
+      - run: mkdir -p benchmark-results
+      - name: Virtual clock correctness
+        run: |
+          for engine in jsdom jsdom31 happy-dom; do
+            DOMSTRIDE_ENGINE="$engine" bundle exec ruby -Ilib test/virtual_clock_test.rb
+            DOMSTRIDE_ENGINE="$engine" DOMSTRIDE_SETTLING=tracked DOMSTRIDE_CLOCK=virtual bundle exec ruby examples/rails_reference/test.rb
+          done
+      - name: Rails settling comparison
+        run: |
+          for engine in jsdom jsdom31 happy-dom; do
+            for mode in checkpoint:real tracked:real tracked:virtual; do
+              IFS=: read -r settling clock <<< "$mode"
+              DOMSTRIDE_ENGINE="$engine" DOMSTRIDE_SETTLING="$settling" DOMSTRIDE_CLOCK="$clock" bundle exec ruby examples/rails_reference/settling_benchmark.rb | tee "benchmark-results/$engine-$settling-$clock.json"
+            done
+          done
+      - name: Timer workload comparison
+        run: |
+          for engine in jsdom jsdom31 happy-dom; do
+            for clock in real virtual; do
+              DOMSTRIDE_ENGINE="$engine" DOMSTRIDE_CLOCK="$clock" bundle exec ruby benchmarks/virtual_clock.rb | tee "benchmark-results/$engine-timer-$clock.json"
+            done
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: settling-results
+          path: benchmark-results/

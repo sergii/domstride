@@ -76,3 +76,7 @@ Set `DOMSTRIDE_PROFILE=1` to collect command counts, Ruby and worker wall times,
 ## Experimental Capybara query prefetch
 
 `DOMSTRIDE_QUERY_PREFETCH=1` uses Capybara 3.40's initial_cache metadata to return tag name and (when requested) initial visibility with the selector result. Ruby retains filtering, regular expressions, custom blocks, counts and retry behavior. Public element visibility/text calls remain live; no persistent property cache. Default off. This is metadata coalescing, not general remote filtering or browser actionability.
+
+## Experimental settling and virtual clock
+
+`DOMSTRIDE_SETTLING=tracked` waits after mutating commands for tracked Rack fetches, due virtual timers, and three quiet event-loop checkpoints. `page.settle!` explicitly requests the bounded drain. `DOMSTRIDE_CLOCK=virtual` supplies document-local Date and function timers, including intervals and animation frames. `page.advance_time(500)` advances milliseconds; native text waits can advance to scheduled callbacks within their virtual timeout. Remount resets clock and timers. Defaults remain checkpoint/real. No Ruby/Rails clock synchronization, performance.now virtualization, arbitrary Promise tracking, XHR, network-idle guarantee, browser scheduling equivalence or automatic advancement of future timers during ordinary clicks. Real deadline 3s and 1000 timer callbacks per drain/advance. Trusted fixtures only.
