@@ -149,3 +149,7 @@ The generator creates test/domstride_system_test_case.rb without replacing Appli
 ## Release readiness
 
 See [release candidate checklist](docs/release-readiness.md), [compatibility contract](docs/compatibility.md) and [real application evidence](docs/real-apps.md). This is an experimental developer preview, not a universal browser replacement. No public release is claimed by the CI-built gem artifact.
+
+## Cucumber and Turnip
+
+Use `require "domstride/bdd"` and explicit scenario-scoped Capybara sessions in Cucumber or Turnip/RSpec hooks. Both reference runners execute the same Gherkin feature against the stateful Rails fixture. No Cucumber or Turnip runtime dependency. Optional semantic step metadata provides a foundation for later recording; automatic step capture and replay are not implemented. See [BDD integration](docs/bdd.md) and dedicated CI.

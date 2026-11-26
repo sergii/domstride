@@ -103,3 +103,7 @@ Generate a separate test base without replacing the application test helper or e
 ## ADR-023: release candidate evidence and discovery isolation
 
 Keep the original real-browser baseline and retry only the specific observed Chrome wildcard-origin reset failure with a discovery-only fresh-browser-session shim. Preserve all original logs; do not change test assertions, suppress failure or treat retry wall time as a comparable benchmark. Candidate uses logical Rack host. Document supported subset, exact benchmark provenance and explicit release gates. No publishing or merging in this batch.
+
+## ADR-024: framework-independent BDD scenario lifecycle
+
+Use a separate Capybara session per tagged scenario and explicit framework hooks. No global Capybara driver mutation, framework runtime dependency, automatic database cleaning or retry. Share the same Gherkin reference feature and Ruby actions, with runner-specific bindings and isolated dependency manifests. Add opt-in, metadata-only semantic step lifecycle events through explicit wrappers as a future recording seam; no automatic step source mapping or DOM snapshots. Validate exact scenario counts with Cucumber and Turnip JSON output across all three Node engines. No performance claim for BDD until measured.

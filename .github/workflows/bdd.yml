@@ -1,0 +1,58 @@
+name: Domstride Cucumber and Turnip integration
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'runtime/**'
+      - 'test/**'
+      - 'examples/bdd/**'
+      - 'examples/rails_reference/**'
+      - 'domstride.gemspec'
+      - '.github/workflows/bdd.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bdd:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [cucumber, turnip]
+        engine: [jsdom, jsdom31, happy-dom]
+    env:
+      RAILS_ENV: test
+      BUNDLE_GEMFILE: examples/bdd/${{ matrix.framework }}.gemfile
+      DOMSTRIDE_ENGINE: ${{ matrix.engine }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - run: bundle install
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:reference
+      - run: mkdir -p bdd-results
+      - name: Cucumber scenarios
+        if: matrix.framework == 'cucumber'
+        run: |
+          set -o pipefail
+          bundle exec cucumber examples/bdd/features/expenses.feature --require examples/bdd/features/support --require examples/bdd/features/step_definitions --format progress --format json --out bdd-results/results.json | tee bdd-results/runner.log
+          ruby -rjson -e 'scenarios = JSON.parse(File.read("bdd-results/results.json")).flat_map { |feature| feature.fetch("elements") }.select { |element| element["type"] == "scenario" }; abort "Expected two passed scenarios" unless scenarios.size == 2 && scenarios.all? { |s| !s.fetch("steps").empty? && s.fetch("steps").all? { |step| step.dig("result", "status") == "passed" } }'
+      - name: Turnip scenarios
+        if: matrix.framework == 'turnip'
+        run: |
+          set -o pipefail
+          bundle exec rspec -I examples/bdd -r turnip/rspec examples/bdd/features/expenses.feature --format documentation --format json --out bdd-results/results.json | tee bdd-results/runner.log
+          ruby -rjson -e 's = JSON.parse(File.read("bdd-results/results.json")).fetch("summary"); abort "Expected two passed scenarios" unless s.values_at("example_count", "failure_count", "pending_count") == [2, 0, 0]'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bdd-${{ matrix.framework }}-${{ matrix.engine }}
+          path: bdd-results/
