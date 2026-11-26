@@ -2,6 +2,7 @@ require "json"
 require "open3"
 require "uri"
 require "timeout"
+require "digest"
 require_relative "domstride/version"
 
 module Domstride
@@ -17,7 +18,13 @@ module Domstride
       session&.close
     end
 
-    def initialize(runtime: ENV.fetch("DOMSTRIDE_RUNTIME", "node"), engine: ENV.fetch("DOMSTRIDE_ENGINE", "jsdom"), app: nil, profile: ENV["DOMSTRIDE_PROFILE"] == "1", wait_strategy: ENV.fetch("DOMSTRIDE_WAIT", "poll"))
+    def initialize(runtime: ENV.fetch("DOMSTRIDE_RUNTIME", "node"), engine: ENV.fetch("DOMSTRIDE_ENGINE", "jsdom"), app: nil, profile: ENV["DOMSTRIDE_PROFILE"] == "1", wait_strategy: ENV.fetch("DOMSTRIDE_WAIT", "poll"), bundle_cache: ENV.fetch("DOMSTRIDE_BUNDLE_CACHE", "off"))
+      raise ArgumentError, "Unknown bundle cache mode" unless %w[off source compiled].include?(bundle_cache)
+      if bundle_cache == "compiled" && !%w[jsdom jsdom31].include?(engine)
+        raise ArgumentError, "Compiled bundles require jsdom"
+      end
+      @bundle_cache = bundle_cache
+      @bundle_digest = nil
       @input, @output, @wait = Open3.popen2(runtime, WORKER, engine)
       @mutex = Mutex.new
       @sequence = 0
@@ -32,7 +39,22 @@ module Domstride
     end
 
     def mount_html(html, url: "https://example.test/", bridge: false)
-      call("mount", html: html, url: url, bridge: bridge)
+      # Only explicitly marked final classic scripts are eligible.
+      match = @bundle_cache != "off" && /<script data-domstride-cache="bundle">([^<]*(?:<(?!\/script\b)[^<]*)*)<\/script>\s*<\/body>\s*<\/html>\s*\z/i.match(html)
+      return call("mount", html: html, url: url, bridge: bridge) unless match
+
+      source = match[1]
+      digest = Digest::SHA256.hexdigest(source)
+      cached = digest == @bundle_digest
+      args = { html: html[0...match.begin(1)] + html[match.end(1)..], url: url, bridge: bridge,
+               bundle: { digest: digest, mode: @bundle_cache, source: cached ? nil : source } }
+      result = call("mount", **args)
+      @bundle_digest = digest
+      result
+    rescue Error
+      # A failed mount may have replaced the worker's cache.
+      @bundle_digest = nil
+      raise
     end
 
     def visit(path)
@@ -87,7 +109,7 @@ module Domstride
     end
 
     def reset_profile!
-      @profile = { commands: {}, rack_requests: 0, rack_ms: 0.0, bytes_sent: 0, bytes_received: 0 }
+      @profile = { commands: {}, rack_requests: 0, rack_ms: 0.0, bytes_sent: 0, bytes_received: 0, bundle_hits: 0, bundle_misses: 0 }
     end
 
     def profile
@@ -186,6 +208,9 @@ module Domstride
         unless response["ok"]
           error_class = response["error_type"] == "javascript" ? JavaScriptError : Error
           raise error_class, response["error"]
+        end
+        if @profiling && response["bundle_cache"]
+          @profile[response["bundle_cache"] == "hit" ? :bundle_hits : :bundle_misses] += 1
         end
         response["value"]
       ensure

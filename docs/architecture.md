@@ -39,3 +39,7 @@ Capture window error/unhandledrejection events, jsdom error events, Node unhandl
 ## ADR-008: profile before optimizing
 
 Opt-in wall-time measurements distinguish command counts, protocol bytes, Ruby command wall time, worker command wall time and Rack request wall time. These durations overlap; do not add them or label the residual pure IPC latency. Profile the same stateful workflow with native DSL vs Capybara, jsdom 26 vs 31 vs Happy DOM, and native polling vs MutationObserver. Observer waits have a hard deadline and error callbacks; they do not implement deterministic settling or virtual time. Benchmarks include instrumentation overhead, fixed order, warm sessions and real persistence checks. No payload logging.
+
+## ADR-009: opt-in bundle cache
+
+Separate transport deduplication (source mode) from compiled script reuse (jsdom only). Cache exactly one explicitly marked final classic script per worker, validate SHA-256 and cap source size at 8 MiB. Source mode restores the original HTML before parse; compiled mode executes a cached vm.Script in a new document context after parse, so it cannot preserve parser-time/currentScript semantics and is experimental. Do not cache dynamic HTML, CSRF tokens or session state. Default off. Benchmark cold fresh workers and 50 warm stateful scenarios per configuration with persistence and cache-hit checks, memory and traffic. Fixed-order measurements, not a generic asset pipeline or disk cache.

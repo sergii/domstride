@@ -68,3 +68,7 @@ Domstride raises `Domstride::JavaScriptError` for captured JavaScript exceptions
 Set `DOMSTRIDE_PROFILE=1` to collect command counts, Ruby and worker wall times, Rack request counts/time and protocol byte counts. No request payloads or page contents are retained in the profile. `page.profile` returns a snapshot; `page.reset_profile!` clears counters. Worker time includes Rack waits and overlaps Ruby wall time; it is not exclusive CPU time.
 
 `DOMSTRIDE_WAIT=observer` enables a bounded MutationObserver-based native text wait. Polling remains the default until more compatibility data is available. It observes DOM mutations and captured errors, not arbitrary pending work; Capybara query retries are unchanged. `DOMSTRIDE_ENGINE=jsdom31` selects the experimental npm alias for jsdom 31.0.0.
+
+## Experimental bundle caching
+
+`DOMSTRIDE_BUNDLE_CACHE=source` deduplicates explicitly marked final classic inline scripts (`<script data-domstride-cache="bundle">...</script>` immediately before the closing body/html). The worker reconstructs the original script before parsing. SHA-256 content identity and a single-entry worker cache prevent stale reuse; no general HTML or session caching. `compiled` (jsdom only) additionally reuses a vm.Script in each fresh document context after parsing. Compiled mode changes parser-time semantics, document.currentScript and script text, and is only appropriate for explicitly opted-in fixture bundles that do not depend on them. Default is off. No arbitrary asset rewriting, disk cache or browser security sandbox.

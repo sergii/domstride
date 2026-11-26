@@ -1,4 +1,10 @@
 const readline = require("node:readline");
+const { createHash } = require("node:crypto");
+const vm = require("node:vm");
+let bundleEntry = null;
+let bundleOutcome = null;
+const BUNDLE_MARKER = '<script data-domstride-cache="bundle"></script>';
+const MAX_BUNDLE_BYTES = 8 * 1024 * 1024;
 const engine = process.argv[2] || "jsdom";
 let window, closeWindow, createWindow;
 const javascriptErrors = [];
@@ -132,10 +138,14 @@ function installBridge(win) {
 async function boot() {
   if (engine === "jsdom" || engine === "jsdom31") {
     const { JSDOM, VirtualConsole } = require(engine);
-    createWindow = (html, url, bridge) => {
+    createWindow = (html, url, bridge, compiledBundle) => {
       const virtualConsole = new VirtualConsole();
       virtualConsole.on("jsdomError", error => reportJavaScript(error.cause || error.detail || error, "jsdom"));
       const dom = new JSDOM(html, { runScripts: "dangerously", url, virtualConsole, pretendToBeVisual: true, beforeParse: win => { installErrorCapture(win); if (bridge) installBridge(win); } });
+      if (compiledBundle) {
+        try { compiledBundle.runInContext(dom.getInternalVMContext()); }
+        catch (error) { reportJavaScript(error, "compiled.bundle"); }
+      }
       return dom.window;
     };
     closeWindow = win => win.close();
@@ -223,11 +233,39 @@ function observeText(message) {
   });
 }
 
+function prepareBundle(message) {
+  bundleOutcome = null;
+  if (!message.bundle) return { html: message.html };
+  const { digest, source, mode } = message.bundle;
+  if (!/^[a-f0-9]{64}$/.test(digest) || !["source", "compiled"].includes(mode)) throw new Error("Invalid bundle metadata");
+  if (mode === "compiled" && !["jsdom", "jsdom31"].includes(engine)) throw new Error("Compiled bundles require jsdom");
+  const endMarker = message.html.lastIndexOf(BUNDLE_MARKER);
+  if (endMarker === -1 || !/^\s*<\/body>\s*<\/html>\s*$/i.test(message.html.slice(endMarker + BUNDLE_MARKER.length))) throw new Error("Missing final bundle marker");
+  if (source !== null && source !== undefined) {
+    if (typeof source !== "string" || Buffer.byteLength(source) > MAX_BUNDLE_BYTES) throw new Error("Invalid bundle size");
+    if (createHash("sha256").update(source).digest("hex") !== digest) throw new Error("Bundle digest mismatch");
+    // Single-entry cache, bounded by source size and scoped to this worker.
+    if (bundleEntry?.digest !== digest || bundleEntry.mode !== mode) {
+      const compiled = mode === "compiled" ? new vm.Script(source, { filename: "domstride-bundle-" + digest.slice(0, 12) + ".js" }) : null;
+      bundleEntry = { digest, mode, source, compiled };
+    }
+    bundleOutcome = "miss";
+  } else {
+    if (!bundleEntry || bundleEntry.digest !== digest || bundleEntry.mode !== mode) throw new Error("Bundle cache miss");
+    bundleOutcome = "hit";
+  }
+  if (mode === "compiled") return { html: message.html, compiled: bundleEntry.compiled };
+  // Restore the exact classic script before HTML parsing.
+  const insertion = endMarker + BUNDLE_MARKER.indexOf("</script>");
+  return { html: message.html.slice(0, insertion) + bundleEntry.source + message.html.slice(insertion) };
+}
+
 async function execute(message) {
   if (message.command === "mount") {
+    const prepared = prepareBundle(message);
     if (window) await closeWindow(window);
     handles.clear(); identities = new WeakMap();
-    window = createWindow(message.html, message.url || "https://example.test/", message.bridge);
+    window = createWindow(prepared.html, message.url || "https://example.test/", message.bridge, prepared.compiled);
     return true;
   }
   if (message.command === "wait_for_text") {
@@ -274,6 +312,7 @@ async function main() {
       return;
     }
     queue = queue.then(async () => {
+      bundleOutcome = null;
       const start = message.profile ? performance.now() : null;
       const timing = () => start === null ? {} : { worker_ms: performance.now() - start };
       try {
@@ -282,7 +321,7 @@ async function main() {
         // One event-loop checkpoint, not a deterministic timer/network drain.
         await new Promise(resolve => setImmediate(resolve));
         checkJavaScript();
-        send({ id: message.id, ok: true, value, ...timing() });
+        send({ id: message.id, ok: true, value, ...(bundleOutcome ? { bundle_cache: bundleOutcome } : {}), ...timing() });
       } catch (error) {
         // Prefer a captured JavaScript exception over a generic action failure.
         if (javascriptErrors.length) {

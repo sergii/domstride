@@ -76,7 +76,7 @@ module ExpenseReference
           <turbo-frame id="latest">
             <a id="latest-link" href="/expenses/latest">Latest expense</a>
           </turbo-frame>
-          <script><%= raw javascript %></script>
+          <script data-domstride-cache="bundle"><%= raw javascript %></script>
         </body></html>
       ERB
     end
