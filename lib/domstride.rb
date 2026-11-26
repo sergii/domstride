@@ -76,7 +76,7 @@ module Domstride
       url = URI.join("http://example.test/", path).to_s
       result = request_app("url" => url, "method" => "GET", "headers" => {})
       raise Error, "Visit failed: HTTP #{result[:status]}" unless result[:status] == 200
-      mount_html(result[:body], url: url, bridge: true)
+      mount_html(result[:body], url: result.fetch(:url), bridge: true)
     end
 
     def wait_for_text(selector, expected, timeout: 2)
@@ -179,11 +179,59 @@ module Domstride
 
     private
 
+    REDIRECT_STATUSES = [301, 302, 303, 307, 308].freeze
+    MAX_REDIRECTS = 10
+
     def request_app(message)
+      mode = message.fetch("redirect", "follow")
+      raise Error, "Unsupported redirect mode" unless %w[follow error manual].include?(mode)
+      current = message.dup
+      visited = {}
+      redirects = 0
+      loop do
+        uri = URI.parse(current.fetch("url"))
+        uri.fragment = nil
+        current["url"] = uri.to_s
+        key = [current.fetch("method").upcase, uri.to_s]
+        raise Error, "Redirect loop detected" if visited[key]
+        visited[key] = true
+        result = request_once(current)
+        location = result[:headers].find { |name, _| name.downcase == "location" }&.last
+        unless REDIRECT_STATUSES.include?(result[:status]) && location
+          return result.merge(redirected: redirects.positive?)
+        end
+        raise Error, "Redirect forbidden by fetch mode" if mode == "error"
+        # Opaque redirect responses are not representable by the current bridge.
+        raise Error, "UNSUPPORTED_MANUAL_REDIRECT" if mode == "manual"
+        raise Error, "Redirect limit exceeded" if redirects >= MAX_REDIRECTS
+        target = URI.join(uri.to_s, location)
+        target.fragment = nil
+        validate_origin!(target)
+        method = current.fetch("method").upcase
+        headers = current.fetch("headers", {}).dup
+        body = current["body"]
+        if result[:status] == 303 || ([301, 302].include?(result[:status]) && method == "POST")
+          method = "GET"
+          body = nil
+          headers.reject! { |name, _| %w[content-type content-length content-encoding content-language content-location].include?(name.downcase) }
+        end
+        current = current.merge("url" => target.to_s, "method" => method, "headers" => headers, "body" => body)
+        redirects += 1
+      end
+    rescue URI::InvalidURIError => e
+      raise Error, "Invalid redirect or request URL: #{e.message}"
+    end
+
+    def validate_origin!(uri)
+      raise Error, "Only same-origin requests are supported" unless uri.scheme == "http" && uri.host == "example.test" && uri.port == 80 && uri.userinfo.nil?
+    end
+
+    def request_once(message)
       started = monotonic_ms if @profiling
       uri = URI.parse(message.fetch("url"))
       method = message.fetch("method").upcase
-      raise Error, "Only same-origin GET and POST requests are supported" unless uri.scheme == "http" && uri.host == "example.test" && uri.port == 80 && %w[GET POST].include?(method)
+      validate_origin!(uri)
+      raise Error, "Only GET and POST requests are supported" unless %w[GET POST].include?(method)
       headers = message.fetch("headers", {}).reject { |key, _| %w[cookie host content-length].include?(key.downcase) }.to_h do |key, value|
         [key.downcase == "content-type" ? "CONTENT_TYPE" : "HTTP_#{key.upcase.tr("-", "_")}", value]
       end

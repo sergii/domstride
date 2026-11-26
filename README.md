@@ -114,3 +114,7 @@ See [compatibility matrix](docs/compatibility.md). Checkbox/radio state changes 
 ## Real application discovery
 
 See [QA-003](docs/real-apps.md) for pinned Campfire, Fizzy and Writebook discovery. The workflow runs an original system test file with its upstream browser driver first, then attempts it using Domstride. Blockers are recorded, not silently removed. A successful discovery job does not imply application support.
+
+## Same-origin redirects (experimental)
+
+Native visit and bridged fetch follow HTTP 301/302/303/307/308 within http://example.test, preserving Rack cookies and final response URL. POST becomes GET for 301/302/303; 307/308 preserve the method and body. Maximum ten redirects and loop detection; cross-origin redirects rejected. Fetch redirect:error rejects; manual redirect responses are explicitly unsupported. This is not general browser navigation, form navigation, or history support. GET and URL-encoded POST remain the only supported methods.

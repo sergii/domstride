@@ -14,7 +14,8 @@ This is a maintained subset, not the complete upstream Capybara spec suite.
 | Stale handles across reset/detachment | Contract tested | Contract tested |
 | Layout, geometry, screenshots | Unsupported | Unsupported |
 | File upload, select options, keyboard modifiers | Unsupported | Unsupported |
-| Redirects, history, external asset pipeline | Unsupported | Unsupported |
+| Same-origin HTTP redirects | Experimental (CI pending) | Experimental (CI pending) |
+| History, external asset pipeline | Unsupported | Unsupported |
 
 "Contract tested" identifies intended CI coverage, not a guarantee of a successful run or browser equivalence. See the compatibility workflow artifact for observed results.
 

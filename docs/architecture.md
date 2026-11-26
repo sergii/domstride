@@ -71,3 +71,7 @@ Install the preview gem into an empty GEM_HOME with normal RubyGems dependency r
 ## ADR-016: real application discovery before optimization claims
 
 Pin upstream source revisions, use each app's required Ruby version and original test helper, run a browser baseline before switching only the driver. Use disposable test databases, one worker, fixed seed and timeouts. Record failures and prerequisite blockers separately; discovery jobs are not conformance gates. Do not vendor upstream source or modify upstream repositories. One original test file per app is an initial probe; do not extrapolate performance or support.
+
+## ADR-017: bounded same-origin HTTP redirects
+
+Follow redirects inside the Rack session, not via external network. Preserve final URL, cookie jar and redirect flag. Rewrite POST to GET for 301/302/303, preserve for 307/308, drop body headers on rewrite. Validate each target, reject credentials and cross-origin URLs, limit to ten hops and reject repeated method/URL pairs. Count each actual Rack request in profiling. Fetch error mode rejects; manual opaque response unsupported. Does not implement DOM navigation/history, other request methods, or importmap assets.

@@ -144,10 +144,11 @@ function installBridge(win, state) {
     const id = ++requestId;
     const reply = await new Promise((resolve, reject) => {
       pending.set(id, { resolve, reject });
-      send({ kind: "request", request_id: id, url: req.url, method: req.method, headers: Object.fromEntries(req.headers), body });
+      send({ kind: "request", request_id: id, url: req.url, method: req.method, headers: Object.fromEntries(req.headers), body, redirect: req.redirect });
     });
-    const response = new Response(reply.body, { status: reply.status, headers: reply.headers });
+    const response = new Response([204, 205, 304].includes(reply.status) ? null : reply.body, { status: reply.status, headers: reply.headers });
     Object.defineProperty(response, "url", { value: reply.url });
+    Object.defineProperty(response, "redirected", { value: Boolean(reply.redirected) });
     return response;
     } finally { state.fetches -= 1; state.activity += 1; }
   };
