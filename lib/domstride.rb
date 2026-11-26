@@ -134,8 +134,11 @@ module Domstride
       Marshal.load(Marshal.dump(@profile))
     end
 
+    # Process identity for diagnostics and resource sampling.
+    def worker_pid = @wait.pid
+
     def memory
-      path = "/proc/#{@wait.pid}/status"
+      path = "/proc/#{worker_pid}/status"
       return {} unless File.file?(path)
       File.read(path).scan(/^(VmRSS|VmHWM):\s+(\d+) kB/).to_h.transform_values(&:to_i)
     end
