@@ -1,6 +1,68 @@
 const readline = require("node:readline");
 const engine = process.argv[2] || "jsdom";
 let window, closeWindow, createWindow;
+let nextHandle = 0;
+let handles = new Map(), identities = new WeakMap();
+function handle(node) {
+  if (!identities.has(node)) {
+    const id = ++nextHandle;
+    identities.set(node, id);
+    handles.set(id, node);
+  }
+  return identities.get(node);
+}
+function resolveHandle(id) {
+  const node = handles.get(id);
+  if (!node || !node.isConnected || node.ownerDocument !== window.document) throw new Error("STALE_ELEMENT");
+  return node;
+}
+function visible(node) {
+  for (let n = node; n && n.nodeType === 1; n = n.parentElement) {
+    const style = window.getComputedStyle(n);
+    if (n.hidden || style.display === "none" || ["hidden", "collapse"].includes(style.visibility) || n.type === "hidden") return false;
+  }
+  return true;
+}
+function visibleText(node) {
+  if (node.nodeType === 3) return node.nodeValue;
+  if (node.nodeType !== 1 || !visible(node) || ["SCRIPT", "STYLE", "TEMPLATE"].includes(node.tagName)) return "";
+  return Array.from(node.childNodes, visibleText).join("");
+}
+function findHandles(message) {
+  const root = message.root ? resolveHandle(message.root) : window.document;
+  if (message.kind_of_query === "css") return Array.from(root.querySelectorAll(message.query), handle);
+  if (typeof window.document.evaluate !== "function") throw new Error("UNSUPPORTED_XPATH");
+  const result = window.document.evaluate(message.query, root, null, 7, null);
+  return Array.from({ length: result.snapshotLength }, (_, i) => handle(result.snapshotItem(i)));
+}
+function nodeAction(message) {
+  const node = resolveHandle(message.handle);
+  switch (message.operation) {
+    case "all_text": return node.textContent;
+    case "visible_text": return visibleText(node);
+    case "attribute": {
+      const name = message.name;
+      if (["checked", "selected", "disabled", "multiple", "readonly"].includes(name)) return node[name === "readonly" ? "readOnly" : name] ? "true" : null;
+      if (name === "value" && "value" in node) return node.value;
+      return node.getAttribute(name);
+    }
+    case "value": return node.value ?? null;
+    case "tag_name": return node.tagName.toLowerCase();
+    case "visible": return visible(node);
+    case "disabled": return node.matches(":disabled");
+    case "checked": return Boolean(node.checked);
+    case "selected": return Boolean(node.selected);
+    case "click": node.click(); return true;
+    case "set":
+      if (!["INPUT", "TEXTAREA"].includes(node.tagName) || ["checkbox", "radio", "file", "button", "submit"].includes(node.type)) throw new Error("UNSUPPORTED_SET");
+      if (node.disabled || node.readOnly) throw new Error("Element is disabled or readonly");
+      node.value = String(message.value);
+      node.dispatchEvent(new window.Event("input", { bubbles: true }));
+      node.dispatchEvent(new window.Event("change", { bubbles: true }));
+      return true;
+    default: throw new Error("Unsupported node operation");
+  }
+}
 let requestId = 0;
 const pending = new Map();
 const send = message => process.stdout.write(JSON.stringify(message) + "\n");
@@ -70,6 +132,10 @@ function element(selector) {
 
 function action(message) {
   switch (message.command) {
+    case "find_handles": return findHandles(message);
+    case "node_action": return nodeAction(message);
+    case "current_url": return window.location.href;
+    case "html": return window.document.documentElement.outerHTML;
     case "click": element(message.selector).click(); return true;
     case "fill": {
       const node = element(message.selector);
@@ -94,6 +160,7 @@ function action(message) {
 async function execute(message) {
   if (message.command === "mount") {
     if (window) await closeWindow(window);
+    handles.clear(); identities = new WeakMap();
     window = createWindow(message.html, message.url || "https://example.test/", message.bridge);
     return true;
   }

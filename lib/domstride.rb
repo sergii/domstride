@@ -72,6 +72,11 @@ module Domstride
       call("batch", commands: commands.commands)
     end
 
+    # Driver-only protocol. Handles are scoped to the mounted document.
+    def dom_command(command, **arguments)
+      call(command, **arguments)
+    end
+
     def memory
       path = "/proc/#{@wait.pid}/status"
       return {} unless File.file?(path)

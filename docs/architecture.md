@@ -23,3 +23,7 @@ Reference application uses Rails 8.1.4.1 and Ruby 4.0.10, a real controller and 
 ## ADR-004: stateful reference
 
 Use actual ActiveRecord persistence with a temporary file-backed SQLite database, Rails cookie session middleware, CSRF protection and a fixture-only credential check. Rack::Test handles session-local cookies; Set-Cookie is not exposed to JavaScript. Same-origin URL-encoded POST and GET only, no redirects or multipart. Explicit browser-parity limitations remain. Benchmark includes invalid and valid form submission, login and persistence verification after a new page visit. RSpec smoke example uses the same public session API, not a framework adapter.
+
+## ADR-005: Capybara adapter
+
+Expose a limited driver using document-scoped element handles with stale detection, CSS and engine-dependent XPath, simple text input, click, DOM visibility approximation, and query retries. Unsupported geometry and interaction semantics must not silently pass. Session reset currently replaces the worker. Benchmark uses the exact same Capybara scenario and persistence checks on Domstride and Cuprite. No claim of full Capybara driver conformance.
