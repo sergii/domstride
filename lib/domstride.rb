@@ -27,6 +27,16 @@ module Domstride
         settings.values_at(:runtime, :engine, :profile, :wait_strategy, :bundle_cache, :settling, :clock, :clock_epoch_ms)
       @settings = settings.freeze
       @assets = settings[:assets]
+      @websocket_url = settings[:websocket_url]
+      if @websocket_url
+        endpoint = URI.parse(@websocket_url)
+        unless endpoint.scheme == "ws" && endpoint.host == "127.0.0.1" && endpoint.port && endpoint.port.between?(1, 65535) && endpoint.path.start_with?("/") && !endpoint.userinfo && !endpoint.query && !endpoint.fragment
+          raise ArgumentError, "Expected explicit ws://127.0.0.1:PORT/path endpoint"
+        end
+        unless runtime == "node" && %w[jsdom jsdom31].include?(engine) && clock == "real" && app
+          raise ArgumentError, "WebSocket bridge requires a Rack app, Node/jsdom and real clock"
+        end
+      end
       raise ArgumentError, "Unknown assets mode" unless %w[off bundle].include?(@assets)
       if @assets == "bundle" && (!%w[jsdom jsdom31].include?(engine) || runtime != "node" || bundle_cache != "off")
         raise ArgumentError, "Asset bundling requires Node/jsdom and bundle_cache off"
@@ -59,7 +69,7 @@ module Domstride
 
     def mount_html(html, url: "https://example.test/", bridge: false)
       # Only explicitly marked final classic scripts are eligible.
-      clock_options = { clock: @clock, clock_epoch_ms: @clock_epoch_ms, assets: @assets }
+      clock_options = { clock: @clock, clock_epoch_ms: @clock_epoch_ms, assets: @assets, websocket_url: @websocket_url }
       match = @bundle_cache != "off" && /<script data-domstride-cache="bundle">([^<]*(?:<(?!\/script\b)[^<]*)*)<\/script>\s*<\/body>\s*<\/html>\s*\z/i.match(html)
       return call("mount", html: html, url: url, bridge: bridge, **clock_options) unless match
 
@@ -125,6 +135,10 @@ module Domstride
 
     def evaluate_script(script, *args)
       call("evaluate_script", script: script, arguments: args.map { |value| { kind: "json", value: self.class.json_script_argument(value) } })
+    end
+
+    def websocket_state
+      call("websocket_state")
     end
 
     def check_javascript!

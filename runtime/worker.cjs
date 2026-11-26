@@ -3,6 +3,7 @@ const { createHash } = require("node:crypto");
 const vm = require("node:vm");
 const { VirtualClock } = require("./virtual_clock.cjs");
 const forms = require("./forms.cjs");
+const { installWebSocket } = require("./websocket.cjs");
 let pageState;
 const turn = () => new Promise(resolve => setImmediate(resolve));
 const pause = () => new Promise(resolve => setTimeout(resolve, 1));
@@ -183,7 +184,11 @@ function installBridge(win, state) {
 
 function prepareWindow(win, bridge, state) {
   installErrorCapture(win);
-  if (bridge) installBridge(win, state);
+  if (bridge) {
+    installBridge(win, state);
+    if (state.websocketUrl && typeof win.WebSocket !== "function") throw new Error("UNSUPPORTED_WEBSOCKET_ENGINE");
+    if (typeof win.WebSocket === "function") installWebSocket(win, state);
+  }
   if (state.mode === "virtual") state.clock = new VirtualClock(win, state.epoch);
   // Observe before application scripts, including parser-time DOM changes.
   if (state.tracked || state.clock) {
@@ -433,12 +438,13 @@ async function execute(message) {
       moduleCode = resolved.moduleCode;
     }
     if (window) {
+      pageState?.closeSockets?.();
       pageState?.observer?.disconnect();
       pageState?.clock?.timers.clear();
       await closeWindow(window);
     }
     handles.clear(); identities = new WeakMap();
-    pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, fetches: 0, activity: 0 };
+    pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, websocketUrl: message.websocket_url, fetches: 0, activity: 0 };
     window = createWindow(prepared.html, message.url || "https://example.test/", message.bridge, prepared.compiled, pageState);
     if (moduleCode) {
       try { window.eval(moduleCode); }
@@ -446,6 +452,7 @@ async function execute(message) {
     }
     return true;
   }
+  if (message.command === "websocket_state") return { count: pageState?.sockets?.size || 0, open: Array.from(pageState?.sockets || []).filter(socket => socket.readyState === 1).length };
   if (message.command === "settle") return settle(pageState);
   if (message.command === "advance_time") return advance(pageState, message.milliseconds);
   if (message.command === "clock_state") return pageState?.clock ? { now_ms: pageState.clock.now, epoch_ms: pageState.clock.epoch, pending_timers: pageState.clock.timers.size } : null;
@@ -518,6 +525,6 @@ async function main() {
   });
   await new Promise(resolve => lines.on("close", resolve));
   await queue;
-  if (window) { pageState?.observer?.disconnect(); pageState?.clock?.timers.clear(); await closeWindow(window); }
+  if (window) { pageState?.closeSockets?.(); pageState?.observer?.disconnect(); pageState?.clock?.timers.clear(); await closeWindow(window); }
 }
 main().catch(error => { process.stderr.write(error.stack + "\n"); process.exitCode = 1; });

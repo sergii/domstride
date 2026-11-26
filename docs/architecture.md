@@ -91,3 +91,7 @@ Implement option selection, multi-select values and change events; support expli
 ### ADR-020 follow-up
 
 Declare base64 and mini_mime as direct Ruby dependencies: base64 is not bundled as a default gem on Ruby 3.4+. Derive Capybara multiple-select values from live option.selected flags instead of Happy DOM's potentially stale selectedOptions collection. Verify both flags after unselecting. This does not patch the engine's native selectedOptions implementation.
+
+## ADR-021: explicit loopback Action Cable transport
+
+Keep normal HTTP in Rack. Opt-in real WebSocket transport via jsdom's native WebSocket to one explicitly configured loopback endpoint, mapping the matching logical cable path. Block other Rack-page sockets, cap active sockets, close on remount and session termination, expose socket state. Node/jsdom real clock only; no virtual-time or shared cookie authentication. Exercise real Rails Action Cable server hosted by Puma with async pubsub, Rails-shipped browser client, two independent consumers and Turbo connectStreamSource. Verify server subscription readiness before publishing, client-to-server perform, both DOM updates, disconnect, remount and cleanup. This is a hybrid transport and not a fully in-process or authenticated Action Cable implementation. No benchmark comparison yet.

@@ -3,7 +3,7 @@ module Domstride
     DEFAULTS = {
       runtime: "node", engine: "jsdom", profile: false, wait_strategy: "poll",
       bundle_cache: "off", settling: "checkpoint", clock: "real",
-      clock_epoch_ms: 1_700_000_000_000, query_prefetch: false, assets: "off"
+      clock_epoch_ms: 1_700_000_000_000, query_prefetch: false, assets: "off", websocket_url: nil
     }.freeze
     PROFILES = {
       "compatible" => { engine: "jsdom31" }.freeze,
@@ -15,7 +15,7 @@ module Domstride
       runtime: "DOMSTRIDE_RUNTIME", engine: "DOMSTRIDE_ENGINE", profile: "DOMSTRIDE_PROFILE",
       wait_strategy: "DOMSTRIDE_WAIT", bundle_cache: "DOMSTRIDE_BUNDLE_CACHE",
       settling: "DOMSTRIDE_SETTLING", clock: "DOMSTRIDE_CLOCK",
-      query_prefetch: "DOMSTRIDE_QUERY_PREFETCH", assets: "DOMSTRIDE_ASSETS"
+      query_prefetch: "DOMSTRIDE_QUERY_PREFETCH", assets: "DOMSTRIDE_ASSETS", websocket_url: "DOMSTRIDE_WEBSOCKET_URL"
     }.freeze
 
     def self.resolve(performance_profile: nil, env: ENV, **overrides)
