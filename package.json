@@ -1,0 +1,8 @@
+{
+  "name": "domstride-runtime",
+  "private": true,
+  "version": "0.0.1",
+  "dependencies": {
+    "jsdom": "26.1.0"
+  }
+}

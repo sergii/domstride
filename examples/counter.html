@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<body>
+  <button id="increment">Increment</button>
+  <output id="count">0</output>
+  <script>
+    document.querySelector("#increment").addEventListener("click", () => {
+      const count = document.querySelector("#count");
+      count.textContent = Number(count.textContent) + 1;
+    });
+  </script>
+</body>
+</html>
