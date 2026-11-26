@@ -15,3 +15,7 @@ The runtime takes an explicit DOM engine argument. Happy DOM is an experimental 
 Batch commands preserve synchronous order, check every intermediate assertion, and stop at the first failure. No rollback or async settling is promised.
 
 EXP-002/003/005/006: four runtime-engine combinations, five rotated-order repeats, individual vs batch with identical assertions, fresh process vs persistent worker with identical remounts, and Linux worker VmHWM (peak RSS). Report experimental failures explicitly. Lockfiles are collected as artifacts until committed. No browser or Rails parity claim.
+
+## ADR-003: Rails reference and real Hotwire
+
+Reference application uses Rails 8.1.4.1 and Ruby 4.0.10, a real controller and ERB rendering, real Stimulus/Turbo bundles, and a read-only same-origin GET Rack bridge. Requests from JavaScript travel back through the JSON-lines protocol. Polling wait_for_text is bounded and explicit; not a virtual clock or universal settling algorithm. IntersectionObserver is a no-op compatibility stub for this fixture only; no lazy-frame or layout parity. Chromium comparison uses HTTP/Puma and real browser auto-waiting, while Domstride uses in-process Rack and synthetic DOM; same observable outcomes, different execution layers. Report failures rather than comparing incomplete scenarios.

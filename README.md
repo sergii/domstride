@@ -31,3 +31,13 @@ Batching preserves synchronous command order and asserts each intermediate value
     end
 
 Happy DOM and Bun are experimental. Only trusted fixture code is allowed. This is not an asynchronous browser emulator.
+
+## Rails reference app
+
+Ruby 4.0.10 / Rails 8.1.4.1, real Stimulus and Turbo, experimental read-only Rack bridge.
+
+    npm run build:reference
+    bundle exec ruby examples/rails_reference/test.rb
+    bundle exec ruby examples/rails_reference/benchmark.rb
+
+Reference scenario: Stimulus expense total, Turbo Frame GET, Turbo Stream GET. The DOM worker uses same-origin Rack requests; Chromium uses a local Puma HTTP server. No database, mutation endpoint, CSRF, cookies, redirects, or general browser parity is claimed. Only trusted fixture code.

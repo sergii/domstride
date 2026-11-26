@@ -1,5 +1,7 @@
 require "json"
 require "open3"
+require "uri"
+require "timeout"
 require_relative "domstride/version"
 
 module Domstride
@@ -14,14 +16,27 @@ module Domstride
       session&.close
     end
 
-    def initialize(runtime: ENV.fetch("DOMSTRIDE_RUNTIME", "node"), engine: ENV.fetch("DOMSTRIDE_ENGINE", "jsdom"))
+    def initialize(runtime: ENV.fetch("DOMSTRIDE_RUNTIME", "node"), engine: ENV.fetch("DOMSTRIDE_ENGINE", "jsdom"), app: nil)
       @input, @output, @wait = Open3.popen2(runtime, WORKER, engine)
       @mutex = Mutex.new
       @sequence = 0
+      @app = app
     end
 
-    def mount_html(html)
-      call("mount", html: html)
+    def mount_html(html, url: "https://example.test/", bridge: false)
+      call("mount", html: html, url: url, bridge: bridge)
+    end
+
+    def visit(path)
+      raise Error, "Rack application required" unless @app
+      url = URI.join("http://example.test/", path).to_s
+      result = request_app("url" => url, "method" => "GET", "headers" => {})
+      raise Error, "Visit failed: HTTP #{result[:status]}" unless result[:status] == 200
+      mount_html(result[:body], url: url, bridge: true)
+    end
+
+    def wait_for_text(selector, expected, timeout: 2)
+      call("wait_for_text", selector: selector, expected: expected, timeout: timeout)
     end
 
     def click(selector)
@@ -81,13 +96,35 @@ module Domstride
 
     private
 
+    def request_app(message)
+      require "rack/mock"
+      uri = URI.parse(message.fetch("url"))
+      raise Error, "Only same-origin GET requests are supported" unless uri.scheme == "http" && uri.host == "example.test" && uri.port == 80 && message.fetch("method") == "GET"
+      headers = message.fetch("headers", {}).to_h do |key, value|
+        [key.downcase == "content-type" ? "CONTENT_TYPE" : "HTTP_#{key.upcase.tr("-", "_")}", value]
+      end
+      response = Rack::MockRequest.new(@app).get(uri.to_s, headers)
+      { status: response.status, headers: response.headers.to_h.transform_values { |v| Array(v).join(", ") }, body: response.body, url: uri.to_s }
+    end
+
     def call(command, **arguments)
       @mutex.synchronize do
         @sequence += 1
         @input.puts(JSON.generate(id: @sequence, command: command, **arguments))
-        line = @output.gets
-        raise Error, "JavaScript worker terminated" unless line
-        response = JSON.parse(line)
+        response = Timeout.timeout(15) do
+          loop do
+            line = @output.gets
+            raise Error, "JavaScript worker terminated" unless line
+            reply = JSON.parse(line)
+            break reply unless reply["kind"] == "request"
+            begin
+              result = request_app(reply)
+              @input.puts(JSON.generate(kind: "response", request_id: reply["request_id"], ok: true, **result))
+            rescue StandardError => e
+              @input.puts(JSON.generate(kind: "response", request_id: reply["request_id"], ok: false, error: e.message))
+            end
+          end
+        end
         raise Error, "Protocol ID mismatch" unless response["id"] == @sequence
         raise Error, response["error"] unless response["ok"]
         response["value"]

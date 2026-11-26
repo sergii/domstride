@@ -1,0 +1,71 @@
+name: Rails reference and browser parity
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:reference
+      - name: Environment
+        run: |
+          mkdir -p benchmark-results
+          { ruby -v; bundle exec ruby -rrails -e 'puts Rails.version'; node -v; lscpu; free -h; } > benchmark-results/rails-environment.txt
+          cp package-lock.json Gemfile.lock benchmark-results/
+      - name: Core tests
+        run: bundle exec rake test
+      - name: Rails jsdom reference
+        id: jsdom
+        run: |
+          bundle exec ruby examples/rails_reference/test.rb
+          bundle exec ruby examples/rails_reference/benchmark.rb | tee benchmark-results/rails-jsdom.json
+      - name: Rails Happy DOM reference
+        if: always()
+        continue-on-error: true
+        env:
+          DOMSTRIDE_ENGINE: happy-dom
+        run: |
+          bundle exec ruby examples/rails_reference/test.rb
+          bundle exec ruby examples/rails_reference/benchmark.rb | tee benchmark-results/rails-happy-dom.json
+      - name: Chromium reference
+        if: always()
+        run: |
+          npx playwright install chromium
+          bundle exec ruby examples/rails_reference/server.rb > benchmark-results/rails-server.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4567/ > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:4567/ > /dev/null
+          node examples/rails_reference/browser.cjs | tee benchmark-results/rails-chromium.json
+      - name: Summary
+        if: always()
+        run: |
+          echo '## Rails reference: 10 scenarios per sample, warm session, 5 repeats' >> "$GITHUB_STEP_SUMMARY"
+          ruby -rjson -e 'Dir["benchmark-results/rails-*.json"].each { |f| d=JSON.parse(File.read(f)); puts "#{File.basename(f)}: #{d["median_seconds"]} s" }' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rails-reference-results
+          path: benchmark-results/

@@ -4,6 +4,13 @@
   "version": "0.0.1",
   "dependencies": {
     "jsdom": "26.1.0",
-    "happy-dom": "20.11.15"
+    "happy-dom": "20.11.15",
+    "@hotwired/stimulus": "3.2.2",
+    "@hotwired/turbo": "8.0.18",
+    "esbuild": "0.25.12",
+    "playwright": "1.56.1"
+  },
+  "scripts": {
+    "build:reference": "esbuild examples/rails_reference/application.js --bundle --format=iife --outfile=examples/rails_reference/application.bundle.js"
   }
 }

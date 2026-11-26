@@ -3,3 +3,5 @@
 /pkg/
 /benchmark-results/
 *.gem
+/examples/rails_reference/application.bundle.js
+/vendor/bundle/
