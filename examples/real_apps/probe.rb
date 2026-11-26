@@ -62,7 +62,22 @@ if result[:phases][:database_setup][:exit_code] != 0
 else
   result[:phases][:browser] = run_phase(output, "browser", "bin/rails", "test", selected, "--seed", "12345")
   save(output, result)
-  if !valid_test_run?(result[:phases][:browser])
+  original_browser = result[:phases][:browser]
+  log = File.read(File.join(output, original_browser.fetch(:log)))
+  # Retry only the observed Chrome/Capybara teardown incompatibility. Retain the first run.
+  if !valid_test_run?(original_browser) && log.include?("invalid argument: * is not a valid URL") &&
+      log.include?("ChromeDriver#reset!")
+    result[:phases][:browser_retry_reset] = run_phase(output, "browser-retry-reset", "bin/rails", "db:reset")
+    if result[:phases][:browser_retry_reset][:exit_code] == 0
+      shim = File.expand_path("fresh_browser_reset.rb", __dir__)
+      result[:phases][:browser_retry] = run_phase(output, "browser-retry", "bin/rails", "test", selected, "--seed", "12345",
+        env: { "RUBYOPT" => [ENV["RUBYOPT"], "-r#{shim}"].compact.join(" ") })
+    end
+    save(output, result)
+  end
+  baseline = valid_test_run?(original_browser) ? original_browser : result[:phases][:browser_retry]
+  result[:baseline_mode] = baseline.equal?(original_browser) ? "original" : "fresh_browser_per_test_retry" if baseline
+  if !baseline || !valid_test_run?(baseline)
     result[:status] = "browser_baseline_blocked"
   else
     result[:phases][:database_reset] = run_phase(output, "database-reset", "bin/rails", "db:reset")
@@ -80,6 +95,7 @@ else
             class ApplicationSystemTestCase
               include Domstride::RailsSystemTestSupport
               driven_by :domstride
+              Capybara.app_host = "http://example.test"
             end
           RUBY
         end
@@ -87,7 +103,7 @@ else
       ensure
         File.write(helper, original)
       end
-      reference = result[:phases][:browser][:test_summary]
+      reference = baseline[:test_summary]
       candidate = result[:phases][:domstride]
       if valid_test_run?(candidate) && candidate[:test_summary]["runs"] == reference["runs"] && candidate[:test_summary]["assertions"] == reference["assertions"]
         result[:status] = "selected_file_passed"

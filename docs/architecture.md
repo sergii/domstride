@@ -99,3 +99,7 @@ Keep normal HTTP in Rack. Opt-in real WebSocket transport via jsdom's native Web
 ## ADR-022: opt-in Rails developer experience
 
 Generate a separate test base without replacing the application test helper or existing system test class. Select Domstride or a registered browser driver explicitly before test execution; never replay automatically after a failure. Support one stable window handle for compatibility, not multiple windows. Expose JSON doctor and optional private failure diagnostics; include HTML only on explicit opt-in, avoid page URLs and script content in metadata, preserve original failures when diagnostic capture fails. Test generator output, existing-file preservation, driver selection and diagnostics; run the same generated Rails system scenario with Domstride and real Cuprite Chromium. Keep the installed gem smoke test and add JSON doctor validation.
+
+## ADR-023: release candidate evidence and discovery isolation
+
+Keep the original real-browser baseline and retry only the specific observed Chrome wildcard-origin reset failure with a discovery-only fresh-browser-session shim. Preserve all original logs; do not change test assertions, suppress failure or treat retry wall time as a comparable benchmark. Candidate uses logical Rack host. Document supported subset, exact benchmark provenance and explicit release gates. No publishing or merging in this batch.

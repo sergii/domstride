@@ -34,26 +34,26 @@ Happy DOM and Bun are experimental. Only trusted fixture code is allowed. This i
 
 ## Rails reference app
 
-Ruby 4.0.10 / Rails 8.1.4.1, real Stimulus and Turbo, experimental GET/POST Rack bridge.
+Ruby 4.0.10 / Rails 8.1.4.1, real Stimulus and Turbo, same-origin Rack bridge.
 
     npm run build:reference
     bundle exec ruby examples/rails_reference/test.rb
     bundle exec ruby examples/rails_reference/benchmark.rb
 
-Reference scenario: Stimulus expense total, Turbo Frame GET, Turbo Stream GET. The DOM worker uses same-origin Rack requests; Chromium uses a local Puma HTTP server. See the stateful reference below for database, mutation and cookie coverage. Redirects and general browser parity remain unsupported. Only trusted fixture code.
+Reference scenario: Stimulus expense total, Turbo Frame GET, Turbo Stream GET. The DOM worker uses same-origin Rack requests; Chromium uses a local Puma HTTP server. See the stateful reference below for database, mutation and cookie coverage. General browser parity remains unsupported. Only trusted fixture code.
 
 ## Stateful Rails reference
 
 The reference now uses ActiveRecord and a temporary SQLite database, a fixture login, cookie-backed sessions, Rails CSRF checks, URL-encoded POST forms, validation errors, and Turbo Stream responses. The scenario revisits the page and reads the persisted expense. RSpec example: `bundle exec rspec examples/rails_reference/reference_spec.rb`.
 
-The Rack bridge supports only same-origin GET and URL-encoded POST; cookies are held in a session-local Rack::Test jar. No production authentication, multipart, redirects, JavaScript cookie access, or full browser semantics are promised.
+The Rack bridge uses a session-local Rack::Test cookie jar. See HTTP and form sections for supported methods, redirects and multipart limitations. No production authentication, JavaScript cookie access or full browser semantics are promised.
 
 ## Experimental Capybara driver
 
     require "domstride/capybara"
     page = Capybara::Session.new(:domstride, Rails.application)
 
-CSS lookup, scoped elements, basic text fields, click, async query retry and session reset are supported experimentally. XPath depends on the engine. Layout, screenshots, actionability, modifiers, select inputs and navigation history are not implemented. See `examples/rails_reference/capybara_spec.rb` and `capybara_benchmark.rb`. Use trusted fixtures only.
+CSS lookup, scoped elements, basic text fields, click, async query retry and session reset are supported experimentally. XPath depends on the engine. Layout, screenshots, actionability, modifier chords and navigation history are not implemented. See the form section for select support. See `examples/rails_reference/capybara_spec.rb` and `capybara_benchmark.rb`. Use trusted fixtures only.
 
 ## Upstream comparison
 
@@ -133,7 +133,7 @@ Capybara select_option/unselect_option support single/multiple select controls, 
 
 ## Experimental Action Cable transport
 
-Pass `websocket_url: "ws://127.0.0.1:PORT/cable"` (or DOMSTRIDE_WEBSOCKET_URL) with a test-only Action Cable endpoint. HTTP stays in-process; jsdom uses a real loopback WebSocket for the exact configured endpoint or corresponding logical same-origin path. Node/jsdom and real clock only. Session remount/close closes tracked sockets; websocket_state reports open/count. No external endpoints, shared Rack cookie authentication, arbitrary WebSocket URLs, virtual-time socket scheduling or production network access. The reference uses real Rails Action Cable server, async adapter, shipped client and Turbo connectStreamSource, not the complete turbo-rails custom element or authenticated production configuration. No support claim until CI passes.
+Pass `websocket_url: "ws://127.0.0.1:PORT/cable"` (or DOMSTRIDE_WEBSOCKET_URL) with a test-only Action Cable endpoint. HTTP stays in-process; jsdom uses a real loopback WebSocket for the exact configured endpoint or corresponding logical same-origin path. Node/jsdom and real clock only. Session remount/close closes tracked sockets; websocket_state reports open/count. No external endpoints, shared Rack cookie authentication, arbitrary WebSocket URLs, virtual-time socket scheduling or production network access. The reference uses real Rails Action Cable server, async adapter, shipped client and Turbo connectStreamSource, not the complete turbo-rails custom element or authenticated production configuration. Reference integration passed on both jsdom engines at commit 29781da; limitations still apply.
 
 ## Rails installation and explicit browser fallback
 
@@ -145,3 +145,7 @@ bin/rails generate domstride:install
 The generator creates test/domstride_system_test_case.rb without replacing ApplicationSystemTestCase. Extend DomstrideSystemTestCase for selected tests. Run those tests normally, or set DOMSTRIDE_DRIVER=browser to run the same test with an already registered Capybara browser driver (default selenium_chrome_headless; override DOMSTRIDE_BROWSER_DRIVER). Install/configure your browser driver separately. Selection happens before the test, never by automatically replaying a failed mutation. Rails system tests using the existing base class are unchanged.
 
 `bundle exec domstride doctor --json` reports runtime/version/engine and a minimal DOM check (not full application compatibility). Set DOMSTRIDE_FAILURE_DIR to explicitly save per-failure metadata in a private directory; DOMSTRIDE_FAILURE_HTML=1 additionally saves DOM HTML, which can contain sensitive test data. No automatic capture by default. Single-window identity is available; new tabs/windows remain unsupported.
+
+## Release readiness
+
+See [release candidate checklist](docs/release-readiness.md), [compatibility contract](docs/compatibility.md) and [real application evidence](docs/real-apps.md). This is an experimental developer preview, not a universal browser replacement. No public release is claimed by the CI-built gem artifact.

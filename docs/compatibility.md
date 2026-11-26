@@ -1,37 +1,24 @@
 # Capybara compatibility contract (experimental)
 
-This is a maintained subset, not the complete upstream Capybara spec suite.
+Maintained subset, not the complete upstream Capybara spec suite. Evidence: BATCH-003 corrective commit 7173a05, BATCH-004 commit 29781da, and BATCH-005 product readiness at 11531ed. Node runtime only for supported configurations; Bun is experimental and has known failures.
 
 | Capability | jsdom 26/31 | Happy DOM |
 |---|---|---|
 | CSS/scoped selectors, text/count filters | Contract tested | Contract tested |
 | Visibility (DOM/CSS approximation, not layout) | Contract tested | Contract tested |
-| Text inputs and textarea | Contract tested | Contract tested |
-| Checkbox/radio native activation | Contract tested | Contract tested |
-| Standard XPath field locators | Contract tested | Pending |
-| Async query retry | Contract tested | Contract tested |
-| Refresh and reset | Contract tested | Contract tested |
-| Stale handles across reset/detachment | Contract tested | Contract tested |
-| Layout, geometry, screenshots | Unsupported | Unsupported |
-| File upload, select options, keyboard modifiers | Unsupported | Unsupported |
-| Same-origin HTTP redirects | Experimental (CI pending) | Experimental (CI pending) |
-| History, external asset pipeline | Unsupported | Unsupported |
+| Text fields, textarea, checkbox/radio | Contract tested | Contract tested |
+| XPath field locators | Contract tested | Unsupported / pending |
+| Async query retry, refresh, reset, stale handles | Contract tested | Contract tested |
+| GET/HEAD/POST/PUT/PATCH/DELETE; JSON and URL-encoded bodies; same-origin redirects | Contract tested | Contract tested |
+| Single/multiple select and basic text keyboard events | Contract tested | Contract tested (driver live option values) |
+| Synchronous execute/evaluate with JSON and element arguments | Contract tested | Contract tested |
+| Same-origin classic/static modules and bounded controller imports | Experimental opt-in, tested | Unsupported |
+| Explicit fixture attachment and binary multipart fetch | Experimental opt-in usage, tested | Attachment unsupported |
+| Loopback Action Cable/Turbo source | Experimental opt-in, tested | Unsupported |
+| Single-window identity | Contract tested | Contract tested |
+| Layout, geometry, screenshots, hit testing, multiple windows | Unsupported | Unsupported |
+| Browser form navigation/history, native module semantics, arbitrary dynamic imports, full Web APIs | Unsupported | Unsupported |
 
-"Contract tested" identifies intended CI coverage, not a guarantee of a successful run or browser equivalence. See the compatibility workflow artifact for observed results.
+Real Action Cable integration does not cover cookie-authenticated connections or full turbo-rails custom element behavior. Virtual clock and sockets cannot be combined. File upload is a FileList approximation with 8 MiB cap. Keyboard modifiers, IME, automatic keyboard submit and native focus traversal are not implemented. Use explicitly selected real-browser driver for these scenarios, never automatic retry after failure.
 
-## Real application adoption gates
-
-Before claiming support for Campfire, Fizzy or Writebook, pin an accessible upstream revision and reproduce its normal asset boot and test setup. Inventory importmap/module scripts, external assets, Turbo navigation/redirects, Action Cable, file uploads, browser storage and test helper assumptions. Run the application's original browser tests first, then a supported subset unchanged where possible. Record unsupported cases separately, never silently skip failures and never retry mutations automatically in a real browser.
-
-Current fixture supports inline classic JS and same-origin GET/URL-encoded POST. Real-app compatibility and performance are not yet established.
-
-
-See [real application discovery](real-apps.md) for pinned upstream revisions, initial source inspection and the first original-system-test probe.
-
-Experimental `DOMSTRIDE_ASSETS=bundle` adds limited same-origin synchronous classic scripts and static importmap module bundling on Node/jsdom; CI pending. Dynamic modules, browser asset scheduling and Action Cable remain unsupported.
-
-BATCH-003 adds experimental select/multi-select, basic text editing/key events and jsdom-only explicit file attachments with binary multipart fetch. Native form navigation, modifier chords, browser file pickers and Happy DOM file attachment remain unsupported; CI pending.
-
-BATCH-004 adds experimental loopback-only WebSocket transport for Node/jsdom and real Action Cable/Turbo source integration tests. Cookie-authenticated connections, full turbo-rails custom element integration, Happy DOM and virtual clock remain unsupported; CI pending.
-
-BATCH-005 adds single-window identity, explicit pre-test driver selection, a Rails generator and opt-in failure metadata/HTML. Multiple windows, screenshot rendering and automatic failure replay remain unsupported. CI pending.
+See [real application discovery](real-apps.md) for pinned revisions and blockers. No Campfire, Fizzy or Writebook compatibility certification. Tests and code must be trusted; DOM workers are not a sandbox.
