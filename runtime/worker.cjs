@@ -2,6 +2,7 @@ const readline = require("node:readline");
 const { createHash } = require("node:crypto");
 const vm = require("node:vm");
 const { VirtualClock } = require("./virtual_clock.cjs");
+const forms = require("./forms.cjs");
 let pageState;
 const turn = () => new Promise(resolve => setImmediate(resolve));
 const pause = () => new Promise(resolve => setTimeout(resolve, 1));
@@ -101,13 +102,19 @@ function nodeAction(message) {
       if (name === "value" && "value" in node) return node.value;
       return node.getAttribute(name);
     }
-    case "value": return node.value ?? null;
+    case "value": return node.tagName === "SELECT" && node.multiple ? Array.from(node.selectedOptions, option => option.value) : node.value ?? null;
     case "tag_name": return node.tagName.toLowerCase();
     case "visible": return visible(node);
     case "disabled": return node.matches(":disabled");
     case "checked": return Boolean(node.checked);
     case "selected": return Boolean(node.selected);
     case "click": node.click(); return true;
+    case "select_option": return forms.selectOption(window, node, true);
+    case "unselect_option": return forms.selectOption(window, node, false);
+    case "send_keys": return forms.sendKeys(window, node, message.keys);
+    case "attach_files":
+      if (engine === "happy-dom") throw new Error("UNSUPPORTED_FILE_ENGINE");
+      return forms.attachFiles(window, node, message.files);
     case "set":
       if (node.tagName === "INPUT" && ["checkbox", "radio"].includes(node.type)) {
         if (typeof message.value !== "boolean" || (node.type === "radio" && !message.value)) throw new Error("UNSUPPORTED_SET");
@@ -128,14 +135,15 @@ function nodeAction(message) {
 let requestId = 0;
 const pending = new Map();
 const send = message => process.stdout.write(JSON.stringify(message) + "\n");
-function rackRequest(url, method, headers = {}, body = null, redirect = "follow") {
+function rackRequest(url, method, headers = {}, body = null, redirect = "follow", bodyEncoding = null) {
   const id = ++requestId;
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject });
-    send({ kind: "request", request_id: id, url, method, headers, body, redirect });
+    send({ kind: "request", request_id: id, url, method, headers, body, redirect, body_encoding: bodyEncoding });
   });
 }
 function installBridge(win, state) {
+  forms.installFormData(win);
   win.Headers = globalThis.Headers;
   win.Request = globalThis.Request;
   win.Response = globalThis.Response;
@@ -146,9 +154,18 @@ function installBridge(win, state) {
     if (options.body instanceof win.URLSearchParams) {
       options.body = new URLSearchParams(options.body.toString());
     }
-    const req = new Request(new URL(typeof input === "string" ? input : input.url || input.href, win.location.href), options);
-    const body = req.method === "GET" || req.method === "HEAD" ? null : await req.text();
-    const reply = await rackRequest(req.url, req.method, Object.fromEntries(req.headers), body, req.redirect);
+    if (win.FormData && options.body instanceof win.FormData) options.body = await forms.nodeFormData(win, options.body);
+    const req = input instanceof Request ? new Request(input, options) : new Request(new URL(typeof input === "string" ? input : input.url || input.href, win.location.href), options);
+    let body = null, encoding = null;
+    if (!["GET", "HEAD"].includes(req.method)) {
+      if ((req.headers.get("content-type") || "").startsWith("multipart/form-data;")) {
+        const buffer = Buffer.from(await req.arrayBuffer());
+        if (buffer.length > forms.MAX_UPLOAD + 65536) throw new Error("Multipart body limit exceeded");
+        body = buffer.toString("base64");
+        encoding = "base64";
+      } else body = await req.text();
+    }
+    const reply = await rackRequest(req.url, req.method, Object.fromEntries(req.headers), body, req.redirect, encoding);
     const response = new Response(req.method === "HEAD" || [204, 205, 304].includes(reply.status) ? null : reply.body, { status: reply.status, headers: reply.headers });
     Object.defineProperty(response, "url", { value: reply.url });
     Object.defineProperty(response, "redirected", { value: Boolean(reply.redirected) });
@@ -485,7 +502,7 @@ async function main() {
         checkJavaScript();
         const value = await execute(message);
         // One event-loop checkpoint, not a deterministic timer/network drain.
-        const mutating = ["mount", "click", "fill", "execute_script", "evaluate_script"].includes(message.command) || (message.command === "node_action" && ["click", "set"].includes(message.operation));
+        const mutating = ["mount", "click", "fill", "execute_script", "evaluate_script"].includes(message.command) || (message.command === "node_action" && ["click", "set", "select_option", "unselect_option", "send_keys", "attach_files"].includes(message.operation));
         if (message.settling === "tracked" && mutating) await settle(pageState);
         else await turn();
         checkJavaScript();

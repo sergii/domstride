@@ -29,3 +29,5 @@ Current fixture supports inline classic JS and same-origin GET/URL-encoded POST.
 See [real application discovery](real-apps.md) for pinned upstream revisions, initial source inspection and the first original-system-test probe.
 
 Experimental `DOMSTRIDE_ASSETS=bundle` adds limited same-origin synchronous classic scripts and static importmap module bundling on Node/jsdom; CI pending. Dynamic modules, browser asset scheduling and Action Cable remain unsupported.
+
+BATCH-003 adds experimental select/multi-select, basic text editing/key events and jsdom-only explicit file attachments with binary multipart fetch. Native form navigation, modifier chords, browser file pickers and Happy DOM file attachment remain unsupported; CI pending.

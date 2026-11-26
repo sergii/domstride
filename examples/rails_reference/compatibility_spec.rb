@@ -103,9 +103,8 @@ RSpec.describe "Domstride Capybara compatibility contract" do
     expect(fresh.value).to eq("initial")
   end
 
-  it "rejects unsupported geometry and file inputs explicitly" do
+  it "rejects unsupported geometry explicitly" do
     expect { page.find(:css, "#name").obscured? }.to raise_error(Capybara::NotSupportedByDriverError)
-    expect { page.find(:css, "#upload").set("/tmp/example") }.to raise_error(Capybara::NotSupportedByDriverError)
     expect { page.find(:css, "#replace").click(x: 1, y: 1) }.to raise_error(Capybara::NotSupportedByDriverError)
   end
 

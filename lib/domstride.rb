@@ -3,6 +3,7 @@ require "open3"
 require "uri"
 require "timeout"
 require "digest"
+require "base64"
 require_relative "domstride/version"
 require_relative "domstride/configuration"
 require_relative "domstride/runtime"
@@ -243,7 +244,7 @@ module Domstride
           body = nil
           headers.reject! { |name, _| %w[content-type content-length content-encoding content-language content-location].include?(name.downcase) }
         end
-        current = current.merge("url" => target.to_s, "method" => method, "headers" => headers, "body" => body)
+        current = current.merge("url" => target.to_s, "method" => method, "headers" => headers, "body" => body, "body_encoding" => body.nil? ? nil : current["body_encoding"])
         redirects += 1
       end
     rescue URI::InvalidURIError => e
@@ -269,8 +270,13 @@ module Domstride
         headers["HTTP_ORIGIN"] ||= "http://example.test"
         body = message["body"].to_s
         mime = headers["CONTENT_TYPE"].to_s.split(";", 2).first
-        unless body.empty? || %w[application/x-www-form-urlencoded application/json].include?(mime)
-          raise Error, "Only URL-encoded or JSON request bodies are supported"
+        if message["body_encoding"] == "base64"
+          raise Error, "Unsupported binary request body" unless mime == "multipart/form-data"
+          raise Error, "Multipart body limit exceeded" if body.bytesize > ((8 * 1024 * 1024 + 65536 + 2) / 3) * 4
+          body = Base64.strict_decode64(body)
+          raise Error, "Multipart body limit exceeded" if body.bytesize > 8 * 1024 * 1024 + 65536
+        elsif !body.empty? && !%w[application/x-www-form-urlencoded application/json].include?(mime)
+          raise Error, "Unsupported request body MIME"
         end
         @rack_session.public_send(method.downcase, uri.to_s, body, headers)
       end

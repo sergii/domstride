@@ -1,4 +1,6 @@
 require "capybara"
+require "base64"
+require "mini_mime"
 require_relative "../domstride"
 
 module Domstride
@@ -135,7 +137,47 @@ module Domstride
 
       def set(value, **options)
         raise ::Capybara::NotSupportedByDriverError, "Input options" unless options.empty?
+        if tag_name == "input" && self["type"] == "file"
+          return attach_files(value)
+        end
         operation("set", value: value)
+      end
+
+      def select_option = operation("select_option")
+      def unselect_option = operation("unselect_option")
+
+      KEY_NAMES = {
+        backspace: "Backspace", delete: "Delete", left: "ArrowLeft", right: "ArrowRight",
+        home: "Home", end: "End", enter: "Enter", return: "Enter", escape: "Escape", tab: "Tab"
+      }.freeze
+
+      def send_keys(*keys)
+        encoded = keys.map do |key|
+          if key.is_a?(String)
+            { kind: "text", value: key }
+          elsif KEY_NAMES.key?(key)
+            { kind: "special", value: KEY_NAMES.fetch(key) }
+          else
+            raise ::Capybara::NotSupportedByDriverError, "Unsupported key or chord"
+          end
+        end
+        operation("send_keys", keys: encoded)
+      end
+
+      def attach_files(value)
+        ensure_current_generation!
+        raise ::Capybara::NotSupportedByDriverError, "File inputs require jsdom" if driver.worker.settings[:engine] == "happy-dom"
+        paths = Array(value)
+        raise ArgumentError, "Expected file paths" unless paths.all? { |path| path.is_a?(String) && File.file?(path) }
+        remaining = 8 * 1024 * 1024
+        files = paths.map do |path|
+          data = File.binread(path, remaining + 1)
+          remaining -= data.bytesize
+          raise ArgumentError, "Upload byte limit exceeded" if remaining.negative?
+          { name: File.basename(path), type: MiniMime.lookup_by_filename(path)&.content_type || "application/octet-stream",
+            data: Base64.strict_encode64(data) }
+        end
+        operation("attach_files", files: files)
       end
 
       def click(keys = [], **options)
