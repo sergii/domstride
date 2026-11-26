@@ -1,0 +1,100 @@
+name: Domstride combined benchmark
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'runtime/**'
+      - 'examples/rails_reference/**'
+      - 'package.json'
+      - '.github/workflows/combined.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      RAILS_ENV: test
+      ITERATIONS: '10'
+      REPEATS: '5'
+      DOMSTRIDE_PROFILE: '0'
+      RUBY_YJIT_ENABLE: '0'
+      DOMSTRIDE_BENCHMARK_RECORDS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:reference
+      - run: mkdir -p benchmark-results
+      - name: Environment and browser
+        run: |
+          npx playwright install chromium
+          chrome="$(node -e 'console.log(require("playwright").chromium.executablePath())')"
+          test -x "$chrome"
+          echo "CHROME_PATH=$chrome" >> "$GITHUB_ENV"
+          { ruby -v; node -v; "$chrome" --version; nproc; lscpu; free -m; } | tee benchmark-results/environment.txt
+      - name: Upstream dependencies
+        env:
+          BUNDLE_GEMFILE: examples/rails_reference/upstream_gemfile.rb
+        run: |
+          bundle install
+          npm --prefix examples/rails_reference/upstream_app install --no-audit --no-fund
+      - name: Domstride profiles
+        run: |
+          for engine in jsdom jsdom31 happy-dom; do
+            for dsl in native capybara; do
+              profiles=(baseline candidate)
+              if [[ "$dsl" == capybara ]]; then profiles=(candidate baseline); fi
+              for profile in "${profiles[@]}"; do
+                DOMSTRIDE_ENGINE="$engine" DOMSTRIDE_DSL="$dsl" BENCHMARK_PROFILE="$profile" bundle exec ruby --disable-yjit examples/rails_reference/combined_benchmark.rb | tee "benchmark-results/$engine-$dsl-$profile.json"
+              done
+            done
+          done
+      - name: rails-jsdom reference
+        env:
+          BUNDLE_GEMFILE: examples/rails_reference/upstream_gemfile.rb
+          RESULT_PATH: benchmark-results/rails-jsdom.json
+        run: bundle exec ruby --disable-yjit examples/rails_reference/upstream_benchmark.rb
+      - name: Cuprite reference
+        run: CAPYBARA_DRIVER=cuprite bundle exec ruby --disable-yjit examples/rails_reference/capybara_benchmark.rb | tee benchmark-results/cuprite.json
+      - name: Playwright reference
+        run: |
+          bundle exec ruby --disable-yjit examples/rails_reference/server.rb > benchmark-results/puma.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT
+          for i in {1..100}; do
+            if curl -fsS http://127.0.0.1:4567/__benchmark_records >/dev/null; then break; fi
+            sleep 0.1
+          done
+          curl -fsS http://127.0.0.1:4567/__benchmark_records
+          node examples/rails_reference/browser.cjs | tee benchmark-results/playwright.json
+      - name: Summary
+        if: always()
+        run: |
+          ruby -rjson -e '
+            files = Dir["benchmark-results/*.json"].reject { |f| File.zero?(f) }
+            rows = files.map { |f| [File.basename(f, ".json"), JSON.parse(File.read(f))] }
+            puts "| Configuration | Median s / 10 | Scenarios/s | Persistence |"
+            puts "|---|---:|---:|---|"
+            rows.sort_by { |_, d| d["median_seconds"] }.each do |name, d|
+              puts "| #{name} | #{d["median_seconds"].round(4)} | #{(d["iterations"] / d["median_seconds"]).round(2)} | #{d["persistence_checked"] == true ? "verified" : "unverified"} |"
+            end
+            abort "Expected 15 complete results" unless rows.size == 15 && rows.all? { |_, d| d["persistence_checked"] == true && d["samples"].size == 5 && d["iterations"] == 10 }
+          ' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: combined-results
+          path: benchmark-results/

@@ -105,6 +105,11 @@ module ExpenseReference
       render inline: '<turbo-frame id="latest"><p id="persisted"><%= value %></p></turbo-frame>', locals: { value: expense ? "#{expense.description}: #{expense.amount}" : "No expense" }
     end
 
+    def benchmark_records
+      return head :not_found unless ENV["DOMSTRIDE_BENCHMARK_RECORDS"] == "1" && Rails.env.test?
+      render json: { count: Expense.count, matching: Expense.where(description: "Lunch", amount: 25, user_id: 1).count }
+    end
+
     def details
       render inline: '<turbo-frame id="details"><p id="receipt">Receipt #42</p></turbo-frame>'
     end
@@ -135,6 +140,7 @@ ActiveRecord::Schema.define do
 end
 Rails.application.routes.draw do
   root to: "expense_reference/expenses#index"
+  get "/__benchmark_records", to: "expense_reference/expenses#benchmark_records" if ENV["DOMSTRIDE_BENCHMARK_RECORDS"] == "1" && Rails.env.test?
   get "/details", to: "expense_reference/expenses#details"
   get "/approve", to: "expense_reference/expenses#approve"
   post "/login", to: "expense_reference/expenses#login"

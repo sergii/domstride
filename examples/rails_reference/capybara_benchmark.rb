@@ -15,10 +15,11 @@ iterations = Integer(ENV.fetch("ITERATIONS", "10"))
 repeats = Integer(ENV.fetch("REPEATS", "5"))
 begin
   before = ExpenseReference::Expense.count
+  matching_before = ExpenseReference::Expense.where(description: "Lunch", amount: 25, user_id: 1).count
   CapybaraExpenseScenario.run(page)
   samples = Array.new(repeats) { Benchmark.realtime { iterations.times { CapybaraExpenseScenario.run(page) } } }
-  raise "Persistence mismatch" unless ExpenseReference::Expense.count == before + 1 + repeats * iterations
-  puts JSON.pretty_generate(driver: mode, engine: mode == :domstride ? ENV.fetch("DOMSTRIDE_ENGINE", "jsdom") : "chromium", ruby: RUBY_VERSION, rails: Rails.version, iterations: iterations, samples: samples, median_seconds: samples.sort[samples.size / 2])
+  raise "Persistence mismatch" unless ExpenseReference::Expense.count == before + 1 + repeats * iterations && ExpenseReference::Expense.where(description: "Lunch", amount: 25, user_id: 1).count == matching_before + 1 + repeats * iterations
+  puts JSON.pretty_generate(driver: mode, engine: mode == :domstride ? ENV.fetch("DOMSTRIDE_ENGINE", "jsdom") : "chromium", ruby: RUBY_VERSION, rails: Rails.version, persistence_checked: true, iterations: iterations, repeats: repeats, samples: samples, median_seconds: samples.sort[samples.size / 2])
 ensure
   page.driver.quit
 end

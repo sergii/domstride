@@ -38,12 +38,14 @@ class UpstreamBenchmark < RailsJsdom::TestCase
     iterations = Integer(ENV.fetch("ITERATIONS", "10"))
     repeats = Integer(ENV.fetch("REPEATS", "5"))
     before = ExpenseReference::Expense.count
+    matching_before = ExpenseReference::Expense.where(description: "Lunch", amount: 25, user_id: 1).count
     scenario
     samples = Array.new(repeats) { Benchmark.realtime { iterations.times { scenario } } }
     assert_equal before + 1 + repeats * iterations, ExpenseReference::Expense.count
+    assert_equal matching_before + 1 + repeats * iterations, ExpenseReference::Expense.where(description: "Lunch", amount: 25, user_id: 1).count
     result = { driver: "rails-jsdom", engine: "jsdom", version: RailsJsdom::VERSION,
       upstream_commit: "66dc701a48df7038db8e56e8d44e8c36874dae78", ruby: RUBY_VERSION, rails: Rails.version,
-      iterations: iterations, samples: samples, median_seconds: samples.sort[samples.size / 2] }
+      persistence_checked: true, iterations: iterations, repeats: repeats, samples: samples, median_seconds: samples.sort[samples.size / 2] }
     File.write(ENV.fetch("RESULT_PATH"), JSON.pretty_generate(result))
     puts JSON.pretty_generate(result)
   end
