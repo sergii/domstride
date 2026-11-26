@@ -27,3 +27,7 @@ Use actual ActiveRecord persistence with a temporary file-backed SQLite database
 ## ADR-005: Capybara adapter
 
 Expose a limited driver using document-scoped element handles with stale detection, CSS and engine-dependent XPath, simple text input, click, DOM visibility approximation, and query retries. Unsupported geometry and interaction semantics must not silently pass. Session reset currently replaces the worker. Benchmark uses the exact same Capybara scenario and persistence checks on Domstride and Cuprite. No claim of full Capybara driver conformance.
+
+## ADR-006: upstream benchmark
+
+Compare upstream's public interaction API against the same Capybara-based Domstride scenario on one VM, with equal warm-session repetitions and database persistence checks. Pin upstream commit and JS versions. Upstream uses a separate Rails root for importmap and node_modules and its real settling/clock; the shared controller is identical, but JS boot, jsdom versions and assertion implementations differ. Turbo core is aliased for this fixture; no Action Cable or full upstream compatibility claims. Record errors rather than extrapolating failed runs.

@@ -1,9 +1,6 @@
-import { Application, Controller } from "@hotwired/stimulus";
+import { Application } from "@hotwired/stimulus";
 import "@hotwired/turbo";
+import ExpenseController from "./upstream_app/app/javascript/controllers/expense_controller.js";
 
 const application = Application.start();
-application.register("expense", class extends Controller {
-  static targets = ["total"];
-  connect() { this.element.dataset.ready = "true"; }
-  add() { this.totalTarget.textContent = String(Number(this.totalTarget.textContent) + 25); }
-});
+application.register("expense", ExpenseController);

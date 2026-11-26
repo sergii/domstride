@@ -3,8 +3,23 @@ require "action_controller/railtie"
 require "active_record"
 require "tmpdir"
 
+if ENV["UPSTREAM_REFERENCE"] == "1"
+  require "action_cable/engine"
+  require "active_job/railtie"
+  require "propshaft"
+  require "importmap-rails"
+  require "turbo-rails"
+  require "stimulus-rails"
+end
+
 module ExpenseReference
   class Application < Rails::Application
+    if ENV["UPSTREAM_REFERENCE"] == "1"
+      config.root = File.join(__dir__, "upstream_app")
+      config.assets.paths << File.join(config.root, "node_modules/@hotwired/turbo/dist")
+      config.assets.paths << File.join(config.root, "node_modules/@hotwired/stimulus/dist")
+      config.active_job.queue_adapter = :test
+    end
     config.eager_load = false
     config.secret_key_base = "reference-app-test-only-secret-" * 4
     config.hosts.clear
@@ -27,7 +42,7 @@ module ExpenseReference
     end
 
     def index
-      javascript = File.read(File.join(__dir__, "application.bundle.js"))
+      javascript = ENV["UPSTREAM_REFERENCE"] == "1" ? "" : File.read(File.join(__dir__, "application.bundle.js"))
       render inline: <<~ERB, locals: { javascript: javascript }
         <!doctype html>
         <html><head><title>Expense Lab</title><%= csrf_meta_tags %></head><body>
