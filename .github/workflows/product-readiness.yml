@@ -51,6 +51,12 @@ jobs:
           for profile in compatible fast; do
             DOMSTRIDE_PERFORMANCE_PROFILE="$profile" bundle exec rspec examples/rails_reference/capybara_spec.rb examples/rails_reference/query_prefetch_spec.rb
           done
+      - name: Developer experience and generated system tests
+        run: |
+          bundle exec ruby -Ilib test/developer_experience_test.rb
+          DOMSTRIDE_DRIVER=domstride bundle exec ruby examples/rails_reference/generated_system_test.rb
+          npx playwright install chromium
+          CHROME_PATH="$(node -p "require('playwright').chromium.executablePath()")" DOMSTRIDE_DRIVER=browser DOMSTRIDE_BROWSER_DRIVER=domstride_reference_browser bundle exec ruby examples/rails_reference/generated_system_test.rb
       - name: Installed gem smoke test outside checkout
         run: |
           temp="$(mktemp -d)"
@@ -66,6 +72,7 @@ jobs:
           if "$temp/gems/bin/domstride" doctor; then echo "Unexpected runtime before setup"; exit 1; fi
           "$temp/gems/bin/domstride" setup
           "$temp/gems/bin/domstride" doctor
+          "$temp/gems/bin/domstride" doctor --json | ruby -rjson -e 'abort unless JSON.parse(STDIN.read).fetch("status") == "ok"'
           "$temp/gems/bin/domstride" setup
           for profile in compatible fast deterministic; do
             DOMSTRIDE_PERFORMANCE_PROFILE="$profile" ruby -rdomstride -e 'Domstride::Session.open { |p| p.mount_html(%q{<p id="status">Ready</p>}); p.assert_text("#status", "Ready") }; puts "Installed profile OK"'

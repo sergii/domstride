@@ -1,0 +1,8 @@
+require "test_helper"
+require "action_dispatch/system_test_case"
+require "domstride/rails"
+
+class DomstrideSystemTestCase < ActionDispatch::SystemTestCase
+  include Domstride::RailsSystemTestSupport
+  driven_by Domstride::RailsSupport.driver_name
+end

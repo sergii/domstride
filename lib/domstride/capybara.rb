@@ -92,6 +92,30 @@ module Domstride
         end
       end
 
+      def diagnostics
+        {
+          version: Domstride::VERSION,
+          engine: @settings[:engine],
+          runtime: @settings[:runtime],
+          clock: @settings[:clock],
+          settling: @settings[:settling],
+          assets: @settings[:assets],
+          bundle_cache: @settings[:bundle_cache],
+          query_prefetch: @settings[:query_prefetch],
+          websocket_enabled: !@settings[:websocket_url].nil?,
+          worker_started: !@worker.nil?,
+          profile: @worker && @settings[:profile] ? @worker.profile : nil
+        }
+      end
+
+      # One document only. No additional browser windows or tabs.
+      def current_window_handle = "domstride-main"
+      def window_handles = [current_window_handle]
+
+      def switch_to_window(handle)
+        raise ::Capybara::NoSuchWindowError, "Unknown window" unless handle == current_window_handle
+      end
+
       def wait? = true
       def needs_server? = false
       def invalid_element_errors = [StaleElement]

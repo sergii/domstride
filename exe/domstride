@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 require "domstride"
+require "open3"
 
 begin
   case ARGV.shift
@@ -7,15 +8,29 @@ begin
     abort "Usage: domstride setup" unless ARGV.empty?
     puts "Domstride runtime: #{Domstride::Runtime.setup!}"
   when "doctor"
-    abort "Usage: domstride doctor" unless ARGV.empty?
-    puts "Worker: #{Domstride::Runtime.worker_path}"
-    Domstride::Session.open do |page|
+    json = ARGV == ["--json"]
+    abort "Usage: domstride doctor [--json]" unless ARGV.empty? || json
+    settings = Domstride::Configuration.resolve
+    version, status = Open3.capture2e(settings.fetch(:runtime), "--version")
+    raise Domstride::Error, "Runtime version check failed" unless status.success?
+    report = { domstride: Domstride::VERSION, ruby: RUBY_VERSION, runtime: settings[:runtime],
+               runtime_version: version.strip, engine: settings[:engine],
+               clock: settings[:clock], assets: settings[:assets],
+               websocket_configured: !settings[:websocket_url].nil?,
+               worker: Domstride::Runtime.worker_path }
+    Domstride::Session.open(websocket_url: nil) do |page|
       page.mount_html('<p id="status">Ready</p>')
       page.assert_text("#status", "Ready")
     end
-    puts "Runtime check passed"
+    report[:status] = "ok"
+    if json
+      puts JSON.pretty_generate(report)
+    else
+      puts "Worker: #{report[:worker]}"
+      puts "Runtime check passed"
+    end
   else
-    abort "Usage: domstride setup | doctor"
+    abort "Usage: domstride setup | doctor [--json]"
   end
 rescue Domstride::Error, SystemCallError, ArgumentError => e
   abort "Domstride: #{e.message}"

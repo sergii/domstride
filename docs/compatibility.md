@@ -33,3 +33,5 @@ Experimental `DOMSTRIDE_ASSETS=bundle` adds limited same-origin synchronous clas
 BATCH-003 adds experimental select/multi-select, basic text editing/key events and jsdom-only explicit file attachments with binary multipart fetch. Native form navigation, modifier chords, browser file pickers and Happy DOM file attachment remain unsupported; CI pending.
 
 BATCH-004 adds experimental loopback-only WebSocket transport for Node/jsdom and real Action Cable/Turbo source integration tests. Cookie-authenticated connections, full turbo-rails custom element integration, Happy DOM and virtual clock remain unsupported; CI pending.
+
+BATCH-005 adds single-window identity, explicit pre-test driver selection, a Rails generator and opt-in failure metadata/HTML. Multiple windows, screenshot rendering and automatic failure replay remain unsupported. CI pending.

@@ -117,11 +117,11 @@ See [QA-003](docs/real-apps.md) for pinned Campfire, Fizzy and Writebook discove
 
 ## Same-origin redirects (experimental)
 
-Native visit and bridged fetch follow HTTP 301/302/303/307/308 within http://example.test, preserving Rack cookies and final response URL. POST becomes GET for 301/302/303; 307/308 preserve the method and body. Maximum ten redirects and loop detection; cross-origin redirects rejected. Fetch redirect:error rejects; manual redirect responses are explicitly unsupported. This is not general browser navigation, form navigation, or history support. GET and URL-encoded POST remain the only supported methods.
+Native visit and bridged fetch follow HTTP 301/302/303/307/308 within http://example.test, preserving Rack cookies and final response URL. POST becomes GET for 301/302/303; 307/308 preserve the method and body. Maximum ten redirects and loop detection; cross-origin redirects rejected. Fetch redirect:error rejects; manual redirect responses are explicitly unsupported. This is not general browser navigation, form navigation, or history support. See the HTTP methods and form compatibility sections below for additional methods.
 
 ## Experimental Rails asset boot and HTTP methods
 
-GET, HEAD, POST, PUT, PATCH and DELETE are supported through same-origin Rack; nonempty mutation bodies must be URL-encoded or JSON. Multipart is not implemented. Set `DOMSTRIDE_ASSETS=bundle` for a limited Node/jsdom asset pipeline with cache off. Classic synchronous same-origin scripts are inlined before parsing; static ES modules are bundled through esbuild using exact/prefix importmap entries and relative URLs, then evaluated after parsing. No external network, scoped importmaps, async/defer classic scripts, module redirects, integrity checks, full module timing, arbitrary dynamic imports or Action Cable support. Opt-in only; do not interpret successful bundling as browser parity. All application code must be trusted.
+GET, HEAD, POST, PUT, PATCH and DELETE are supported through same-origin Rack; nonempty mutation bodies must be URL-encoded or JSON. See the form compatibility section below for limited multipart support. Set `DOMSTRIDE_ASSETS=bundle` for a limited Node/jsdom asset pipeline with cache off. Classic synchronous same-origin scripts are inlined before parsing; static ES modules are bundled through esbuild using exact/prefix importmap entries and relative URLs, then evaluated after parsing. No external network, scoped importmaps, async/defer classic scripts, module redirects, integrity checks, full module timing, arbitrary dynamic imports or integrated authenticated Action Cable support. Opt-in only; do not interpret successful bundling as browser parity. All application code must be trusted.
 
 ## Script API and controller imports
 
@@ -134,3 +134,14 @@ Capybara select_option/unselect_option support single/multiple select controls, 
 ## Experimental Action Cable transport
 
 Pass `websocket_url: "ws://127.0.0.1:PORT/cable"` (or DOMSTRIDE_WEBSOCKET_URL) with a test-only Action Cable endpoint. HTTP stays in-process; jsdom uses a real loopback WebSocket for the exact configured endpoint or corresponding logical same-origin path. Node/jsdom and real clock only. Session remount/close closes tracked sockets; websocket_state reports open/count. No external endpoints, shared Rack cookie authentication, arbitrary WebSocket URLs, virtual-time socket scheduling or production network access. The reference uses real Rails Action Cable server, async adapter, shipped client and Turbo connectStreamSource, not the complete turbo-rails custom element or authenticated production configuration. No support claim until CI passes.
+
+## Rails installation and explicit browser fallback
+
+```sh
+bundle exec domstride setup
+bin/rails generate domstride:install
+```
+
+The generator creates test/domstride_system_test_case.rb without replacing ApplicationSystemTestCase. Extend DomstrideSystemTestCase for selected tests. Run those tests normally, or set DOMSTRIDE_DRIVER=browser to run the same test with an already registered Capybara browser driver (default selenium_chrome_headless; override DOMSTRIDE_BROWSER_DRIVER). Install/configure your browser driver separately. Selection happens before the test, never by automatically replaying a failed mutation. Rails system tests using the existing base class are unchanged.
+
+`bundle exec domstride doctor --json` reports runtime/version/engine and a minimal DOM check (not full application compatibility). Set DOMSTRIDE_FAILURE_DIR to explicitly save per-failure metadata in a private directory; DOMSTRIDE_FAILURE_HTML=1 additionally saves DOM HTML, which can contain sensitive test data. No automatic capture by default. Single-window identity is available; new tabs/windows remain unsupported.
