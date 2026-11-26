@@ -86,6 +86,8 @@ module Domstride
       end
 
       def click(keys = [], **options)
+        # Capybara supplies the W3C default center offset even without coordinates.
+        options.delete(:offset) if options[:offset] == :center
         raise ::Capybara::NotSupportedByDriverError, "Click modifiers or coordinates" unless keys.empty? && options.empty?
         operation("click")
       end

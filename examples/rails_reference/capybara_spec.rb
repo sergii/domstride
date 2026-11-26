@@ -23,6 +23,11 @@ RSpec.describe "Domstride Capybara driver" do
     expect(page.html).to include("Expense Lab")
   end
 
+  it "rejects coordinate clicks rather than silently ignoring them" do
+    page.visit("/")
+    expect { page.find(:css, "#add").click(x: 1, y: 1) }.to raise_error(Capybara::NotSupportedByDriverError)
+  end
+
   it "supports standard XPath-based Capybara field and button selectors on jsdom" do
     skip "XPath compatibility not established on Happy DOM" if ENV["DOMSTRIDE_ENGINE"] == "happy-dom"
     page.visit("/")

@@ -42,8 +42,12 @@ jobs:
       - name: Capybara Cuprite
         if: always()
         run: |
-          npx playwright install chromium
-          export CHROME_PATH="$(node -e 'console.log(require("playwright").chromium.executablePath())')"
+          export CHROME_PATH="$(command -v google-chrome || command -v chromium || true)"
+          if [[ -z "$CHROME_PATH" ]]; then
+            npx playwright install chromium
+            export CHROME_PATH="$(node -e 'console.log(require("playwright").chromium.executablePath())')"
+          fi
+          "$CHROME_PATH" --version
           CAPYBARA_DRIVER=cuprite bundle exec ruby examples/rails_reference/capybara_benchmark.rb | tee benchmark-results/capybara-cuprite.json
       - name: Summary
         if: always()

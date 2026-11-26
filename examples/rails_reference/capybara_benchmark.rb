@@ -7,7 +7,7 @@ if mode == :cuprite
   require "capybara/cuprite"
   Capybara.server = :puma, { Silent: true }
   Capybara.register_driver(:cuprite) do |app|
-    Capybara::Cuprite::Driver.new(app, browser_path: ENV.fetch("CHROME_PATH"), headless: true, timeout: 5)
+    Capybara::Cuprite::Driver.new(app, browser_path: ENV.fetch("CHROME_PATH"), headless: true, timeout: 5, process_timeout: 30, browser_options: { "no-sandbox" => nil, "disable-dev-shm-usage" => nil })
   end
 end
 page = Capybara::Session.new(mode, Rails.application)
