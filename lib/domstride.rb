@@ -4,6 +4,8 @@ require "uri"
 require "timeout"
 require "digest"
 require_relative "domstride/version"
+require_relative "domstride/configuration"
+require_relative "domstride/runtime"
 
 module Domstride
   class Error < StandardError; end
@@ -18,7 +20,13 @@ module Domstride
       session&.close
     end
 
-    def initialize(runtime: ENV.fetch("DOMSTRIDE_RUNTIME", "node"), engine: ENV.fetch("DOMSTRIDE_ENGINE", "jsdom"), app: nil, profile: ENV["DOMSTRIDE_PROFILE"] == "1", wait_strategy: ENV.fetch("DOMSTRIDE_WAIT", "poll"), bundle_cache: ENV.fetch("DOMSTRIDE_BUNDLE_CACHE", "off"), settling: ENV.fetch("DOMSTRIDE_SETTLING", "checkpoint"), clock: ENV.fetch("DOMSTRIDE_CLOCK", "real"), clock_epoch_ms: 1_700_000_000_000)
+    def initialize(app: nil, performance_profile: nil, **options)
+      settings = Configuration.resolve(performance_profile: performance_profile, **options)
+      runtime, engine, profile, wait_strategy, bundle_cache, settling, clock, clock_epoch_ms =
+        settings.values_at(:runtime, :engine, :profile, :wait_strategy, :bundle_cache, :settling, :clock, :clock_epoch_ms)
+      @settings = settings.freeze
+      raise ArgumentError, "Unknown DOM engine" unless %w[jsdom jsdom31 happy-dom].include?(engine)
+      raise ArgumentError, "Unknown wait strategy" unless %w[poll observer].include?(wait_strategy)
       raise ArgumentError, "Unknown bundle cache mode" unless %w[off source compiled].include?(bundle_cache)
       if bundle_cache == "compiled" && !%w[jsdom jsdom31].include?(engine)
         raise ArgumentError, "Compiled bundles require jsdom"
@@ -28,7 +36,7 @@ module Domstride
       @settling, @clock, @clock_epoch_ms = settling, clock, Integer(clock_epoch_ms)
       @bundle_cache = bundle_cache
       @bundle_digest = nil
-      @input, @output, @wait = Open3.popen2(runtime, WORKER, engine)
+      @input, @output, @wait = Open3.popen2(runtime, Runtime.worker_path, engine)
       @mutex = Mutex.new
       @sequence = 0
       @app = app
@@ -40,6 +48,8 @@ module Domstride
         @rack_session = Rack::Test::Session.new(Rack::MockSession.new(app, "example.test"))
       end
     end
+
+    attr_reader :settings
 
     def mount_html(html, url: "https://example.test/", bridge: false)
       # Only explicitly marked final classic scripts are eligible.

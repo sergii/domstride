@@ -16,7 +16,7 @@ Requires Ruby 3.3+, Node 22+ (or experimental Bun) and npm.
 
 Set DOMSTRIDE_RUNTIME=bun to try the alternative runtime.
 
-The initial milestone exercises real JavaScript DOM events via a persistent JSON-lines worker. No Rails, Turbo, Stimulus, navigation or browser parity is claimed yet. Benchmarks compare identical synthetic counter interactions, not Rails system tests. See docs/architecture.md.
+Domstride exercises real JavaScript DOM events via a persistent JSON-lines worker and has an experimental stateful Rails reference. It does not provide full browser parity. See docs/architecture.md.
 
 ## Experimental performance matrix
 
@@ -34,13 +34,13 @@ Happy DOM and Bun are experimental. Only trusted fixture code is allowed. This i
 
 ## Rails reference app
 
-Ruby 4.0.10 / Rails 8.1.4.1, real Stimulus and Turbo, experimental read-only Rack bridge.
+Ruby 4.0.10 / Rails 8.1.4.1, real Stimulus and Turbo, experimental GET/POST Rack bridge.
 
     npm run build:reference
     bundle exec ruby examples/rails_reference/test.rb
     bundle exec ruby examples/rails_reference/benchmark.rb
 
-Reference scenario: Stimulus expense total, Turbo Frame GET, Turbo Stream GET. The DOM worker uses same-origin Rack requests; Chromium uses a local Puma HTTP server. No database, mutation endpoint, CSRF, cookies, redirects, or general browser parity is claimed. Only trusted fixture code.
+Reference scenario: Stimulus expense total, Turbo Frame GET, Turbo Stream GET. The DOM worker uses same-origin Rack requests; Chromium uses a local Puma HTTP server. See the stateful reference below for database, mutation and cookie coverage. Redirects and general browser parity remain unsupported. Only trusted fixture code.
 
 ## Stateful Rails reference
 
@@ -88,3 +88,21 @@ Run on Linux: `WORKERS=4 YJIT_MODE=on DOMSTRIDE_ENGINE=happy-dom bundle exec rub
 ## Combined performance comparison
 
 The combined workflow compares baseline and candidate native/Capybara configurations for each DOM engine against pinned rails-jsdom, Cuprite and Playwright on one runner. All use the same stateful scenario, one warmup and five samples of ten scenarios; exact persisted records are checked. Candidate jsdom native combines compiled bundle, observer waits, tracked settling and virtual clock; candidate jsdom Capybara uses compiled bundle and query prefetch with real clock. Happy DOM stays uncached with real clock and checkpoint settling; candidate native uses observer waits, while candidate Capybara is a control because native waits are not used by Capybara. Single worker and YJIT off to avoid conflating parallel scaling. Browser references share the Playwright-installed Chromium executable. Different DSLs, JS boot and browser execution semantics remain material. No universal performance or compatibility claim.
+
+## Named performance profiles
+
+`Domstride::Session.new(performance_profile: :fast)` or `DOMSTRIDE_PERFORMANCE_PROFILE=fast` selects a profile. `compatible` uses jsdom31 with real clock, `fast` uses Happy DOM with real clock, and `deterministic` uses jsdom31 compiled cache, observer waits, tracked settling and virtual clock. Explicit keyword arguments override environment settings, which override the profile. No profile preserves existing defaults (jsdom26). `profile: true` still enables instrumentation, not profile selection. The deterministic profile is native DSL only until Capybara virtual retries are supported. All profiles remain experimental; Happy DOM XPath is incomplete.
+
+## Rails system tests
+
+    require "domstride/rails"
+    class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
+      include Domstride::RailsSystemTestSupport
+      driven_by :domstride
+    end
+
+The support module suppresses automatic failure screenshots for Domstride because it has no rendered browser. HTML can be saved with Capybara's save_page if explicitly requested; avoid exposing sensitive test data. Standard XPath-based selectors are supported on jsdom, not established on Happy DOM. Do not use this driver for layout or screenshot tests. No automatic browser fallback.
+
+## Installed gem preview
+
+Build/install the gem locally, then run `domstride setup` and `domstride doctor`. Setup explicitly installs pinned direct runtime dependencies using npm into a content-addressed user cache (default ~/.cache/domstride; override DOMSTRIDE_RUNTIME_HOME). Test execution never installs packages implicitly. Development checkout uses root node_modules when available. Node 22.23.5 is the verified runtime; npm is required for setup. Direct dependency versions are pinned; transitive npm resolution is not locked yet. No RubyGems release is published.

@@ -29,7 +29,7 @@ RSpec.describe "Domstride Capybara driver" do
   end
 
   it "supports standard XPath-based Capybara field and button selectors on jsdom" do
-    skip "XPath compatibility not established on Happy DOM" if ENV["DOMSTRIDE_ENGINE"] == "happy-dom"
+    skip "XPath compatibility not established on Happy DOM" if page.driver.worker.settings[:engine] == "happy-dom"
     page.visit("/")
     page.fill_in("Email", with: "tester@example.test")
     page.fill_in("Password", with: "fixture-password")

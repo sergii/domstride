@@ -6,13 +6,18 @@ module Domstride
     class StaleElement < Domstride::Error; end
 
     class Driver < ::Capybara::Driver::Base
-      def initialize(app, runtime: ENV.fetch("DOMSTRIDE_RUNTIME", "node"), engine: ENV.fetch("DOMSTRIDE_ENGINE", "jsdom"), query_prefetch: ENV["DOMSTRIDE_QUERY_PREFETCH"] == "1")
-        @app, @runtime, @engine = app, runtime, engine
-        @query_prefetch = query_prefetch
+      def initialize(app, performance_profile: nil, **options)
+        @app = app
+        @settings = Configuration.resolve(performance_profile: performance_profile, **options)
+        name = performance_profile || ENV["DOMSTRIDE_PERFORMANCE_PROFILE"]
+        if name.to_s == "deterministic" && @settings[:clock] == "virtual"
+          raise ArgumentError, "Deterministic profile requires the native DSL; Capybara virtual retries are not supported"
+        end
+        @query_prefetch = @settings[:query_prefetch]
       end
 
       def worker
-        @worker ||= Domstride::Session.new(app: @app, runtime: @runtime, engine: @engine)
+        @worker ||= Domstride::Session.new(app: @app, **@settings)
       end
 
       def visit(path)

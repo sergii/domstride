@@ -1,0 +1,76 @@
+name: Domstride product readiness
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'runtime/**'
+      - 'exe/**'
+      - 'test/**'
+      - 'examples/rails_reference/**'
+      - 'domstride.gemspec'
+      - '.github/workflows/product-readiness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      RAILS_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:reference
+      - name: Configuration
+        run: bundle exec ruby -Ilib test/configuration_test.rb
+      - name: Named native profiles
+        run: |
+          for profile in compatible fast deterministic; do
+            DOMSTRIDE_PERFORMANCE_PROFILE="$profile" bundle exec ruby examples/rails_reference/test.rb
+          done
+      - name: Rails system tests
+        run: |
+          for profile in compatible fast; do
+            DOMSTRIDE_PERFORMANCE_PROFILE="$profile" bundle exec ruby examples/rails_reference/system_test.rb
+          done
+      - name: Capybara compatibility regression
+        run: |
+          for profile in compatible fast; do
+            DOMSTRIDE_PERFORMANCE_PROFILE="$profile" bundle exec rspec examples/rails_reference/capybara_spec.rb examples/rails_reference/query_prefetch_spec.rb
+          done
+      - name: Installed gem smoke test outside checkout
+        run: |
+          temp="$(mktemp -d)"
+          trap 'rm -rf "$temp"' EXIT
+          gem build domstride.gemspec --output "$temp/domstride.gem"
+          existing="$(gem env gempath)"
+          gem install --local "$temp/domstride.gem" --install-dir "$temp/gems" --ignore-dependencies --no-document
+          export GEM_PATH="$temp/gems:$existing"
+          export DOMSTRIDE_RUNTIME_HOME="$temp/runtime"
+          cd "$temp"
+          "$temp/gems/bin/domstride" setup
+          "$temp/gems/bin/domstride" doctor
+          "$temp/gems/bin/domstride" setup
+          for profile in compatible fast deterministic; do
+            DOMSTRIDE_PERFORMANCE_PROFILE="$profile" ruby -rdomstride -e 'Domstride::Session.open { |p| p.mount_html(%q{<p id="status">Ready</p>}); p.assert_text("#status", "Ready") }; puts "Installed profile OK"'
+          done
+          ruby -rdomstride/capybara -e 'abort unless Capybara.drivers.key?(:domstride)'
+          mkdir -p "$GITHUB_WORKSPACE/package-results"
+          cp "$temp/domstride.gem" "$GITHUB_WORKSPACE/package-results/"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: domstride-gem-preview
+          path: package-results/

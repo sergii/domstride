@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+require "domstride"
+
+begin
+  case ARGV.shift
+  when "setup"
+    abort "Usage: domstride setup" unless ARGV.empty?
+    puts "Domstride runtime: #{Domstride::Runtime.setup!}"
+  when "doctor"
+    abort "Usage: domstride doctor" unless ARGV.empty?
+    puts "Worker: #{Domstride::Runtime.worker_path}"
+    Domstride::Session.open do |page|
+      page.mount_html('<p id="status">Ready</p>')
+      page.assert_text("#status", "Ready")
+    end
+    puts "Runtime check passed"
+  else
+    abort "Usage: domstride setup | doctor"
+  end
+rescue Domstride::Error, SystemCallError, ArgumentError => e
+  abort "Domstride: #{e.message}"
+end
