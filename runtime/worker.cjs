@@ -9,11 +9,16 @@ function installBridge(win) {
   win.Request = globalThis.Request;
   win.Response = globalThis.Response;
   win.fetch = async (input, init = {}) => {
-    const req = new Request(new URL(typeof input === "string" ? input : input.url || input.href, win.location.href), init);
+    const options = { ...init };
+    if (options.body instanceof win.URLSearchParams) {
+      options.body = new URLSearchParams(options.body.toString());
+    }
+    const req = new Request(new URL(typeof input === "string" ? input : input.url || input.href, win.location.href), options);
+    const body = req.method === "GET" || req.method === "HEAD" ? null : await req.text();
     const id = ++requestId;
     const reply = await new Promise((resolve, reject) => {
       pending.set(id, { resolve, reject });
-      send({ kind: "request", request_id: id, url: req.url, method: req.method, headers: Object.fromEntries(req.headers) });
+      send({ kind: "request", request_id: id, url: req.url, method: req.method, headers: Object.fromEntries(req.headers), body });
     });
     const response = new Response(reply.body, { status: reply.status, headers: reply.headers });
     Object.defineProperty(response, "url", { value: reply.url });
@@ -66,6 +71,13 @@ function element(selector) {
 function action(message) {
   switch (message.command) {
     case "click": element(message.selector).click(); return true;
+    case "fill": {
+      const node = element(message.selector);
+      node.value = message.value;
+      node.dispatchEvent(new window.Event("input", { bubbles: true }));
+      node.dispatchEvent(new window.Event("change", { bubbles: true }));
+      return true;
+    }
     case "text": return element(message.selector).textContent;
     case "count":
       if (!window) throw new Error("No document mounted");

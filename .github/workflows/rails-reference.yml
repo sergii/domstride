@@ -37,6 +37,7 @@ jobs:
         id: jsdom
         run: |
           bundle exec ruby examples/rails_reference/test.rb
+          bundle exec rspec examples/rails_reference/reference_spec.rb
           bundle exec ruby examples/rails_reference/benchmark.rb | tee benchmark-results/rails-jsdom.json
       - name: Rails Happy DOM reference
         if: always()
@@ -45,6 +46,7 @@ jobs:
           DOMSTRIDE_ENGINE: happy-dom
         run: |
           bundle exec ruby examples/rails_reference/test.rb
+          bundle exec rspec examples/rails_reference/reference_spec.rb
           bundle exec ruby examples/rails_reference/benchmark.rb | tee benchmark-results/rails-happy-dom.json
       - name: Chromium reference
         if: always()

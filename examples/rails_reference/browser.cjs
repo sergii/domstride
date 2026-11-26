@@ -13,6 +13,21 @@ async function scenario(page) {
   await expectText(page, "#receipt", "Receipt #42");
   await page.locator("#approve-link").click();
   await expectText(page, "#status", "Approved");
+  await page.locator("#email").fill("tester@example.test");
+  await page.locator("#password").fill("fixture-password");
+  await page.locator("#login").click();
+  await expectText(page, "#identity", "Signed in");
+  await page.locator("#description").fill("Lunch");
+  await page.locator("#amount").fill("0");
+  await page.locator("#save").click();
+  await expectText(page, "#result", "Invalid expense");
+  await page.locator("#amount").fill("25");
+  await page.locator("#save").click();
+  await expectText(page, "#result", "Saved");
+  await page.goto("http://127.0.0.1:4567/");
+  await expectText(page, "#identity", "Signed in");
+  await page.locator("#latest-link").click();
+  await expectText(page, "#persisted", "Lunch: 25");
 }
 (async () => {
   const browser = await chromium.launch({ headless: true });
