@@ -30,7 +30,7 @@ module Domstride
     def self.ready?(path)
       File.file?(File.join(path, ".ready")) &&
         FILES.all? { |name| File.file?(File.join(path, name)) } &&
-        %w[jsdom jsdom31 happy-dom esbuild].all? { |name| File.file?(File.join(path, "node_modules", name, "package.json")) }
+        %w[jsdom jsdom31 happy-dom esbuild acorn].all? { |name| File.file?(File.join(path, "node_modules", name, "package.json")) }
     end
 
     def self.setup!

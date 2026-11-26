@@ -375,7 +375,37 @@ function prepareBundle(message) {
   return { html: message.html.slice(0, insertion) + bundleEntry.source + message.html.slice(insertion) };
 }
 
+function scriptValue(value, seen = new Set()) {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "object" || seen.has(value)) throw new Error("UNSUPPORTED_SCRIPT_RESULT");
+  seen.add(value);
+  let result;
+  if (Array.isArray(value)) result = Array.from(value, item => scriptValue(item, seen));
+  else if (Object.getPrototypeOf(value) === window.Object.prototype || Object.getPrototypeOf(value) === null) {
+    result = Object.fromEntries(Object.entries(value).map(([key, item]) => [key, scriptValue(item, seen)]));
+  } else throw new Error("UNSUPPORTED_SCRIPT_RESULT");
+  seen.delete(value);
+  return result;
+}
+
+function scriptCommand(message) {
+  if (!window) throw new Error("No document mounted");
+  const args = message.arguments.map(arg => arg.kind === "element" ? resolveHandle(arg.handle) : window.JSON.parse(JSON.stringify(arg.value)));
+  const source = message.command === "evaluate_script" ? "return (" + message.script.replace(/;\s*$/, "") + "\n);" : message.script;
+  let value;
+  try { value = window.Function(source).apply(window, args); }
+  catch (error) { throw new JavaScriptFailure(error.stack || error.message); }
+  if (value && typeof value.then === "function") {
+    Promise.resolve(value).catch(() => {});
+    throw new Error("UNSUPPORTED_ASYNC_SCRIPT_RESULT");
+  }
+  return message.command === "evaluate_script" ? scriptValue(value) : true;
+}
+
 async function execute(message) {
+  if (["execute_script", "evaluate_script"].includes(message.command)) return scriptCommand(message);
   if (message.command === "mount") {
     const prepared = prepareBundle(message);
     let moduleCode;
@@ -455,7 +485,7 @@ async function main() {
         checkJavaScript();
         const value = await execute(message);
         // One event-loop checkpoint, not a deterministic timer/network drain.
-        const mutating = ["mount", "click", "fill"].includes(message.command) || (message.command === "node_action" && ["click", "set"].includes(message.operation));
+        const mutating = ["mount", "click", "fill", "execute_script", "evaluate_script"].includes(message.command) || (message.command === "node_action" && ["click", "set"].includes(message.operation));
         if (message.settling === "tracked" && mutating) await settle(pageState);
         else await turn();
         checkJavaScript();

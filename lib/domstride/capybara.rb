@@ -69,6 +69,27 @@ module Domstride
         raise
       end
 
+      def execute_script(script, *args)
+        command("execute_script", script: script, arguments: script_arguments(args))
+        nil
+      end
+
+      def evaluate_script(script, *args)
+        command("evaluate_script", script: script, arguments: script_arguments(args))
+      end
+
+      def script_arguments(args)
+        args.map do |arg|
+          if arg.is_a?(Node)
+            raise ArgumentError, "Element belongs to another driver" unless arg.driver.equal?(self)
+            arg.ensure_current_generation!
+            { kind: "element", handle: arg.native }
+          else
+            { kind: "json", value: Domstride::Session.json_script_argument(arg) }
+          end
+        end
+      end
+
       def wait? = true
       def needs_server? = false
       def invalid_element_errors = [StaleElement]

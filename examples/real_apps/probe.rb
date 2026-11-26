@@ -33,17 +33,18 @@ def save(output, result)
 end
 save(output, result)
 
-def run_phase(output, name, *command)
+def run_phase(output, name, *command, env: {})
   started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
   log = File.join(output, "#{name}.log")
   status = nil
   File.open(log, "w") do |io|
-    pid = Process.spawn("timeout", "--kill-after=10s", "240s", *command, out: io, err: [:child, :out])
+    pid = Process.spawn(env, "timeout", "--kill-after=10s", "240s", *command, out: io, err: [:child, :out])
     _, status = Process.wait2(pid)
   end
   code = status.exitstatus || 128 + status.termsig.to_i
   content = File.read(log)
   summary = content.scan(/(\d+) runs, (\d+) assertions, (\d+) failures, (\d+) errors, (\d+) skips/).last
+  warn "#{name} failed:\n#{content.lines.last(35).join}" if code != 0
   { exit_code: code, elapsed_seconds: Process.clock_gettime(Process::CLOCK_MONOTONIC) - started,
     test_summary: summary && %w[runs assertions failures errors skips].zip(summary.map(&:to_i)).to_h,
     timed_out: [124, 137].include?(code), log: File.basename(log) }
@@ -64,7 +65,7 @@ else
   if !valid_test_run?(result[:phases][:browser])
     result[:status] = "browser_baseline_blocked"
   else
-    result[:phases][:database_reset] = run_phase(output, "database-reset", "bin/rails", "db:drop", "db:setup")
+    result[:phases][:database_reset] = run_phase(output, "database-reset", "bin/rails", "db:reset")
     save(output, result)
     if result[:phases][:database_reset][:exit_code] != 0
       result[:status] = "database_reset_blocked"
@@ -82,7 +83,7 @@ else
             end
           RUBY
         end
-        result[:phases][:domstride] = run_phase(output, "domstride", "bin/rails", "test", selected, "--seed", "12345")
+        result[:phases][:domstride] = run_phase(output, "domstride", "bin/rails", "test", selected, "--seed", "12345", env: { "DOMSTRIDE_ASSETS" => "bundle" })
       ensure
         File.write(helper, original)
       end

@@ -2,6 +2,35 @@
 const MAX_FILES = 128;
 const MAX_BYTES = 8 * 1024 * 1024;
 
+// Resolve computed controller imports against a bounded registry of exact pins.
+function rewriteDynamicImports(source, imports) {
+  const ast = require("acorn").parse(source, { ecmaVersion: "latest", sourceType: "module" });
+  const edits = [], stack = [ast];
+  let helper = "__domstride_import";
+  while (source.includes(helper)) helper += "_";
+  while (stack.length) {
+    const node = stack.pop();
+    if (!node || typeof node !== "object") continue;
+    if (node.type === "ImportExpression") {
+      if (node.options) throw new Error("UNSUPPORTED_IMPORT_OPTIONS");
+      if (node.source.type !== "Literal" || typeof node.source.value !== "string") {
+        edits.push({ start: node.start, end: node.start + 6, text: helper });
+      }
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) stack.push(...value);
+      else if (value && typeof value === "object") stack.push(value);
+    }
+  }
+  if (!edits.length) return source;
+  const pins = Object.keys(imports).filter(key => /(?:^|\/)[^/]+_controller$/.test(key) && typeof imports[key] === "string");
+  if (pins.length > MAX_FILES) throw new Error("Dynamic controller pin limit exceeded");
+  for (const edit of edits.sort((a,b) => b.start-a.start)) source = source.slice(0, edit.start) + edit.text + source.slice(edit.end);
+  const cases = pins.map(pin => "case " + JSON.stringify(pin) + ": return import(" + JSON.stringify(pin) + ");").join("\n");
+  return "function " + helper + "(specifier) { switch(String(specifier)) { " + cases +
+    " default: return Promise.reject(new Error('UNSUPPORTED_DYNAMIC_IMPORT: ' + specifier)); } }\n" + source;
+}
+
 async function prepareAssets(html, url, request) {
   const { JSDOM } = require("jsdom");
   const parsed = new JSDOM(html, { url });
@@ -43,6 +72,7 @@ async function prepareAssets(html, url, request) {
       const src = script.getAttribute("src");
       if (type === "module") {
         if (script.hasAttribute("async")) throw new Error("UNSUPPORTED_ASYNC_MODULE");
+        if (script.hasAttribute("integrity")) throw new Error("UNSUPPORTED_ASSET_INTEGRITY");
         const key = "domstride:inline:" + modules.length;
         if (src) modules.push(sameOrigin(src));
         else { inline.set(key, script.textContent); modules.push(key); }
@@ -86,10 +116,10 @@ async function prepareAssets(html, url, request) {
             });
             build.onLoad({ filter: /.*/, namespace: "rack-js" }, async args => {
               if (args.path === entry) return { contents: modules.map(path => "import " + JSON.stringify(path) + ";").join("\n"), loader: "js" };
-              if (inline.has(args.path)) return { contents: inline.get(args.path), loader: "js" };
+              if (inline.has(args.path)) return { contents: rewriteDynamicImports(inline.get(args.path), imports), loader: "js" };
               const asset = await load(args.path);
               if (asset.url !== args.path) throw new Error("UNSUPPORTED_MODULE_REDIRECT: " + args.path);
-              return { contents: asset.source, loader: "js" };
+              return { contents: rewriteDynamicImports(asset.source, imports), loader: "js" };
             });
           }
         }]

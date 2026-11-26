@@ -103,6 +103,29 @@ module Domstride
     end
 
     # Check errors already delivered by the JavaScript event loop.
+    def self.json_script_argument(value)
+      case value
+      when NilClass, TrueClass, FalseClass, String, Integer then value
+      when Float
+        raise ArgumentError, "Non-finite script argument" unless value.finite?
+        value
+      when Array then value.map { |item| json_script_argument(item) }
+      when Hash
+        raise ArgumentError, "Script argument keys must be strings" unless value.keys.all? { |key| key.is_a?(String) }
+        value.transform_values { |item| json_script_argument(item) }
+      else raise ArgumentError, "Unsupported JavaScript argument: #{value.class}"
+      end
+    end
+
+    def execute_script(script, *args)
+      call("execute_script", script: script, arguments: args.map { |value| { kind: "json", value: self.class.json_script_argument(value) } })
+      nil
+    end
+
+    def evaluate_script(script, *args)
+      call("evaluate_script", script: script, arguments: args.map { |value| { kind: "json", value: self.class.json_script_argument(value) } })
+    end
+
     def check_javascript!
       call("check_javascript")
     end
