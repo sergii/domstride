@@ -110,3 +110,7 @@ Build/install the gem locally, then run `domstride setup` and `domstride doctor`
 ## Capybara contract
 
 See [compatibility matrix](docs/compatibility.md). Checkbox/radio state changes use native DOM activation and generation-scoped handles prevent old driver nodes from aliasing new elements after reset. The CI matrix covers all three engines with prefetch off/on. Full upstream Capybara conformance and real-world Rails asset loading are not yet established.
+
+## Real application discovery
+
+See [QA-003](docs/real-apps.md) for pinned Campfire, Fizzy and Writebook discovery. The workflow runs an original system test file with its upstream browser driver first, then attempts it using Domstride. Blockers are recorded, not silently removed. A successful discovery job does not imply application support.

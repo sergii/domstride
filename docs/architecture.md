@@ -67,3 +67,7 @@ Keep legacy defaults, with precedence explicit keyword > environment > named pro
 ## ADR-015: packaging isolation and capability contract
 
 Install the preview gem into an empty GEM_HOME with normal RubyGems dependency resolution, verify loaded gem location, check missing runtime diagnostics, then setup/doctor and a Rack-backed Capybara smoke test outside checkout. Do not ignore dependencies or depend on Bundler's private gem cache. Expand Capybara regression coverage with checkbox/radio native activation, field state, visibility, asynchronous queries and explicit unsupported operations. Scope raw node identities to the driver worker generation, including scoped queries and equality, to avoid handle reuse after reset. Six engine/prefetch CI combinations; known Happy DOM XPath pending. No claim of full upstream conformance or real app support.
+
+## ADR-016: real application discovery before optimization claims
+
+Pin upstream source revisions, use each app's required Ruby version and original test helper, run a browser baseline before switching only the driver. Use disposable test databases, one worker, fixed seed and timeouts. Record failures and prerequisite blockers separately; discovery jobs are not conformance gates. Do not vendor upstream source or modify upstream repositories. One original test file per app is an initial probe; do not extrapolate performance or support.
