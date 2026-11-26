@@ -17,11 +17,14 @@ module Domstride
       session&.close
     end
 
-    def initialize(runtime: ENV.fetch("DOMSTRIDE_RUNTIME", "node"), engine: ENV.fetch("DOMSTRIDE_ENGINE", "jsdom"), app: nil)
+    def initialize(runtime: ENV.fetch("DOMSTRIDE_RUNTIME", "node"), engine: ENV.fetch("DOMSTRIDE_ENGINE", "jsdom"), app: nil, profile: ENV["DOMSTRIDE_PROFILE"] == "1", wait_strategy: ENV.fetch("DOMSTRIDE_WAIT", "poll"))
       @input, @output, @wait = Open3.popen2(runtime, WORKER, engine)
       @mutex = Mutex.new
       @sequence = 0
       @app = app
+      @wait_strategy = wait_strategy
+      @profiling = profile
+      reset_profile!
       if app
         require "rack/test"
         @rack_session = Rack::Test::Session.new(Rack::MockSession.new(app, "example.test"))
@@ -41,7 +44,7 @@ module Domstride
     end
 
     def wait_for_text(selector, expected, timeout: 2)
-      call("wait_for_text", selector: selector, expected: expected, timeout: timeout)
+      call("wait_for_text", selector: selector, expected: expected, timeout: timeout, strategy: @wait_strategy)
     end
 
     # Check errors already delivered by the JavaScript event loop.
@@ -83,6 +86,14 @@ module Domstride
       call(command, **arguments)
     end
 
+    def reset_profile!
+      @profile = { commands: {}, rack_requests: 0, rack_ms: 0.0, bytes_sent: 0, bytes_received: 0 }
+    end
+
+    def profile
+      Marshal.load(Marshal.dump(@profile))
+    end
+
     def memory
       path = "/proc/#{@wait.pid}/status"
       return {} unless File.file?(path)
@@ -116,6 +127,7 @@ module Domstride
     private
 
     def request_app(message)
+      started = monotonic_ms if @profiling
       uri = URI.parse(message.fetch("url"))
       method = message.fetch("method").upcase
       raise Error, "Only same-origin GET and POST requests are supported" unless uri.scheme == "http" && uri.host == "example.test" && uri.port == 80 && %w[GET POST].include?(method)
@@ -132,23 +144,41 @@ module Domstride
       response = @rack_session.last_response
       response_headers = response.headers.reject { |key, _| key.downcase == "set-cookie" }
       { status: response.status, headers: response_headers.transform_values { |v| Array(v).join(", ") }, body: response.body, url: uri.to_s }
+    ensure
+      if @profiling
+        @profile[:rack_requests] += 1
+        @profile[:rack_ms] += monotonic_ms - started
+      end
+    end
+
+    def monotonic_ms
+      Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
+    end
+
+    def write_message(message)
+      payload = JSON.generate(message)
+      @profile[:bytes_sent] += payload.bytesize + 1 if @profiling
+      @input.puts(payload)
     end
 
     def call(command, **arguments)
       @mutex.synchronize do
+        started = monotonic_ms if @profiling
+        label = command == "node_action" ? "node_action.#{arguments[:operation]}" : command
         @sequence += 1
-        @input.puts(JSON.generate(id: @sequence, command: command, **arguments))
+        write_message(id: @sequence, command: command, profile: @profiling, **arguments)
         response = Timeout.timeout(15) do
           loop do
             line = @output.gets
             raise Error, "JavaScript worker terminated" unless line
+            @profile[:bytes_received] += line.bytesize if @profiling
             reply = JSON.parse(line)
             break reply unless reply["kind"] == "request"
             begin
               result = request_app(reply)
-              @input.puts(JSON.generate(kind: "response", request_id: reply["request_id"], ok: true, **result))
+              write_message(kind: "response", request_id: reply["request_id"], ok: true, **result)
             rescue StandardError => e
-              @input.puts(JSON.generate(kind: "response", request_id: reply["request_id"], ok: false, error: e.message))
+              write_message(kind: "response", request_id: reply["request_id"], ok: false, error: e.message)
             end
           end
         end
@@ -158,6 +188,13 @@ module Domstride
           raise error_class, response["error"]
         end
         response["value"]
+      ensure
+        if @profiling && started
+          row = (@profile[:commands][label] ||= { count: 0, ruby_wall_ms: 0.0, worker_wall_ms: 0.0 })
+          row[:count] += 1
+          row[:ruby_wall_ms] += monotonic_ms - started
+          row[:worker_wall_ms] += response&.fetch("worker_ms", 0).to_f
+        end
       end
     rescue IOError, SystemCallError, JSON::ParserError => e
       raise Error, "Worker communication failed: #{e.message}"

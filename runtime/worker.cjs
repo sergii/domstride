@@ -2,11 +2,13 @@ const readline = require("node:readline");
 const engine = process.argv[2] || "jsdom";
 let window, closeWindow, createWindow;
 const javascriptErrors = [];
+const errorListeners = new Set();
 class JavaScriptFailure extends Error {}
 function reportJavaScript(error, source) {
   const message = error?.stack || error?.message || String(error);
   if (!javascriptErrors.some(item => item.message === message)) {
     javascriptErrors.push({ source, message });
+    for (const listener of [...errorListeners]) listener();
   }
 }
 function checkJavaScript() {
@@ -128,11 +130,11 @@ function installBridge(win) {
 }
 
 async function boot() {
-  if (engine === "jsdom") {
-    const { JSDOM, VirtualConsole } = require("jsdom");
+  if (engine === "jsdom" || engine === "jsdom31") {
+    const { JSDOM, VirtualConsole } = require(engine);
     createWindow = (html, url, bridge) => {
       const virtualConsole = new VirtualConsole();
-      virtualConsole.on("jsdomError", error => reportJavaScript(error.detail || error, "jsdom"));
+      virtualConsole.on("jsdomError", error => reportJavaScript(error.cause || error.detail || error, "jsdom"));
       const dom = new JSDOM(html, { runScripts: "dangerously", url, virtualConsole, pretendToBeVisual: true, beforeParse: win => { installErrorCapture(win); if (bridge) installBridge(win); } });
       return dom.window;
     };
@@ -191,6 +193,36 @@ function action(message) {
   }
 }
 
+function observeText(message) {
+  return new Promise((resolve, reject) => {
+    let observer, timer;
+    function finish(error) {
+      observer?.disconnect();
+      clearTimeout(timer);
+      errorListeners.delete(check);
+      if (error) reject(error); else resolve(true);
+    }
+    function check() {
+      try {
+        checkJavaScript();
+        if (window.document.querySelector(message.selector)?.textContent === message.expected) finish();
+      } catch (error) { finish(error); }
+    }
+    observer = new window.MutationObserver(check);
+    observer.observe(window.document, { subtree: true, childList: true, characterData: true, attributes: true });
+    errorListeners.add(check);
+    timer = setTimeout(() => {
+      try {
+        checkJavaScript();
+        const actual = window.document.querySelector(message.selector)?.textContent;
+        if (actual === message.expected) finish();
+        else finish(new Error("Timed out waiting for " + message.selector + ": expected " + JSON.stringify(message.expected) + ", got " + JSON.stringify(actual)));
+      } catch (error) { finish(error); }
+    }, message.timeout * 1000);
+    check();
+  });
+}
+
 async function execute(message) {
   if (message.command === "mount") {
     if (window) await closeWindow(window);
@@ -199,6 +231,8 @@ async function execute(message) {
     return true;
   }
   if (message.command === "wait_for_text") {
+    if (message.strategy === "observer") return observeText(message);
+    if (message.strategy !== "poll") throw new Error("Unsupported wait strategy: " + message.strategy);
     const deadline = Date.now() + message.timeout * 1000;
     let actual;
     do {
@@ -240,19 +274,21 @@ async function main() {
       return;
     }
     queue = queue.then(async () => {
+      const start = message.profile ? performance.now() : null;
+      const timing = () => start === null ? {} : { worker_ms: performance.now() - start };
       try {
         checkJavaScript();
         const value = await execute(message);
         // One event-loop checkpoint, not a deterministic timer/network drain.
         await new Promise(resolve => setImmediate(resolve));
         checkJavaScript();
-        send({ id: message.id, ok: true, value });
+        send({ id: message.id, ok: true, value, ...timing() });
       } catch (error) {
         // Prefer a captured JavaScript exception over a generic action failure.
         if (javascriptErrors.length) {
           try { checkJavaScript(); } catch (captured) { error = captured; }
         }
-        send({ id: message.id, ok: false, error: error.message, error_type: error instanceof JavaScriptFailure ? "javascript" : "command" });
+        send({ id: message.id, ok: false, error: error.message, error_type: error instanceof JavaScriptFailure ? "javascript" : "command", ...timing() });
       }
     });
   });

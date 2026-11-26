@@ -35,3 +35,7 @@ Compare upstream's public interaction API against the same Capybara-based Domstr
 ## ADR-007: JavaScript errors
 
 Capture window error/unhandledrejection events, jsdom error events, Node unhandled rejections, and Error objects passed to console.error (including Stimulus). Surface a typed Ruby JavaScriptError with source and message/stack. Check before commands, after one event-loop turn, inside polling waits and after each synchronous batch step. Plain console.error strings remain diagnostic. This is bounded checkpoint detection, not full deterministic settling, virtual time, or proof of absence of errors after the final command. Worker-level rejection attribution and Happy DOM behavior are experimental. Tests cover inline scripts, click handlers, rejected promises, timers, batching and Stimulus actions.
+
+## ADR-008: profile before optimizing
+
+Opt-in wall-time measurements distinguish command counts, protocol bytes, Ruby command wall time, worker command wall time and Rack request wall time. These durations overlap; do not add them or label the residual pure IPC latency. Profile the same stateful workflow with native DSL vs Capybara, jsdom 26 vs 31 vs Happy DOM, and native polling vs MutationObserver. Observer waits have a hard deadline and error callbacks; they do not implement deterministic settling or virtual time. Benchmarks include instrumentation overhead, fixed order, warm sessions and real persistence checks. No payload logging.

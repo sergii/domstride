@@ -8,7 +8,8 @@
     "@hotwired/stimulus": "3.2.2",
     "@hotwired/turbo": "8.0.18",
     "esbuild": "0.25.12",
-    "playwright": "1.56.1"
+    "playwright": "1.56.1",
+    "jsdom31": "npm:jsdom@31.0.0"
   },
   "scripts": {
     "build:reference": "esbuild examples/rails_reference/application.js --bundle --format=iife --outfile=examples/rails_reference/application.bundle.js"

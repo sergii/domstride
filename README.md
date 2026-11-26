@@ -62,3 +62,9 @@ The upstream workflow pins rails-jsdom 0.2.1 at commit 66dc701a48df7038db8e56e8d
 ## JavaScript failures
 
 Domstride raises `Domstride::JavaScriptError` for captured JavaScript exceptions and unhandled rejections at command checkpoints. Use `page.check_javascript!` for an explicit checkpoint. This does not drain all timers or guarantee deterministic settling. Plain console.error strings remain diagnostic; Error objects logged by frameworks are treated as failures.
+
+## Profiling and event-driven text waits
+
+Set `DOMSTRIDE_PROFILE=1` to collect command counts, Ruby and worker wall times, Rack request counts/time and protocol byte counts. No request payloads or page contents are retained in the profile. `page.profile` returns a snapshot; `page.reset_profile!` clears counters. Worker time includes Rack waits and overlaps Ruby wall time; it is not exclusive CPU time.
+
+`DOMSTRIDE_WAIT=observer` enables a bounded MutationObserver-based native text wait. Polling remains the default until more compatibility data is available. It observes DOM mutations and captured errors, not arbitrary pending work; Capybara query retries are unchanged. `DOMSTRIDE_ENGINE=jsdom31` selects the experimental npm alias for jsdom 31.0.0.
