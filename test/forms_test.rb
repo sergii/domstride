@@ -28,6 +28,8 @@ class FormsTest < Minitest::Test
       page.find(:css, "#y").select_option
       assert_equal %w[x y], page.find(:css, "#multi").value
       page.find(:css, "#x").unselect_option
+      refute page.find(:css, "#x").selected?
+      assert page.find(:css, "#y").selected?
       assert_equal ["y"], page.find(:css, "#multi").value
       assert_equal "single;multi;multi;multi;", page.find(:css, "#changes").text
     end

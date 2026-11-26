@@ -87,3 +87,7 @@ Use Acorn AST positions to transform computed import expressions into a bounded 
 ## ADR-020: grouped form and keyboard compatibility
 
 Implement option selection, multi-select values and change events; support explicit basic text editing and named keyboard events while rejecting chords and unsupported input types. File attachment on jsdom reads only explicitly supplied fixture paths with an 8 MiB aggregate per-operation cap and sends base64 bytes to worker-created DOM File objects; FileList-like array and FormData wrapper are approximations. Use Node FormData and FileReader to serialize bridged fetch multipart; carry multipart as bounded base64 and decode before Rack dispatch, preserving binary contents and redirect semantics. Do not claim native browser file picker, form navigation, reset or keyboard defaults. Add regression coverage for select, keyboard cancellation and binary multipart through Rack parser. No new dependencies beyond existing Capybara MiniMime and Node APIs.
+
+### ADR-020 follow-up
+
+Declare base64 and mini_mime as direct Ruby dependencies: base64 is not bundled as a default gem on Ruby 3.4+. Derive Capybara multiple-select values from live option.selected flags instead of Happy DOM's potentially stale selectedOptions collection. Verify both flags after unselecting. This does not patch the engine's native selectedOptions implementation.

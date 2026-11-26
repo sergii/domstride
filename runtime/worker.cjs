@@ -102,7 +102,7 @@ function nodeAction(message) {
       if (name === "value" && "value" in node) return node.value;
       return node.getAttribute(name);
     }
-    case "value": return node.tagName === "SELECT" && node.multiple ? Array.from(node.selectedOptions, option => option.value) : node.value ?? null;
+    case "value": return node.tagName === "SELECT" && node.multiple ? Array.from(node.querySelectorAll("option")).filter(option => option.selected).map(option => option.value) : node.value ?? null;
     case "tag_name": return node.tagName.toLowerCase();
     case "visible": return visible(node);
     case "disabled": return node.matches(":disabled");
