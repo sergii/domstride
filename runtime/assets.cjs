@@ -1,0 +1,106 @@
+// Experimental same-origin Rails asset boot. Only trusted application code.
+const MAX_FILES = 128;
+const MAX_BYTES = 8 * 1024 * 1024;
+
+async function prepareAssets(html, url, request) {
+  const { JSDOM } = require("jsdom");
+  const parsed = new JSDOM(html, { url });
+  const doc = parsed.window.document;
+  const origin = new URL(url).origin;
+  const cache = new Map();
+  let bytes = 0;
+  function sameOrigin(specifier, base = url) {
+    const target = new URL(specifier, base);
+    if (target.origin !== origin || target.username || target.password) throw new Error("UNSUPPORTED_EXTERNAL_ASSET: " + target.href);
+    target.hash = "";
+    return target.href;
+  }
+  async function load(target) {
+    if (!cache.has(target)) {
+      if (cache.size >= MAX_FILES) throw new Error("Asset file limit exceeded");
+      cache.set(target, (async () => {
+        const reply = await request(target);
+        if (reply.status !== 200) throw new Error("Asset HTTP " + reply.status + ": " + target);
+        const mime = Object.entries(reply.headers).find(([name]) => name.toLowerCase() === "content-type")?.[1] || "";
+        if (!/^(?:text|application)\/(?:javascript|ecmascript|x-javascript)\b/i.test(mime)) throw new Error("Unsupported JavaScript asset MIME: " + mime);
+        bytes += Buffer.byteLength(reply.body);
+        if (bytes > MAX_BYTES) throw new Error("Asset byte limit exceeded");
+        return { source: reply.body, url: sameOrigin(reply.url) };
+      })());
+    }
+    return cache.get(target);
+  }
+  try {
+    const maps = Array.from(doc.querySelectorAll('script[type="importmap"]'));
+    if (maps.length > 1) throw new Error("UNSUPPORTED_MULTIPLE_IMPORTMAPS");
+    const map = maps.length ? JSON.parse(maps[0].textContent) : {};
+    if (map.scopes && Object.keys(map.scopes).length) throw new Error("UNSUPPORTED_IMPORTMAP_SCOPES");
+    const imports = map.imports || {};
+    const modules = [];
+    const inline = new Map();
+    for (const script of Array.from(doc.querySelectorAll("script"))) {
+      const type = (script.getAttribute("type") || "").trim().toLowerCase();
+      const src = script.getAttribute("src");
+      if (type === "module") {
+        if (script.hasAttribute("async")) throw new Error("UNSUPPORTED_ASYNC_MODULE");
+        const key = "domstride:inline:" + modules.length;
+        if (src) modules.push(sameOrigin(src));
+        else { inline.set(key, script.textContent); modules.push(key); }
+        script.remove();
+      } else if (src && ["", "text/javascript", "application/javascript"].includes(type)) {
+        if (script.hasAttribute("async") || script.hasAttribute("defer")) throw new Error("UNSUPPORTED_ASYNC_OR_DEFER_CLASSIC_SCRIPT");
+        if (script.hasAttribute("integrity")) throw new Error("UNSUPPORTED_ASSET_INTEGRITY");
+        const { source } = await load(sameOrigin(src));
+        // Do not silently alter script strings or HTML parser boundaries.
+        if (/<\/script\b/i.test(source)) throw new Error("UNSUPPORTED_CLASSIC_SCRIPT_END_TAG");
+        script.removeAttribute("src");
+        script.textContent = source;
+      }
+    }
+    let moduleCode = null;
+    if (modules.length) {
+      const esbuild = require("esbuild");
+      const entry = "domstride:entry";
+      const bundled = await esbuild.build({
+        entryPoints: [entry], bundle: true, write: false, format: "iife", platform: "browser",
+        target: "es2022", logLevel: "silent",
+        plugins: [{
+          name: "domstride-rack-assets",
+          setup(build) {
+            build.onResolve({ filter: /.*/ }, args => {
+              const path = args.path;
+              if (path === entry || inline.has(path)) return { path, namespace: "rack-js" };
+              const base = args.importer.startsWith("http") ? args.importer : url;
+              let resolved = path;
+              if (Object.hasOwn(imports, path)) {
+                if (typeof imports[path] !== "string") throw new Error("Blocked import: " + path);
+                resolved = sameOrigin(imports[path]);
+              } else {
+                const prefix = Object.keys(imports).filter(key => key.endsWith("/") && path.startsWith(key)).sort((a,b) => b.length-a.length)[0];
+                if (prefix) {
+                  if (typeof imports[prefix] !== "string" || !imports[prefix].endsWith("/")) throw new Error("Invalid importmap prefix: " + prefix);
+                  resolved = sameOrigin(imports[prefix] + path.slice(prefix.length));
+                } else if (!/^(?:https?:|\/|\.\.?\/)/.test(path)) throw new Error("UNRESOLVED_IMPORT: " + path);
+              }
+              return { path: sameOrigin(resolved, base), namespace: "rack-js" };
+            });
+            build.onLoad({ filter: /.*/, namespace: "rack-js" }, async args => {
+              if (args.path === entry) return { contents: modules.map(path => "import " + JSON.stringify(path) + ";").join("\n"), loader: "js" };
+              if (inline.has(args.path)) return { contents: inline.get(args.path), loader: "js" };
+              const asset = await load(args.path);
+              if (asset.url !== args.path) throw new Error("UNSUPPORTED_MODULE_REDIRECT: " + args.path);
+              return { contents: asset.source, loader: "js" };
+            });
+          }
+        }]
+      });
+      if (bundled.warnings.length) throw new Error("Module bundle warnings: " + bundled.warnings.map(w => w.text).join("; "));
+      moduleCode = bundled.outputFiles[0].text;
+    }
+    return { html: parsed.serialize(), moduleCode };
+  } finally {
+    parsed.window.close();
+  }
+}
+
+module.exports = { prepareAssets };

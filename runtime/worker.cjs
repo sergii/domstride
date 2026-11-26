@@ -128,6 +128,13 @@ function nodeAction(message) {
 let requestId = 0;
 const pending = new Map();
 const send = message => process.stdout.write(JSON.stringify(message) + "\n");
+function rackRequest(url, method, headers = {}, body = null, redirect = "follow") {
+  const id = ++requestId;
+  return new Promise((resolve, reject) => {
+    pending.set(id, { resolve, reject });
+    send({ kind: "request", request_id: id, url, method, headers, body, redirect });
+  });
+}
 function installBridge(win, state) {
   win.Headers = globalThis.Headers;
   win.Request = globalThis.Request;
@@ -141,12 +148,8 @@ function installBridge(win, state) {
     }
     const req = new Request(new URL(typeof input === "string" ? input : input.url || input.href, win.location.href), options);
     const body = req.method === "GET" || req.method === "HEAD" ? null : await req.text();
-    const id = ++requestId;
-    const reply = await new Promise((resolve, reject) => {
-      pending.set(id, { resolve, reject });
-      send({ kind: "request", request_id: id, url: req.url, method: req.method, headers: Object.fromEntries(req.headers), body, redirect: req.redirect });
-    });
-    const response = new Response([204, 205, 304].includes(reply.status) ? null : reply.body, { status: reply.status, headers: reply.headers });
+    const reply = await rackRequest(req.url, req.method, Object.fromEntries(req.headers), body, req.redirect);
+    const response = new Response(req.method === "HEAD" || [204, 205, 304].includes(reply.status) ? null : reply.body, { status: reply.status, headers: reply.headers });
     Object.defineProperty(response, "url", { value: reply.url });
     Object.defineProperty(response, "redirected", { value: Boolean(reply.redirected) });
     return response;
@@ -375,6 +378,13 @@ function prepareBundle(message) {
 async function execute(message) {
   if (message.command === "mount") {
     const prepared = prepareBundle(message);
+    let moduleCode;
+    if (message.assets === "bundle" && message.bridge) {
+      const { prepareAssets } = require("./assets.cjs");
+      const resolved = await prepareAssets(prepared.html, message.url, url => rackRequest(url, "GET"));
+      prepared.html = resolved.html;
+      moduleCode = resolved.moduleCode;
+    }
     if (window) {
       pageState?.observer?.disconnect();
       pageState?.clock?.timers.clear();
@@ -383,6 +393,10 @@ async function execute(message) {
     handles.clear(); identities = new WeakMap();
     pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, fetches: 0, activity: 0 };
     window = createWindow(prepared.html, message.url || "https://example.test/", message.bridge, prepared.compiled, pageState);
+    if (moduleCode) {
+      try { window.eval(moduleCode); }
+      catch (error) { reportJavaScript(error, "module.bundle"); }
+    }
     return true;
   }
   if (message.command === "settle") return settle(pageState);

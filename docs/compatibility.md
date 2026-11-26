@@ -27,3 +27,5 @@ Current fixture supports inline classic JS and same-origin GET/URL-encoded POST.
 
 
 See [real application discovery](real-apps.md) for pinned upstream revisions, initial source inspection and the first original-system-test probe.
+
+Experimental `DOMSTRIDE_ASSETS=bundle` adds limited same-origin synchronous classic scripts and static importmap module bundling on Node/jsdom; CI pending. Dynamic modules, browser asset scheduling and Action Cable remain unsupported.

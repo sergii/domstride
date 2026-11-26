@@ -6,7 +6,7 @@ require "json"
 module Domstride
   module Runtime
     ROOT = File.expand_path("../..", __dir__)
-    FILES = %w[worker.cjs virtual_clock.cjs package.json].freeze
+    FILES = %w[worker.cjs virtual_clock.cjs assets.cjs package.json].freeze
 
     def self.source
       File.join(ROOT, "runtime")
@@ -30,7 +30,7 @@ module Domstride
     def self.ready?(path)
       File.file?(File.join(path, ".ready")) &&
         FILES.all? { |name| File.file?(File.join(path, name)) } &&
-        %w[jsdom jsdom31 happy-dom].all? { |name| File.file?(File.join(path, "node_modules", name, "package.json")) }
+        %w[jsdom jsdom31 happy-dom esbuild].all? { |name| File.file?(File.join(path, "node_modules", name, "package.json")) }
     end
 
     def self.setup!

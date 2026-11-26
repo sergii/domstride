@@ -56,10 +56,10 @@ class RedirectTest < Minitest::Test
             </script>
           HTML
         when "/submit"
-          requests << [env["REQUEST_METHOD"], env["rack.input"].read]
+          requests << [env["REQUEST_METHOD"], env["rack.input"]&.read.to_s]
           response(status, { "location" => "/done", "set-cookie" => "session=ok; Path=/" })
         when "/done"
-          requests << [env["REQUEST_METHOD"], env["rack.input"].read]
+          requests << [env["REQUEST_METHOD"], env["rack.input"]&.read.to_s]
           response(200, {}, env["HTTP_COOKIE"])
         else response(404)
         end

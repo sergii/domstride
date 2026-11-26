@@ -75,3 +75,7 @@ Pin upstream source revisions, use each app's required Ruby version and original
 ## ADR-017: bounded same-origin HTTP redirects
 
 Follow redirects inside the Rack session, not via external network. Preserve final URL, cookie jar and redirect flag. Rewrite POST to GET for 301/302/303, preserve for 307/308, drop body headers on rewrite. Validate each target, reject credentials and cross-origin URLs, limit to ten hops and reject repeated method/URL pairs. Count each actual Rack request in profiling. Fetch error mode rejects; manual opaque response unsupported. Does not implement DOM navigation/history, other request methods, or importmap assets.
+
+## ADR-018: grouped HTTP and asset compatibility foundation
+
+Add HEAD, PUT, PATCH, DELETE and JSON mutation bodies without opening external network. Correct redirect regression fixture for Rack versions where bodyless requests omit rack.input. Opt-in Node/jsdom asset loader parses HTML inertly, resolves only same-origin Rack resources, inlines synchronous classic scripts and uses esbuild with an explicit importmap resolver to bundle static modules into an IIFE evaluated after mount. Bound asset count and total bytes. Reject unsupported cases rather than claim browser-equivalent script loading. No native ESM scheduling, dynamic import graph guarantee, CSP/integrity emulation or WebSocket support. Cache disabled for this mode. Packaged runtime includes esbuild and asset loader. Keep baseline profiles unchanged.

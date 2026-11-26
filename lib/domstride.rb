@@ -25,6 +25,11 @@ module Domstride
       runtime, engine, profile, wait_strategy, bundle_cache, settling, clock, clock_epoch_ms =
         settings.values_at(:runtime, :engine, :profile, :wait_strategy, :bundle_cache, :settling, :clock, :clock_epoch_ms)
       @settings = settings.freeze
+      @assets = settings[:assets]
+      raise ArgumentError, "Unknown assets mode" unless %w[off bundle].include?(@assets)
+      if @assets == "bundle" && (!%w[jsdom jsdom31].include?(engine) || runtime != "node" || bundle_cache != "off")
+        raise ArgumentError, "Asset bundling requires Node/jsdom and bundle_cache off"
+      end
       raise ArgumentError, "Unknown DOM engine" unless %w[jsdom jsdom31 happy-dom].include?(engine)
       raise ArgumentError, "Unknown wait strategy" unless %w[poll observer].include?(wait_strategy)
       raise ArgumentError, "Unknown bundle cache mode" unless %w[off source compiled].include?(bundle_cache)
@@ -53,7 +58,7 @@ module Domstride
 
     def mount_html(html, url: "https://example.test/", bridge: false)
       # Only explicitly marked final classic scripts are eligible.
-      clock_options = { clock: @clock, clock_epoch_ms: @clock_epoch_ms }
+      clock_options = { clock: @clock, clock_epoch_ms: @clock_epoch_ms, assets: @assets }
       match = @bundle_cache != "off" && /<script data-domstride-cache="bundle">([^<]*(?:<(?!\/script\b)[^<]*)*)<\/script>\s*<\/body>\s*<\/html>\s*\z/i.match(html)
       return call("mount", html: html, url: url, bridge: bridge, **clock_options) unless match
 
@@ -210,7 +215,7 @@ module Domstride
         method = current.fetch("method").upcase
         headers = current.fetch("headers", {}).dup
         body = current["body"]
-        if result[:status] == 303 || ([301, 302].include?(result[:status]) && method == "POST")
+        if (result[:status] == 303 && !%w[GET HEAD].include?(method)) || ([301, 302].include?(result[:status]) && method == "POST")
           method = "GET"
           body = nil
           headers.reject! { |name, _| %w[content-type content-length content-encoding content-language content-location].include?(name.downcase) }
@@ -231,16 +236,20 @@ module Domstride
       uri = URI.parse(message.fetch("url"))
       method = message.fetch("method").upcase
       validate_origin!(uri)
-      raise Error, "Only GET and POST requests are supported" unless %w[GET POST].include?(method)
+      raise Error, "Unsupported HTTP method: #{method}" unless %w[GET HEAD POST PUT PATCH DELETE].include?(method)
       headers = message.fetch("headers", {}).reject { |key, _| %w[cookie host content-length].include?(key.downcase) }.to_h do |key, value|
         [key.downcase == "content-type" ? "CONTENT_TYPE" : "HTTP_#{key.upcase.tr("-", "_")}", value]
       end
-      headers["HTTP_ORIGIN"] ||= "http://example.test" if method == "POST"
-      if method == "POST"
-        raise Error, "Only URL-encoded POST bodies are supported" unless headers["CONTENT_TYPE"].to_s.start_with?("application/x-www-form-urlencoded")
-        @rack_session.post(uri.to_s, message.fetch("body", ""), headers)
+      if %w[GET HEAD].include?(method)
+        @rack_session.public_send(method.downcase, uri.to_s, {}, headers)
       else
-        @rack_session.get(uri.to_s, {}, headers)
+        headers["HTTP_ORIGIN"] ||= "http://example.test"
+        body = message["body"].to_s
+        mime = headers["CONTENT_TYPE"].to_s.split(";", 2).first
+        unless body.empty? || %w[application/x-www-form-urlencoded application/json].include?(mime)
+          raise Error, "Only URL-encoded or JSON request bodies are supported"
+        end
+        @rack_session.public_send(method.downcase, uri.to_s, body, headers)
       end
       response = @rack_session.last_response
       response_headers = response.headers.reject { |key, _| key.downcase == "set-cookie" }

@@ -118,3 +118,7 @@ See [QA-003](docs/real-apps.md) for pinned Campfire, Fizzy and Writebook discove
 ## Same-origin redirects (experimental)
 
 Native visit and bridged fetch follow HTTP 301/302/303/307/308 within http://example.test, preserving Rack cookies and final response URL. POST becomes GET for 301/302/303; 307/308 preserve the method and body. Maximum ten redirects and loop detection; cross-origin redirects rejected. Fetch redirect:error rejects; manual redirect responses are explicitly unsupported. This is not general browser navigation, form navigation, or history support. GET and URL-encoded POST remain the only supported methods.
+
+## Experimental Rails asset boot and HTTP methods
+
+GET, HEAD, POST, PUT, PATCH and DELETE are supported through same-origin Rack; nonempty mutation bodies must be URL-encoded or JSON. Multipart is not implemented. Set `DOMSTRIDE_ASSETS=bundle` for a limited Node/jsdom asset pipeline with cache off. Classic synchronous same-origin scripts are inlined before parsing; static ES modules are bundled through esbuild using exact/prefix importmap entries and relative URLs, then evaluated after parsing. No external network, scoped importmaps, async/defer classic scripts, module redirects, integrity checks, full module timing, arbitrary dynamic imports or Action Cable support. Opt-in only; do not interpret successful bundling as browser parity. All application code must be trusted.
