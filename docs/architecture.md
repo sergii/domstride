@@ -43,3 +43,7 @@ Opt-in wall-time measurements distinguish command counts, protocol bytes, Ruby c
 ## ADR-009: opt-in bundle cache
 
 Separate transport deduplication (source mode) from compiled script reuse (jsdom only). Cache exactly one explicitly marked final classic script per worker, validate SHA-256 and cap source size at 8 MiB. Source mode restores the original HTML before parse; compiled mode executes a cached vm.Script in a new document context after parse, so it cannot preserve parser-time/currentScript semantics and is experimental. Do not cache dynamic HTML, CSRF tokens or session state. Default off. Benchmark cold fresh workers and 50 warm stateful scenarios per configuration with persistence and cache-hit checks, memory and traffic. Fixed-order measurements, not a generic asset pipeline or disk cache.
+
+## ADR-010: Capybara query metadata coalescing
+
+Use Capybara 3.40's existing initial_cache and uses_visibility query hint, without monkeypatching query classes. Prefetch tag name and initial visibility with handles; never cache mutable attributes or visible text for later reads. Visibility is an initial snapshot, not an ongoing truth; Capybara handles filters and retries. Preserve hidden/all visibility, exact text, regexp and custom filters. No speculative text pruning, layout or remote predicate translation. Benchmark same Capybara scenario with prefetch off/on for each engine, bundle cache off, profiling enabled, fixed order. Experimental default off.

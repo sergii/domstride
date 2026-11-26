@@ -72,3 +72,7 @@ Set `DOMSTRIDE_PROFILE=1` to collect command counts, Ruby and worker wall times,
 ## Experimental bundle caching
 
 `DOMSTRIDE_BUNDLE_CACHE=source` deduplicates explicitly marked final classic inline scripts (`<script data-domstride-cache="bundle">...</script>` immediately before the closing body/html). The worker reconstructs the original script before parsing. SHA-256 content identity and a single-entry worker cache prevent stale reuse; no general HTML or session caching. `compiled` (jsdom only) additionally reuses a vm.Script in each fresh document context after parsing. Compiled mode changes parser-time semantics, document.currentScript and script text, and is only appropriate for explicitly opted-in fixture bundles that do not depend on them. Default is off. No arbitrary asset rewriting, disk cache or browser security sandbox.
+
+## Experimental Capybara query prefetch
+
+`DOMSTRIDE_QUERY_PREFETCH=1` uses Capybara 3.40's initial_cache metadata to return tag name and (when requested) initial visibility with the selector result. Ruby retains filtering, regular expressions, custom blocks, counts and retry behavior. Public element visibility/text calls remain live; no persistent property cache. Default off. This is metadata coalescing, not general remote filtering or browser actionability.

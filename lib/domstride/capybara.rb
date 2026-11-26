@@ -6,8 +6,9 @@ module Domstride
     class StaleElement < Domstride::Error; end
 
     class Driver < ::Capybara::Driver::Base
-      def initialize(app, runtime: ENV.fetch("DOMSTRIDE_RUNTIME", "node"), engine: ENV.fetch("DOMSTRIDE_ENGINE", "jsdom"))
+      def initialize(app, runtime: ENV.fetch("DOMSTRIDE_RUNTIME", "node"), engine: ENV.fetch("DOMSTRIDE_ENGINE", "jsdom"), query_prefetch: ENV["DOMSTRIDE_QUERY_PREFETCH"] == "1")
         @app, @runtime, @engine = app, runtime, engine
+        @query_prefetch = query_prefetch
       end
 
       def worker
@@ -30,16 +31,26 @@ module Domstride
         visit(current_url)
       end
 
-      def find_css(query, **)
-        find_nodes("css", query)
+      def find_css(query, **hints)
+        find_nodes("css", query, **hints)
       end
 
-      def find_xpath(query, **)
-        find_nodes("xpath", query)
+      def find_xpath(query, **hints)
+        find_nodes("xpath", query, **hints)
       end
 
-      def find_nodes(kind, query, root: nil)
-        command("find_handles", kind_of_query: kind, query: query, root: root).map { |id| Node.new(self, id) }
+      def find_nodes(kind, query, root: nil, **hints)
+        if @query_prefetch
+          rows = command("find_handles", kind_of_query: kind, query: query, root: root,
+                         prefetch: true, uses_visibility: hints[:uses_visibility] == true)
+          rows.map do |row|
+            cache = { tag_name: row.fetch("tag_name") }
+            cache[:visible] = row.fetch("visible") if row.key?("visible")
+            Node.new(self, row.fetch("id"), cache)
+          end
+        else
+          command("find_handles", kind_of_query: kind, query: query, root: root).map { |id| Node.new(self, id) }
+        end
       end
 
       def command(name, **args)
@@ -92,12 +103,12 @@ module Domstride
         operation("click")
       end
 
-      def find_css(query, **)
-        driver.find_nodes("css", query, root: native)
+      def find_css(query, **hints)
+        driver.find_nodes("css", query, root: native, **hints)
       end
 
-      def find_xpath(query, **)
-        driver.find_nodes("xpath", query, root: native)
+      def find_xpath(query, **hints)
+        driver.find_nodes("xpath", query, root: native, **hints)
       end
 
       def ==(other)

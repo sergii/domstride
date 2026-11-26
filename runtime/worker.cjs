@@ -70,10 +70,21 @@ function visibleText(node) {
 }
 function findHandles(message) {
   const root = message.root ? resolveHandle(message.root) : window.document;
-  if (message.kind_of_query === "css") return Array.from(root.querySelectorAll(message.query), handle);
-  if (typeof window.document.evaluate !== "function") throw new Error("UNSUPPORTED_XPATH");
-  const result = window.document.evaluate(message.query, root, null, 7, null);
-  return Array.from({ length: result.snapshotLength }, (_, i) => handle(result.snapshotItem(i)));
+  let nodes;
+  if (message.kind_of_query === "css") {
+    nodes = Array.from(root.querySelectorAll(message.query));
+  } else {
+    if (typeof window.document.evaluate !== "function") throw new Error("UNSUPPORTED_XPATH");
+    const result = window.document.evaluate(message.query, root, null, 7, null);
+    nodes = Array.from({ length: result.snapshotLength }, (_, i) => result.snapshotItem(i));
+  }
+  if (!message.prefetch) return nodes.map(handle);
+  // Capybara owns filtering, matching and retry semantics. Return only initial metadata.
+  return nodes.map(node => {
+    const row = { id: handle(node), tag_name: node.tagName.toLowerCase() };
+    if (message.uses_visibility) row.visible = visible(node);
+    return row;
+  });
 }
 function nodeAction(message) {
   const node = resolveHandle(message.handle);
