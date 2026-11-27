@@ -125,3 +125,7 @@ Replaced hand-drawn icons with vendored Lucide 0.456.0 SVG geometry and embedded
 ## Replay refinement CI fixes
 
 CI 46058398023 confirmed the new icon/shading/summary assertions until a higher-specificity obsolete select rule overrode the shared padding (9 px vs 30 px). Remove that redundant rule. CI 46058397983 failed on the old single-line summary expectation; assert all six distinct pill values instead, and explicitly verify results-only/no-match empty states. Preserve filtering and recording selection tests. Fizzy remains unresolved. New CI pending.
+
+## Header and shape preferences
+
+Default Rounded controls (7 px) and tags (5 px), optional Pill (999 px) via a live Shape selector. Only small controls and badges change; step cards, panels and video stay unchanged. In suite header, actual selected-case metadata renders as compact labeled tags near summary pills. Search comes first and filters the adjacent native test dropdown; status stays separate. Keep native selects for keyboard/accessibility and regression compatibility rather than introducing a custom combobox in this iteration. Remove duplicated producer metadata from case labels. Hide the DOM recording selector if no DOM recording exists; retain the video recording selector and legacy DOM navigation. Preference is per open report, no persistence or second exported HTML. Add Chromium regression checks. CI pending.

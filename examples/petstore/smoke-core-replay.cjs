@@ -18,6 +18,15 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await expect.poll(()=>video.evaluate(v=>v.readyState>=1&&Number.isFinite(v.duration))).toBe(true);
  await page.locator('#focus-speed').selectOption('0');
  await expect(page.locator('#suite-summary .summary-pill')).toHaveCount(6);
+ await expect(page.locator('#case-provenance .provenance-tag')).toHaveCount(5);
+ await expect(page.locator('#trace-picker')).toBeHidden();
+ await expect(page.locator('#control-shape')).toHaveValue('rounded');
+ assert.equal(await page.locator('#suite-summary .summary-pill').first().evaluate(el=>getComputedStyle(el).borderTopLeftRadius),'5px');
+ await page.locator('#control-shape').selectOption('pill');
+ assert.equal(await page.locator('#suite-summary .summary-pill').first().evaluate(el=>getComputedStyle(el).borderTopLeftRadius),'999px');
+ assert.equal(await page.locator('#case-select').evaluate(el=>getComputedStyle(el).borderTopLeftRadius),'999px');
+ await page.locator('#control-shape').selectOption('rounded');
+ assert.equal(await page.locator('#case-select').evaluate(el=>getComputedStyle(el).borderTopLeftRadius),'7px');
  await expect(page.locator('#suite-summary [data-status=passed]')).toHaveText('4 passed');
  await expect(page.locator('#shade-unreplayed')).toBeChecked();
  const unrecorded=page.locator('#gherkin-steps [data-replay=none]').first();

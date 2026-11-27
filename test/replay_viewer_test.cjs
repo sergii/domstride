@@ -84,6 +84,7 @@ test("suite report filters cases and selects recordings independently of operati
     await page.goto(pathToFileURL(path.join(directory,"report.html")).href);
     assert.deepEqual(await page.locator("#suite-summary .summary-pill").allTextContents(),["3 tests","1 passed","1 failed","1 skipped","0 pending","0 unknown"]);
     assert.equal(await page.locator("#viewport").innerText(),"Create expense");
+    assert.equal(await page.locator("#trace-picker").isVisible(),true);
     await page.locator("#case-status").selectOption("failed");
     assert.equal(await page.locator("#viewport").innerText(),"Failed assertion");
     assert.match(await page.locator("#steps").innerText(),/passed/);
@@ -94,6 +95,7 @@ test("suite report filters cases and selects recordings independently of operati
     await page.locator("#layout").selectOption("left");
     await page.locator("#case-status").selectOption("skipped");
     assert.equal(await page.locator("#no-evidence-title").innerText(),"No replay captured");
+    assert.equal(await page.locator("#trace-picker").isVisible(),false);
     assert.equal(await page.locator("#no-evidence").isVisible(),true);
     assert.equal(await page.locator("#dom-evidence").isVisible(),false);
     assert.equal(await page.locator("#layout").inputValue(),"left");

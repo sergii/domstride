@@ -24,3 +24,7 @@ Record step boundaries with an explicit media-clock mapping (for example capture
 ## Acceptance
 
 UI: genuine Lucide shapes, uniform field chips, default hatch and reversible toggle, six summary pills, consistent native selects, no network requests. Core and legacy Chromium smoke pass. Next milestone: actual recording maps navigation, form, submit and assertions to their own verified intervals; playback highlights the step independently of action chips; seeking works both directions; no invented timings for setup or unrecorded tests. Fast/Execution capture unchanged by presentation styling.
+
+## Header and shape preferences
+
+Default Rounded controls (7 px) and tags (5 px), optional Pill (999 px) via a live Shape selector. Only small controls and badges change; step cards, panels and video stay unchanged. In suite header, actual selected-case metadata renders as compact labeled tags near summary pills. Search comes first and filters the adjacent native test dropdown; status stays separate. Keep native selects for keyboard/accessibility and regression compatibility rather than introducing a custom combobox in this iteration. Remove duplicated producer metadata from case labels. Hide the DOM recording selector if no DOM recording exists; retain the video recording selector and legacy DOM navigation. Preference is per open report, no persistence or second exported HTML. Add Chromium regression checks. CI pending.
