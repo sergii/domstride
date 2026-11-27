@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-__NONCE__'; style-src 'nonce-__NONCE__'; base-uri 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; frame-src 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Domstride Replay</title>
+<style nonce="__NONCE__">
+*{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#17202a;font:14px system-ui,sans-serif}header,footer{display:flex;gap:10px;align-items:center;padding:14px 20px;background:white;border-bottom:1px solid #dce1e7;flex-wrap:wrap}header strong{font-size:17px}header .spacer{flex:1}button,select{font:inherit;border:1px solid #cdd5de;background:white;padding:8px 12px;border-radius:7px;color:inherit;cursor:pointer}button:focus-visible,select:focus-visible{outline:2px solid #059669}button[disabled]{opacity:.45;cursor:default}main{display:flex;gap:14px;padding:14px;height:calc(100vh - 124px);min-height:320px}main.sidebar-left{flex-direction:row-reverse}section,aside{background:white;border:1px solid #dce1e7;border-radius:9px;overflow:auto}section{flex:1;min-width:0;padding:18px}aside{width:320px;max-width:40%;padding:10px}h2{font-size:14px;margin:0 0 12px}#steps{display:grid;gap:5px}#steps button{text-align:left;display:block;width:100%}#steps button[aria-current=true]{border:2px solid #059669;background:#ecfdf5}#steps small{display:block;color:#596573;margin-top:4px}.failed{color:#b91c1c}.passed{color:#047857}.target{outline:2px solid #16a34a!important;outline-offset:2px;background:#ecfdf5!important}#viewport{overflow-wrap:anywhere;pointer-events:none}#viewport input,#viewport textarea,#viewport select{max-width:100%;padding:5px;border:1px solid #bbc4ce;border-radius:4px}#viewport table{border-collapse:collapse}#viewport td,#viewport th{border:1px solid #dce1e7;padding:6px}#viewport button{cursor:default}footer{border-bottom:0;border-top:1px solid #dce1e7}#position{margin-left:auto}#notice{color:#596573;font-size:12px}@media(max-width:680px){main,main.sidebar-left{flex-direction:column;height:auto}aside{width:100%;max-width:none;max-height:45vh}main.sidebar-left aside{order:-1}section{min-height:280px}}
+</style>
+</head>
+<body>
+<header><strong>Domstride Replay</strong><span id="notice">Inert DOM preview · no application execution</span><span class="spacer"></span><label>Layout <select id="layout"><option value="right">Viewport left / steps right</option><option value="left">Steps left / viewport right</option></select></label><label>State <select id="phase"><option value="after">After</option><option value="before">Before</option></select></label></header>
+<main id="workspace"><section><h2>DOM snapshot</h2><div id="viewport"></div></section><aside><h2>Interaction steps</h2><div id="steps"></div></aside></main>
+<footer><button id="previous">Previous</button><button id="next">Next</button><span id="position"></span></footer>
+<script type="application/json" id="recording-data">__RECORDING_JSON__</script>
+<script nonce="__NONCE__">
+"use strict";
+const data = JSON.parse(document.getElementById("recording-data").textContent);
+const events = data.events;
+const $ = id => document.getElementById(id);
+let index = 0;
+const safeTags = new Set("div span p section article main header footer nav aside h1 h2 h3 h4 h5 h6 ul ol li dl dt dd table thead tbody tfoot tr th td caption label input textarea select option button output strong em b i small pre code blockquote br hr details summary dialog fieldset legend time".split(" "));
+const blocked = new Set("head script style link meta base iframe frame object embed template svg math noscript canvas video audio source picture img".split(" "));
+function renderSnapshot(frame) {
+  const viewport = $("viewport"); viewport.replaceChildren(); viewport.classList.remove("target");
+  if (!frame || typeof frame.html !== "string") { viewport.textContent = "Snapshot unavailable or not recorded."; return; }
+  // Parse in a detached template. No original node, URL, CSS, event handler or script is inserted into the live DOM.
+  const inert = document.createElement("template");
+  inert.innerHTML = frame.html;
+  // New snapshots contain body markup and a body path. Old snapshots still display
+  // as inert fragments, but cannot reliably identify their original target.
+  let target = null;
+  if (Array.isArray(frame.target_path) && Array.isArray(frame.body_path) &&
+      frame.body_path.every((part, i) => frame.target_path[i] === part)) {
+    target = inert.content;
+    for (const part of frame.target_path.slice(frame.body_path.length))
+      target = Number.isInteger(part) && part >= 0 ? target?.children[part] : null;
+  }
+  function copy(node, depth = 0) {
+    if (depth > 100) return document.createTextNode("");
+    if (node.nodeType === 3) return document.createTextNode(node.nodeValue || "");
+    if (node.nodeType !== 1) return document.createTextNode("");
+    const tag = node.localName.toLowerCase();
+    if (blocked.has(tag) || node.hasAttribute("hidden")) return document.createTextNode("");
+    const el = document.createElement(safeTags.has(tag) ? tag : "div");
+    if (node === target) el.className = "target";
+    if (tag === "input") {
+      const type = (node.getAttribute("type") || "text").toLowerCase();
+      if (type === "hidden") return document.createTextNode("");
+      el.type = ["checkbox","radio","number","date","email","password"].includes(type) ? type : "text";
+      if (!["password","file"].includes(type)) el.value = node.getAttribute("value") || "";
+      el.checked = node.hasAttribute("checked"); el.disabled = true;
+    }
+    if (tag === "textarea") { el.value = node.textContent; el.disabled = true; }
+    if (tag === "option") el.selected = node.hasAttribute("selected");
+    if (tag === "select" || tag === "button") el.disabled = true;
+    if (tag === "select") el.multiple = node.hasAttribute("multiple");
+    if (tag === "dialog" || tag === "details") { if (node.hasAttribute("open")) el.setAttribute("open", ""); }
+    if (tag !== "textarea") for (const child of node.childNodes) el.append(copy(child, depth+1));
+    return el;
+  }
+  if (target === inert.content) viewport.classList.add("target"); else viewport.classList.remove("target");
+  for (const child of inert.content.childNodes) viewport.append(copy(child));
+}
+function show() {
+  const e = events[index]; const steps = $("steps"); steps.replaceChildren();
+  for (const [i, event] of events.entries()) {
+    const b = document.createElement("button"); b.type = "button";
+    b.setAttribute("aria-current", String(i === index));
+    b.textContent = String(event.kind);
+    const meta = document.createElement("small"); meta.textContent = [event.step_sequence ? "Step "+event.step_sequence : "", event.status, Number(event.duration_ms).toFixed(1)+" ms"].filter(Boolean).join(" · ");
+    meta.className = event.status === "failed" ? "failed" : "passed";
+    b.append(meta); b.onclick = () => { index = i; show(); }; steps.append(b);
+  }
+  if (e) renderSnapshot(e[$("phase").value]); else $("viewport").textContent = "No recorded interactions.";
+  $("position").textContent = events.length ? (index+1)+" / "+events.length : "0 / 0";
+  $("previous").disabled = index === 0;
+  $("next").disabled = index >= events.length-1;
+  if (!data.complete) $("notice").textContent = "Incomplete recording · inert preview";
+}
+$("layout").onchange = () => $("workspace").classList.toggle("sidebar-left", $("layout").value === "left");
+$("phase").onchange = show;
+$("previous").onclick = () => { if(index>0){index--;show();} };
+$("next").onclick = () => { if(index<events.length-1){index++;show();} };
+show();
+</script>
+</body>
+</html>

@@ -165,6 +165,7 @@ module Domstride
     end
 
     def assert_text(selector, expected)
+      return call("assert_text", selector: selector, expected: expected) if @recorder
       actual = text(selector)
       raise Error, "Expected #{expected.inspect}, got #{actual.inspect}" unless actual == expected
       true

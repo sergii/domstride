@@ -49,6 +49,7 @@ module Domstride
             File.open(File.join(path, name), "w", 0o600) { |file| file.write(html) }
             @bytes += html.bytesize
             row[phase][:snapshot] = name
+            row[phase][:body_path] = snapshot["body_path"]
           else
             row[phase][:snapshot_omitted] = snapshot["omitted"] || "total_size_limit"
           end

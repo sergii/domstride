@@ -33,3 +33,5 @@ See compatibility.md for exact limitations. No rendering/screenshots/video, full
 ## Follow-up candidates
 
 Real app host/asset and authenticated Action Cable compatibility; general navigation/form submission and history; further upstream Capybara coverage; reproducible runtime lockfile; Cucumber/Turnip integration; semantic event recording and HTML replay versus actual rendered browser video. These are not part of the current release scope.
+
+See [ordered roadmap](roadmap.md) for current follow-up priorities.

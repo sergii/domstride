@@ -157,3 +157,5 @@ Use `require "domstride/bdd"` and explicit scenario-scoped Capybara sessions in 
 ## Interaction recording
 
 Set `DOMSTRIDE_RECORD_DIR=tmp/domstride-recordings` for bounded metadata-only traces. Add `DOMSTRIDE_RECORD_HTML=1` for sensitive raw HTML snapshots with structural target paths. Disabled by default. See [recording contract](docs/recording.md); this is the artifact layer for a future viewer, not executable replay or rendered video.
+
+Export one recording with `bundle exec domstride replay RECORDING_DIRECTORY`. The local preview supports before/after state, highlighted targets and switchable sidebar position. See [roadmap](docs/roadmap.md).

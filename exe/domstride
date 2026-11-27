@@ -29,8 +29,12 @@ begin
       puts "Worker: #{report[:worker]}"
       puts "Runtime check passed"
     end
+  when "replay"
+    require "domstride/replay"
+    abort "Usage: domstride replay RECORDING_DIRECTORY [OUTPUT_HTML]" unless (1..2).cover?(ARGV.size)
+    puts Domstride::Replay.export(ARGV[0], output: ARGV[1])
   else
-    abort "Usage: domstride setup | doctor [--json]"
+    abort "Usage: domstride setup | doctor [--json] | replay RECORDING_DIRECTORY [OUTPUT_HTML]"
   end
 rescue Domstride::Error, SystemCallError, ArgumentError => e
   abort "Domstride: #{e.message}"

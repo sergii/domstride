@@ -507,8 +507,30 @@ function recordingTarget(message) {
 function recordingSnapshot(enabled) {
   if (!enabled || !window?.document.documentElement) return null;
   // Raw HTML is data, not executable replay. It can contain sensitive application content.
-  const html = window.document.documentElement.outerHTML;
-  return Buffer.byteLength(html, "utf8") <= 256 * 1024 ? { html } : { omitted: "size_limit" };
+  const original = window.document.documentElement;
+  const copy = original.cloneNode(true);
+  const controls = original.querySelectorAll("input, textarea, select");
+  const clones = copy.querySelectorAll("input, textarea, select");
+  for (let i = 0; i < controls.length; i++) {
+    const node = controls[i], clone = clones[i];
+    if (node.tagName === "INPUT") {
+      if (["password", "file", "hidden"].includes(node.type)) clone.removeAttribute("value");
+      else clone.setAttribute("value", node.value);
+      if (["checkbox", "radio"].includes(node.type)) {
+        if (node.checked) clone.setAttribute("checked", ""); else clone.removeAttribute("checked");
+      }
+    } else if (node.tagName === "TEXTAREA") clone.textContent = node.value;
+    else {
+      const options = node.querySelectorAll("option"), copies = clone.querySelectorAll("option");
+      for (let j = 0; j < options.length; j++) {
+        if (options[j].selected) copies[j].setAttribute("selected", ""); else copies[j].removeAttribute("selected");
+      }
+    }
+  }
+  const body = original.querySelector("body");
+  if (!body) return { omitted: "no_body" };
+  const html = copy.querySelector("body").innerHTML;
+  return Buffer.byteLength(html, "utf8") <= 256 * 1024 ? { html, body_path: recordingPath(body) } : { omitted: "size_limit" };
 }
 function startRecording(message) {
   if (!message.record_event) return null;
