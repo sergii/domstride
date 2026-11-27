@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.homepage = "https://github.com/sergii/domstride"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.3"
-  spec.files = Dir["lib/**/*", "runtime/**/*", "README.md", "LICENSE", "package.json", "exe/*"]
+  spec.files = Dir["lib/**/*", "runtime/**/*", "README.md", "LICENSE", "package.json", "exe/*", "protocol/**/*"]
   spec.require_paths = ["lib"]
   spec.bindir = "exe"
   spec.executables = ["domstride"]

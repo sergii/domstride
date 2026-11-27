@@ -178,3 +178,5 @@ See [suite reports](docs/reporting.md) for explicit case capture and `bundle exe
 Optional automatic reporting adapters: `require "domstride/reporting/rspec"` or `require "domstride/reporting/minitest"`, then `Domstride::Reporting::RSpec.install!(directory: "tmp/domstride-suite")` or corresponding `Minitest.install!`. Actual final framework status; Minitest assertion count. HTML opt-in.
 
 Experimental browser video evidence: attach finalized local WebM to an active report case with `Domstride::Video.attach(path, label: "Chromium")` after requiring `domstride/report`. See examples/browser_video and reporting docs. No automatic browser-driver capture or video/step synchronization yet.
+
+Domstride Studio is the runner-independent reporting direction within the same product. See [Protocol v1](docs/protocol.md) for external producers and standalone source-checkout report export without loading the execution runtime.

@@ -1,5 +1,7 @@
 require "json"
 require "securerandom"
+require_relative "errors"
+require_relative "protocol"
 
 module Domstride
   module Replay
@@ -12,7 +14,7 @@ module Domstride
       header = rows.first
       raise Error, "Unsupported recording schema" unless header.is_a?(Hash) && header["type"] == "header" && header["schema_version"] == 1
       events = rows.select { |row| row.is_a?(Hash) && row["type"] == "interaction" }
-      raise Error, "Recording event limit exceeded" if events.size > Recording::MAX_EVENTS
+      raise Error, "Recording event limit exceeded" if events.size > Protocol::MAX_EVENTS
       total = 0
       events.each do |event|
         sequence = event["sequence"]
@@ -25,7 +27,7 @@ module Domstride
           path = File.join(root, name)
           raise Error, "Invalid snapshot file" unless File.file?(path) && !File.symlink?(path) && File.size(path) <= 256 * 1024
           total += File.size(path)
-          raise Error, "Recording HTML limit exceeded" if total > Recording::MAX_HTML_BYTES
+          raise Error, "Recording HTML limit exceeded" if total > Protocol::MAX_HTML_BYTES
           frame["html"] = File.read(path, encoding: "UTF-8")
         end
       end

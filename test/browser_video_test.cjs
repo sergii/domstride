@@ -7,12 +7,14 @@ const {execFileSync} = require("node:child_process");
 const {pathToFileURL} = require("node:url");
 const {chromium} = require("playwright");
 const {recordBrowserCase} = require("../examples/browser_video/record.cjs");
+const {writeCase} = require("../examples/protocol/write_case.cjs");
 
 test("actual Chromium video is attached to a failed case and plays offline", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(),"domstride-video-"));
   let browser;
   try {
     browser = await chromium.launch({headless:true});
+    const start = performance.now();
     const result = await recordBrowserCase(browser, root, async page=>{
       await page.setContent('<h1>Expense</h1><input aria-label="Amount"><button onclick="document.querySelector(\'h1\').textContent=\'Saved\'">Save</button>');
       await page.getByLabel("Amount").fill("25");
@@ -23,8 +25,11 @@ test("actual Chromium video is attached to a failed case and plays offline", asy
     assert.equal(result.error.message,"Expected approved");
     assert.ok(fs.statSync(result.path).size>100);
     const cases = path.join(root,"cases");
-    execFileSync("bundle",["exec","ruby","-Ilib","-rdomstride","-rdomstride/report","-e",
-      'Domstride::Report.capture(directory: ARGV[0], name: "Browser expense") { |item| Domstride::Video.attach(ARGV[1], label: "Chromium"); item.status = "failed" }; Domstride::Report.export(ARGV[0])',cases,result.path],{stdio:"pipe"});
+    writeCase(cases,{name:"Browser expense",status:"failed",duration_ms:performance.now()-start,
+      producer:"external-node",framework:"node:test",runner:"playwright",platform:"web",language:"javascript"},
+      [{path:result.path,label:"Chromium"}]);
+    execFileSync("ruby",["-Ilib","-rdomstride/report","-e",
+      'abort "Runner loaded" if defined?(Domstride::Session) || defined?(Domstride::Runtime); Domstride::Report.export(ARGV[0])',cases],{stdio:"pipe"});
     const viewer = await browser.newPage();
     const errors = [], requests = [];
     viewer.on("pageerror",error=>errors.push(error.message));
@@ -33,6 +38,7 @@ test("actual Chromium video is attached to a failed case and plays offline", asy
     assert.equal(await viewer.locator("#evidence-mode").inputValue(),"video");
     assert.equal(await viewer.locator("#video-select option").innerText(),"Chromium");
     assert.match(await viewer.locator("#suite-summary").innerText(),/1 failed/);
+    assert.match(await viewer.locator("#case-provenance").innerText(),/external-node · node:test · playwright · web · javascript/);
     await viewer.waitForFunction(()=>document.querySelector("#browser-video").readyState>=2);
     await viewer.locator("#browser-video").evaluate(video=>video.play());
     await viewer.waitForFunction(()=>document.querySelector("#browser-video").currentTime>0);

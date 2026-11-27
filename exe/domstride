@@ -1,13 +1,15 @@
 #!/usr/bin/env ruby
-require "domstride"
+require "domstride/errors"
 require "open3"
 
 begin
   case ARGV.shift
   when "setup"
+    require "domstride"
     abort "Usage: domstride setup" unless ARGV.empty?
     puts "Domstride runtime: #{Domstride::Runtime.setup!}"
   when "doctor"
+    require "domstride"
     json = ARGV == ["--json"]
     abort "Usage: domstride doctor [--json]" unless ARGV.empty? || json
     settings = Domstride::Configuration.resolve

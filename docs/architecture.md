@@ -163,3 +163,7 @@ Capture outer assertion calls via explicit framework adapter installation and na
 ## ADR-038: bounded local browser video evidence
 
 First slice uses Playwright real Chromium WebM recording and explicit case attachment. Separate media evidence from DOM interaction/assertion outcomes. No synthetic video or inferred playback timestamps. Embed bounded local WebM with blob-only media CSP, revoke URLs when switching; private copies, no remote resources, no automatic upload. Browser context finalization before import. Keep Selenium/Cuprite lifecycle integration separate.
+
+## ADR-039: one product, independent artifact contract
+
+Keep one Domstride repository and brand. Runner and Studio communicate through versioned case bundles, not runtime calls. Separate lightweight errors/protocol definitions and lazy CLI loading; report exporter requires no execution engine. Retain legacy manifests and trace format. External producers carry arbitrary bounded provenance; first Node writer and actual Playwright video contract. No standalone gem split yet, no claim of adapters for other languages or platforms.

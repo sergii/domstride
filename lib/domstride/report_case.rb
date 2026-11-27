@@ -2,15 +2,16 @@ require "tempfile"
 require "fileutils"
 require "tmpdir"
 require "json"
+require_relative "protocol"
 
 module Domstride
   # Explicit case boundary. Fiber-local context avoids changing process-wide ENV.
   class ReportCase
-    STATUSES = %w[passed failed skipped pending unknown].freeze
-    MAX_STEPS = 100
-    MAX_ASSERTIONS = 200
-    ASSERTION_STATUSES = %w[passed failed error unknown].freeze
-    STEP_STATUSES = %w[passed failed skipped pending unknown undefined ambiguous].freeze
+    STATUSES = Protocol::CASE_STATUSES
+    MAX_STEPS = Protocol::MAX_STEPS
+    MAX_ASSERTIONS = Protocol::MAX_ASSERTIONS
+    ASSERTION_STATUSES = Protocol::ASSERTION_STATUSES
+    STEP_STATUSES = Protocol::STEP_STATUSES
     KEY = :domstride_report_case
 
     attr_reader :path, :status, :videos
@@ -115,7 +116,7 @@ module Domstride
     end
 
     def write(value)
-      row = {schema_version: 1, name: @name, status: value,
+      row = {format: Protocol::FORMAT, schema_version: Protocol::VERSION, producer: "domstride-ruby", name: @name, status: value,
         framework: @framework, assertions: @assertions, steps: @steps, assertion_events: @assertion_events, videos: @videos,
         duration_ms: (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @started) * 1000}
       Tempfile.create(["case-", ".json"], path) do |file|

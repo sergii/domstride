@@ -15,7 +15,7 @@
 </head>
 <body>
 <header><strong>Domstride Replay</strong><span id="notice">Inert DOM preview · no application execution</span><span class="spacer"></span><label>Layout <select id="layout"><option value="right">Viewport left / steps right</option><option value="left">Steps left / viewport right</option></select></label><label>State <select id="phase"><option value="after">After</option><option value="before">Before</option></select></label></header>
-<div id="suite" hidden><div id="suite-summary"></div><label>Search <input id="case-search" type="search" placeholder="Test name"></label><label>Status <select id="case-status"><option value="">All</option><option>passed</option><option>failed</option><option>skipped</option><option>pending</option><option>unknown</option></select></label><label>Test <select id="case-select"></select></label><label>Recording <select id="trace-select"></select></label></div>
+<div id="suite" hidden><div id="suite-summary"></div><span id="case-provenance"></span><label>Search <input id="case-search" type="search" placeholder="Test name"></label><label>Status <select id="case-status"><option value="">All</option><option>passed</option><option>failed</option><option>skipped</option><option>pending</option><option>unknown</option></select></label><label>Test <select id="case-select"></select></label><label>Recording <select id="trace-select"></select></label></div>
 <main id="workspace"><section><div id="evidence-choice" hidden><label>Evidence <select id="evidence-mode"><option value="dom">DOM snapshot</option><option value="video">Browser video</option></select></label></div><div id="dom-evidence"><h2>DOM snapshot</h2><div id="viewport"></div></div><div id="video-evidence" hidden><h2>Browser video</h2><label>Recording <select id="video-select"></select></label><video id="browser-video" controls playsinline preload="metadata"></video><p id="video-note">Recorded browser playback. Not synchronized with assertion or DOM interaction timestamps.</p></div></section><aside><div id="gherkin" hidden><h2>Scenario steps</h2><div id="gherkin-steps"></div></div><div id="assertions-panel" hidden><h2>Assertions</h2><div id="assertion-steps"></div></div><h2>Interaction steps</h2><div id="steps"></div></aside></main>
 <footer><button id="previous">Previous</button><button id="next">Next</button><span id="position"></span></footer>
 <script type="application/json" id="recording-data">__RECORDING_JSON__</script>
@@ -195,6 +195,7 @@ if (Array.isArray(data.cases)) {
     const item = data.cases[$("case-select").value === "" ? -1 : Number($("case-select").value)];
     const changed = activeCase !== (item || null);
     activeCase = item || null;
+    $("case-provenance").textContent = item ? [item.producer,item.framework,item.runner,item.platform,item.language].filter(Boolean).join(" · ") : "";
     if (changed) selectCaseVideo();
     active = item?.recordings[Number($("trace-select").value)] || {events:[],complete:false};
     events = active.events; index = 0; show();
@@ -206,7 +207,7 @@ if (Array.isArray(data.cases)) {
     for (const [i,item] of data.cases.entries()) {
       if (!item.name.toLowerCase().includes(query) || (status && item.status !== status)) continue;
       const option = document.createElement("option"); option.value = String(i);
-      option.textContent = [item.name,item.status,(item.duration_ms/1000).toFixed(2)+" s",item.framework,Number.isInteger(item.assertions)?item.assertions+" assertions":""].filter(Boolean).join(" · ");
+      option.textContent = [item.name,item.status,(item.duration_ms/1000).toFixed(2)+" s",item.framework,item.runner,item.platform,Number.isInteger(item.assertions)?item.assertions+" assertions":""].filter(Boolean).join(" · ");
       select.append(option);
     }
     if (Array.from(select.options).some(option=>option.value===prior)) select.value=prior;

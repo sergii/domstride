@@ -6,8 +6,8 @@ Ordered work, not a commitment to a release date. Keep related changes in one fu
 |---|---|---|---|
 | 1 | 008 | Interaction recording and DOM replay: target highlight, live control state, before/after, configurable sidebar position | Verified (45914593771) |
 | 2 | 007.1 follow-up | Fizzy functional compatibility; investigate direct eval bundler warning and subsequent observed failures | 1/8 original cases verified; resize/editor APIs remain |
-| 3 | 009 | Interactive HTML test reports: suite/scenario navigation, automatic test-framework step and assertion mapping, replay timeline | 009.1 verified (45921278517); 009.2 verified (45921849166); 009.3 verified (45922715942); 009.4 Ruby and BDD checks passed; viewer CI blocked by apt 403 |
-| 4 | 010 | Real-browser video recording and shared report integration | 010.1 Playwright + WebM attachment implemented; CI pending |
+| 3 | 009 | Interactive HTML test reports: suite/scenario navigation, automatic test-framework step and assertion mapping, replay timeline | 009.1 verified (45921278517); 009.2 verified (45921849166); 009.3 verified (45922715942); 009.4 verified (45924024922) |
+| 4 | 010 | Real-browser video recording and shared report integration | 010.1 verified (45924024922); Protocol v1 / standalone Studio implemented, CI pending |
 | 5 | 011 | Performance optimization and benchmarks | Planned |
 | 6 | 007.2 | Webpack and legacy frontend asset compatibility, informed by local experiment | Deferred to last |
 

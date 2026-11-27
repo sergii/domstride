@@ -5,6 +5,7 @@ require "timeout"
 require "digest"
 require "base64"
 require_relative "domstride/version"
+require_relative "domstride/errors"
 require_relative "domstride/configuration"
 require_relative "domstride/runtime"
 require_relative "domstride/recording"
@@ -12,8 +13,6 @@ require_relative "domstride/report_case"
 require_relative "domstride/assertion"
 
 module Domstride
-  class Error < StandardError; end
-  class JavaScriptError < Error; end
   class Session
     WORKER = File.expand_path("../runtime/worker.cjs", __dir__)
 
