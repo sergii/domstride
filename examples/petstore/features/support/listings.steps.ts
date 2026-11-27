@@ -34,6 +34,7 @@ class ListingWorld extends World {
     if(code>255)throw Error('Reference step marker limit exceeded');
     // Brief visible calibration landmark, separate from application behavior.
     try{
+      if(boundary==='end')await this.page.waitForLoadState('domcontentloaded');
       await this.page.evaluate(code=>{
         const marker=document.createElement('div');
         marker.id='domstride-step-landmark';
@@ -46,7 +47,7 @@ class ListingWorld extends World {
         document.body.append(marker);
       },code);
       this.stepMarkers.push({step_id:stepId,boundary,code});
-      await this.hold(160);
+      await this.hold(320);
     }catch(error){this.evidenceErrors.push('Step landmark: '+String(error));}
     finally{await this.page.evaluate(()=>document.getElementById('domstride-step-landmark')?.remove());}
   }

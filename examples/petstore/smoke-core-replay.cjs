@@ -26,6 +26,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  assert.equal(await page.locator('#case-select').evaluate(el=>getComputedStyle(el).borderTopLeftRadius),'7px');
  assert.equal(await page.locator('#smart-zoom').evaluate(el=>getComputedStyle(el).appearance),'none');
  await expect(page.locator('#inspect-elements')).not.toBeChecked();
+ await expect(page.locator('#inspector-toolbar')).toBeVisible();
  await expect(page.locator('#suite-summary [data-status=passed]')).toHaveText('4 passed');
  await expect(page.locator('#shade-unreplayed')).toBeChecked();
  const unrecorded=page.locator('#gherkin-steps [data-replay=none]').first();
@@ -66,8 +67,10 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await expect(page.locator('#focus-highlight')).toBeDisabled();
  assert.deepEqual(await video.evaluate(v=>Array.from(v.textTracks).map(t=>({kind:t.kind,count:t.cues.length}))),[{kind:'captions',count:6},{kind:'chapters',count:6}]);
  for(const [i,s] of segments.entries()){
-   await page.locator('#observed-actions button').nth(i).click();
+   const chip=page.locator('#gherkin-steps button.step-action-chip').filter({hasText:s.label});
+   await chip.click();
    await expect.poll(()=>video.evaluate((v,t)=>Math.abs(v.currentTime-t),s.start_ms/1000)).toBeLessThan(0.06);
+   await expect(chip).toHaveAttribute('aria-pressed','true');
    await video.evaluate((v,t)=>v.currentTime=t,(s.start_ms+s.end_ms)/2000);
    await expect(page.locator('#observed-caption')).toHaveText('Focus: '+s.label);
    await expect(page.locator('#gherkin-steps button[aria-current=true]')).toHaveAttribute('data-sequence',String(s.step_sequence));
@@ -80,9 +83,12 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  assert.equal(await video.evaluate(v=>v.textTracks[0].mode),'disabled');
  await page.locator('#observed-cc').check();
  assert.equal(await video.evaluate(v=>v.textTracks[0].mode),'hidden');
- await video.evaluate(v=>v.currentTime=0);
+ const gap=intervals.findIndex((x,i)=>i+1<intervals.length&&intervals[i+1].start_ms>x.end_ms);
+ assert.ok(gap>=0);
+ await video.evaluate((v,t)=>v.currentTime=t,(intervals[gap].end_ms+intervals[gap+1].start_ms)/2000);
  await expect(page.locator('#gherkin-steps button[aria-current=true]')).toHaveCount(0);
  await expect(page.locator('#observed-caption')).toHaveText('');
+ await video.evaluate(v=>v.currentTime=0);
  await page.locator('#video-play').click();await expect.poll(()=>video.evaluate(v=>v.currentTime)).toBeGreaterThan(0.1);await page.locator('#video-play').click();
  const first=segments[0];await page.locator('#gherkin-steps button[data-sequence="'+first.step_sequence+'"]').click();
  await expect.poll(()=>video.evaluate((v,t)=>Math.abs(v.currentTime-t),intervals.find(s=>s.step_sequence===first.step_sequence).start_ms/1000)).toBeLessThan(0.06);
@@ -91,6 +97,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.screenshot({path:path.join(path.dirname(file),'core-replay-desktop.png')});
  assert.ok(first.element?.tag==='input');
  await page.locator('#inspect-elements').check();
+ await expect(page.locator('#inspector-hint')).toBeVisible();
  await page.locator('#smart-zoom').uncheck();
  await expect.poll(()=>page.locator('#video-layer').evaluate(el=>new DOMMatrix(getComputedStyle(el).transform).a)).toBe(1);
  await video.evaluate((v,t)=>{v.pause();v.currentTime=t;},(first.start_ms+first.end_ms)/2000);
