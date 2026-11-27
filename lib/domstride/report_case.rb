@@ -7,6 +7,8 @@ module Domstride
   # Explicit case boundary. Fiber-local context avoids changing process-wide ENV.
   class ReportCase
     STATUSES = %w[passed failed skipped pending unknown].freeze
+    MAX_STEPS = 100
+    STEP_STATUSES = %w[passed failed skipped pending unknown undefined ambiguous].freeze
     KEY = :domstride_report_case
 
     attr_reader :path, :status
@@ -34,6 +36,8 @@ module Domstride
 
     def initialize(directory:, name:, html:, framework: nil)
       @framework = framework
+      @steps = []
+      @active_step = nil
       @name = String(name)
       raise ArgumentError, "Invalid case name" if @name.empty? || @name.bytesize > 1024 || !@name.valid_encoding?
       FileUtils.mkdir_p(directory, mode: 0o700)
@@ -45,6 +49,23 @@ module Domstride
     end
 
     def html? = @html
+    attr_reader :active_step
+
+    def start_step(keyword:, text: nil)
+      finish_step("unknown") if active_step
+      return if @steps.size >= MAX_STEPS
+      @active_step = @steps.size + 1
+      @step_started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      @steps << {sequence: active_step, keyword: bounded(keyword, 48), text: text && bounded(text, 1024), status: "unknown", duration_ms: 0}
+    end
+
+    def finish_step(status)
+      return unless active_step
+      row = @steps.fetch(active_step - 1)
+      row[:status] = STEP_STATUSES.include?(status) ? status : "unknown"
+      row[:duration_ms] = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @step_started) * 1000
+      @active_step = nil
+    end
 
     def status=(value)
       raise ArgumentError, "Invalid case status" unless STATUSES.include?(value)
@@ -52,6 +73,7 @@ module Domstride
     end
 
     def finish
+      finish_step("unknown") if active_step
       write(status || "unknown")
     rescue StandardError => error
       warn "Domstride case report unavailable: #{error.class}"
@@ -59,9 +81,13 @@ module Domstride
 
     private
 
+    def bounded(value, limit)
+      value.to_s.encode("UTF-8", invalid: :replace, undef: :replace).byteslice(0, limit).scrub
+    end
+
     def write(value)
       row = {schema_version: 1, name: @name, status: value,
-        framework: @framework, assertions: @assertions,
+        framework: @framework, assertions: @assertions, steps: @steps,
         duration_ms: (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @started) * 1000}
       Tempfile.create(["case-", ".json"], path) do |file|
         file.write(JSON.generate(row))

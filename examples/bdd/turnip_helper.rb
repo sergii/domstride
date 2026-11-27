@@ -47,3 +47,8 @@ RSpec.configure do |config|
     finish_domstride_scenario(failed: !example.exception.nil?)
   end
 end
+
+if ENV["DOMSTRIDE_BDD_REPORT_DIR"]
+  require "domstride/reporting/rspec"
+  Domstride::Reporting::RSpec.install!(directory: ENV.fetch("DOMSTRIDE_BDD_REPORT_DIR"), step_text: true)
+end

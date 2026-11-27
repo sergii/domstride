@@ -18,12 +18,20 @@ module Domstride
         path = File.join(root, name)
         raise Error, "Invalid case directory" unless File.directory?(path) && !File.symlink?(path)
         meta = File.join(path, "case.json")
-        raise Error, "Invalid case metadata" unless File.file?(meta) && !File.symlink?(meta) && File.size(meta) <= 4096
+        raise Error, "Invalid case metadata" unless File.file?(meta) && !File.symlink?(meta) && File.size(meta) <= 256 * 1024
         item = JSON.parse(File.read(meta))
         unless item.is_a?(Hash) && item["schema_version"] == 1 && item["name"].is_a?(String) &&
             item["name"].bytesize <= 1024 && ReportCase::STATUSES.include?(item["status"]) &&
             item["duration_ms"].is_a?(Numeric) && item["duration_ms"].finite? && item["duration_ms"] >= 0
           raise Error, "Invalid case metadata"
+        end
+        steps = item.fetch("steps", [])
+        unless steps.is_a?(Array) && steps.size <= ReportCase::MAX_STEPS && steps.each_with_index.all? { |step, index|
+          step.is_a?(Hash) && step["sequence"] == index + 1 && step["keyword"].is_a?(String) && step["keyword"].bytesize <= 64 &&
+            (step["text"].nil? || (step["text"].is_a?(String) && step["text"].bytesize <= 1030)) &&
+            ReportCase::STEP_STATUSES.include?(step["status"]) && step["duration_ms"].is_a?(Numeric) && step["duration_ms"].finite? && step["duration_ms"] >= 0
+        }
+          raise Error, "Invalid case steps"
         end
         traces = Dir.children(path).sort.select { |entry| entry.start_with?("domstride-recording-") }.map do |entry|
           recordings += 1
@@ -36,9 +44,9 @@ module Domstride
           trace
         end
         {name: item["name"], status: item["status"], duration_ms: item["duration_ms"],
-          framework: %w[rspec minitest].include?(item["framework"]) ? item["framework"] : nil,
+          framework: %w[rspec minitest cucumber turnip].include?(item["framework"]) ? item["framework"] : nil,
           assertions: item["assertions"].is_a?(Integer) && item["assertions"] >= 0 ? item["assertions"] : nil,
-          recordings: traces}
+          recordings: traces, steps: steps}
       end
       Replay.render({cases: cases}, output || File.join(root, "report.html"))
     rescue JSON::ParserError => error

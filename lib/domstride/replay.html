@@ -8,12 +8,13 @@
 <style nonce="__NONCE__">
 *{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#17202a;font:14px system-ui,sans-serif}header,footer{display:flex;gap:10px;align-items:center;padding:14px 20px;background:white;border-bottom:1px solid #dce1e7;flex-wrap:wrap}header strong{font-size:17px}header .spacer{flex:1}button,select{font:inherit;border:1px solid #cdd5de;background:white;padding:8px 12px;border-radius:7px;color:inherit;cursor:pointer}button:focus-visible,select:focus-visible{outline:2px solid #059669}button[disabled]{opacity:.45;cursor:default}main{display:flex;gap:14px;padding:14px;height:calc(100vh - 124px);min-height:320px}main.sidebar-left{flex-direction:row-reverse}section,aside{background:white;border:1px solid #dce1e7;border-radius:9px;overflow:auto}section{flex:1;min-width:0;padding:18px}aside{width:320px;max-width:40%;padding:10px}h2{font-size:14px;margin:0 0 12px}#steps{display:grid;gap:5px}#steps button{text-align:left;display:block;width:100%}#steps button[aria-current=true]{border:2px solid #059669;background:#ecfdf5}#steps small{display:block;color:#596573;margin-top:4px}.failed{color:#b91c1c}.passed{color:#047857}.target{outline:2px solid #16a34a!important;outline-offset:2px;background:#ecfdf5!important}#viewport{overflow-wrap:anywhere;pointer-events:none}#viewport input,#viewport textarea,#viewport select{max-width:100%;padding:5px;border:1px solid #bbc4ce;border-radius:4px}#viewport table{border-collapse:collapse}#viewport td,#viewport th{border:1px solid #dce1e7;padding:6px}#viewport button{cursor:default}footer{border-bottom:0;border-top:1px solid #dce1e7}#position{margin-left:auto}#notice{color:#596573;font-size:12px}@media(max-width:680px){main,main.sidebar-left{flex-direction:column;height:auto}aside{width:100%;max-width:none;max-height:45vh}main.sidebar-left aside{order:-1}section{min-height:280px}}
 #suite:not([hidden]){display:flex;gap:12px;align-items:center;padding:12px 20px;background:white;flex-wrap:wrap;border-bottom:1px solid #dce1e7}#suite-summary{font-weight:600;width:100%}#case-select{max-width:360px}#case-search{font:inherit;border:1px solid #cdd5de;padding:8px;border-radius:7px}body.suite-mode main{height:calc(100vh - 220px)}@media(max-width:680px){body.suite-mode main{height:auto}#case-select{max-width:100%}}
+#gherkin-steps{display:grid;gap:5px;margin-bottom:16px}#gherkin-steps button{text-align:left;white-space:normal}#gherkin-steps button[aria-current=true]{border:2px solid #059669;background:#ecfdf5}#gherkin-steps small{display:block;color:#596573;margin-top:4px}
 </style>
 </head>
 <body>
 <header><strong>Domstride Replay</strong><span id="notice">Inert DOM preview · no application execution</span><span class="spacer"></span><label>Layout <select id="layout"><option value="right">Viewport left / steps right</option><option value="left">Steps left / viewport right</option></select></label><label>State <select id="phase"><option value="after">After</option><option value="before">Before</option></select></label></header>
 <div id="suite" hidden><div id="suite-summary"></div><label>Search <input id="case-search" type="search" placeholder="Test name"></label><label>Status <select id="case-status"><option value="">All</option><option>passed</option><option>failed</option><option>skipped</option><option>pending</option><option>unknown</option></select></label><label>Test <select id="case-select"></select></label><label>Recording <select id="trace-select"></select></label></div>
-<main id="workspace"><section><h2>DOM snapshot</h2><div id="viewport"></div></section><aside><h2>Interaction steps</h2><div id="steps"></div></aside></main>
+<main id="workspace"><section><h2>DOM snapshot</h2><div id="viewport"></div></section><aside><div id="gherkin" hidden><h2>Scenario steps</h2><div id="gherkin-steps"></div></div><h2>Interaction steps</h2><div id="steps"></div></aside></main>
 <footer><button id="previous">Previous</button><button id="next">Next</button><span id="position"></span></footer>
 <script type="application/json" id="recording-data">__RECORDING_JSON__</script>
 <script nonce="__NONCE__">
@@ -23,6 +24,7 @@ let active = data;
 let events = data.events || [];
 const $ = id => document.getElementById(id);
 let index = 0;
+let activeCase = null;
 const safeTags = new Set("div span p section article main header footer nav aside h1 h2 h3 h4 h5 h6 ul ol li dl dt dd table thead tbody tfoot tr th td caption label input textarea select option button output strong em b i small pre code blockquote br hr details summary dialog fieldset legend time".split(" "));
 const blocked = new Set("head script style link meta base iframe frame object embed template svg math noscript canvas video audio source picture img".split(" "));
 function renderSnapshot(frame) {
@@ -76,11 +78,33 @@ function show() {
     meta.className = event.status === "failed" ? "failed" : "passed";
     b.append(meta); b.onclick = () => { index = i; show(); }; steps.append(b);
   }
+  renderGherkin(e);
   if (e) renderSnapshot(e[$("phase").value]); else $("viewport").textContent = "No recorded interactions.";
   $("position").textContent = events.length ? (index+1)+" / "+events.length : "0 / 0";
   $("previous").disabled = index === 0;
   $("next").disabled = index >= events.length-1;
   $("notice").textContent = active.complete ? "Inert DOM preview · no application execution" : "Incomplete or unavailable recording · inert preview";
+}
+function renderGherkin(event) {
+  const steps = activeCase?.steps || [];
+  $("gherkin").hidden = !steps.length;
+  const root = $("gherkin-steps"); root.replaceChildren();
+  for (const step of steps) {
+    const b = document.createElement("button"); b.type = "button";
+    b.textContent = [step.keyword.trim(),step.text || "Step "+step.sequence].join(" ");
+    b.setAttribute("aria-current",String(event?.step_sequence===step.sequence));
+    const matching = activeCase.recordings.map((trace,i)=>({i,j:trace.events.findIndex(e=>e.step_sequence===step.sequence)})).filter(match=>match.j>=0);
+    const meta = document.createElement("small");
+    meta.textContent = [step.status,Number(step.duration_ms).toFixed(1)+" ms",matching.length?"":"No recorded DOM interaction"].filter(Boolean).join(" · ");
+    b.append(meta);
+    b.disabled = !matching.length;
+    b.onclick = () => {
+      const match = matching.find(m=>m.i===Number($("trace-select").value)) || matching[0];
+      $("trace-select").value=String(match.i);
+      active=activeCase.recordings[match.i]; events=active.events; index=match.j; show();
+    };
+    root.append(b);
+  }
 }
 $("layout").onchange = () => $("workspace").classList.toggle("sidebar-left", $("layout").value === "left");
 $("phase").onchange = show;
@@ -106,6 +130,7 @@ if (Array.isArray(data.cases)) {
   }
   function switchTrace() {
     const item = data.cases[$("case-select").value === "" ? -1 : Number($("case-select").value)];
+    activeCase = item || null;
     active = item?.recordings[Number($("trace-select").value)] || {events:[],complete:false};
     events = active.events; index = 0; show();
   }

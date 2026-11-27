@@ -89,7 +89,8 @@ module Domstride
       @wait_strategy = wait_strategy
       @profiling = profile
       reset_profile!
-      if (report_case = ReportCase.current)
+      @report_case = ReportCase.current
+      if (report_case = @report_case)
         recording_directory = report_case.path
         recording_html = report_case.html?
       end
@@ -415,7 +416,7 @@ module Domstride
         response["value"]
       ensure
         if recording_started
-          @recorder.record(sequence: @sequence, kind: label, step: @recording_step,
+          @recorder.record(sequence: @sequence, kind: label, step: (@report_case.equal?(ReportCase.current) && @report_case&.active_step) || @recording_step,
             duration_ms: monotonic_ms - recording_started, passed: response && response["id"] == @sequence && response["ok"] == true,
             evidence: response && response["recording"])
         end

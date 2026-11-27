@@ -47,3 +47,7 @@ Both runners use examples/bdd/features/expenses.feature and actions.rb. The two 
 ## Recording foundation
 
 BDD::Scenario optionally accepts on_event: ->(event) { ... }. Explicit step wrappers emit started/finished, sequence, semantic kind, duration and pass/fail. The observer is optional; standard observer errors do not change test results. Metadata contains no step text, field values, selectors or HTML. This is not an automatic Gherkin step recorder or DOM replay. The supplied action wrappers are manually classified and can contain more than one primitive interaction. Scenario names and source locations are not captured by this API yet. Full automatic step mapping, snapshots, target highlights and reporting belong to subsequent batches. Diagnostics can use the existing opt-in failure capture. Only trusted test code.
+
+## Automatic report steps
+
+Use the Cucumber InstallPlugin adapter or the RSpec adapter for Turnip (see reporting.md). The reference BDD workflow now verifies exported scenario status, all 14 Gherkin step events and DOM command mapping on three engines. `step_text: true` is explicit and may expose test values. No automatic framework assertion mapping yet.

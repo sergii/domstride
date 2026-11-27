@@ -151,3 +151,7 @@ Fiber-local case scope groups newly created workers in private case directories.
 ## ADR-035: framework-owned final test status
 
 Use RSpec example_started/example_finished reporter notifications and Minitest Test#run result wrapper. No guessed pass from individual DOM operations or exception strings. Capture skipped/pending/fixed-pending and setup/teardown outcomes; record Minitest assertion totals only, RSpec counts unknown. Scope is fiber-local and does not reassign existing workers. Preserve original result and exit code; explicit opt-in, optional dependencies, private case artifacts. No automatic step-level assertion mapping or outside-example suite failures yet.
+
+## ADR-036: Gherkin step ownership
+
+Cucumber test-case/test-step events and Turnip custom RSpec step events own step sequence and result. Active report case provides authoritative sequence at recording time; explicit manual BDD step sequences remain fallback. Keep step text opt-in, bound steps and metadata, skip hook events, retain missing DOM evidence rather than inventing it. Suite viewer selects first mapped operation across recordings and highlights the current Gherkin step. No inferred assertion outcome or physical browser geometry.

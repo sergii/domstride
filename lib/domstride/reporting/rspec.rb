@@ -7,8 +7,8 @@ module Domstride
       # Reporter notifications include skipped examples and failures in hooks,
       # and arrive after RSpec has calculated the final result.
       class Listener
-        def initialize(directory:, html:)
-          @directory, @html = directory, html
+        def initialize(directory:, html:, step_text:)
+          @directory, @html, @step_text = directory, html, step_text
           @cases = {}
           @lock = Mutex.new
         end
@@ -16,9 +16,18 @@ module Domstride
         def example_started(notification)
           example = notification.example
           item = Lifecycle.start(directory: @directory, name: example.full_description,
-            html: @html, framework: "rspec")
+            html: @html, framework: example.metadata[:turnip] ? "turnip" : "rspec")
           @lock.synchronize { @cases[example.id] = item } if item
         end
+
+        def step_started(notification)
+          step = notification.step
+          Lifecycle.step_start(keyword: step.keyword, text: @step_text ? step.text : nil)
+        end
+
+        def step_passed(_notification) = Lifecycle.step_finish("passed")
+        def step_failed(_notification) = Lifecycle.step_finish("failed")
+        def step_pending(_notification) = Lifecycle.step_finish("pending")
 
         def example_finished(notification)
           example = notification.example
@@ -34,11 +43,11 @@ module Domstride
         end
       end
 
-      def self.install!(config = ::RSpec.configuration, directory:, html: false)
+      def self.install!(config = ::RSpec.configuration, directory:, html: false, step_text: false)
         raise ArgumentError, "RSpec report already installed" if config.instance_variable_defined?(:@domstride_reporting_installed)
-        listener = Listener.new(directory: File.expand_path(directory), html: html)
+        listener = Listener.new(directory: File.expand_path(directory), html: html, step_text: step_text)
         config.before(:suite) do
-          config.reporter.register_listener(listener, :example_started, :example_finished)
+          config.reporter.register_listener(listener, :example_started, :example_finished, :step_started, :step_passed, :step_failed, :step_pending)
         end
         config.instance_variable_set(:@domstride_reporting_installed, true)
         listener
