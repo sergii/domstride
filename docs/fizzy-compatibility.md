@@ -33,3 +33,9 @@ The dedicated workflow fails unless selected functional cases pass. The broader 
 ## Follow-up: direct eval warning policy
 
 The original 8-case baseline passed, while the candidate stopped at esbuild direct-eval warnings. The default remains strict. Only an explicit DOMSTRIDE_ASSET_WARNINGS=direct-eval permits esbuild's exact direct-eval warning ID; each permitted warning reports its source location to stderr without the source line. All other warnings, build errors and runtime JavaScript exceptions remain fatal. The candidate records this policy and retains original tests, counts and assertion-parity gates. A passing synthetic lexical-scope regression is not proof of arbitrary eval or module semantic equivalence. No success claim until original cases pass.
+
+## Follow-up: static media environment
+
+Run 45915924240 at 467ef6d: all 8 original Chrome cases passed (24 assertions). The asset loader passed the two direct-eval warnings in Active Storage; all 8 candidates then errored on Turbo's window.matchMedia (7 candidate assertions total). This is real progress beyond asset boot, not passed tests. Core regression fixture failed because its inline script lacked an explicit ES module export; corrected fixture uses an exported function and lexical eval.
+
+The candidate now opts into DOMSTRIDE_MEDIA_PROFILE=static-desktop: static 1200x1000 media-query evaluation, light color scheme and reduced motion, not an actual viewport or Chrome preference parity. Simple width/height px, orientation, screen/all/print and the two preference queries are supported; unsupported expressions fail explicitly. Listener registration uses EventTarget but there are no automatic changes or resize events. No CSS rendering, computed layout or geometry support. Default off. Preserve real browser coverage of responsive behavior and all original functional assertions.

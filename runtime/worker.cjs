@@ -4,6 +4,7 @@ const vm = require("node:vm");
 const { VirtualClock } = require("./virtual_clock.cjs");
 const forms = require("./forms.cjs");
 const { installWebSocket } = require("./websocket.cjs");
+const { installStaticMedia } = require("./media.cjs");
 let pageState;
 const turn = () => new Promise(resolve => setImmediate(resolve));
 const pause = () => new Promise(resolve => setTimeout(resolve, 1));
@@ -184,6 +185,7 @@ function installBridge(win, state) {
 
 function prepareWindow(win, bridge, state) {
   installErrorCapture(win);
+  if (state.mediaProfile === "static-desktop") installStaticMedia(win);
   if (bridge) {
     installBridge(win, state);
     if (state.websocketUrl && typeof win.WebSocket !== "function") throw new Error("UNSUPPORTED_WEBSOCKET_ENGINE");
@@ -444,7 +446,7 @@ async function execute(message) {
       await closeWindow(window);
     }
     handles.clear(); identities = new WeakMap();
-    pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, websocketUrl: message.websocket_url, fetches: 0, activity: 0 };
+    pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, websocketUrl: message.websocket_url, mediaProfile: message.media_profile, fetches: 0, activity: 0 };
     window = createWindow(prepared.html, message.url || "https://example.test/", message.bridge, prepared.compiled, pageState);
     if (moduleCode) {
       try { window.eval(moduleCode); }

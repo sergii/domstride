@@ -119,3 +119,7 @@ Capture target structural paths before/after selected protocol commands and opti
 ## ADR-027: explicit direct-eval asset warning exception
 
 Strict by default; only opt-in direct-eval warning ID may proceed with visible source-location diagnostics. No global warning suppression, source rewrites, fake browser APIs or relaxed test assertions. The Fizzy discovery candidate opts in and retains all original gates. Synthetic tests verify lexical eval behavior and error propagation, not general module equivalence.
+
+## ADR-028: bounded static media environment
+
+Observed Fizzy Turbo matchMedia blocker after asset boot. Provide an explicit Node/jsdom static media profile, with fixed logical dimensions and preferences, real EventTarget registration, and rejection of unsupported expressions. Do not fake scrolling or geometry or claim responsive/browser parity. Native implementation is not overridden. Keep opt-in default off and test independently of the app.

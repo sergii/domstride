@@ -41,7 +41,7 @@ class AssetsTest < Minitest::Test
   end
 
   def test_direct_eval_warning_policy_is_explicit
-    app = ->(_) { [200, {"content-type" => "text/html"}, ['<p id="result">Pending</p><script type="module">const amount = 25; document.getElementById("result").textContent = String(eval("amount + 1"));</script>']] }
+    app = ->(_) { [200, {"content-type" => "text/html"}, ['<p id="result">Pending</p><script type="module">export function total() { const amount = 25; return eval("amount + 1"); } document.getElementById("result").textContent = String(total());</script>']] }
     open_assets(app, asset_warnings: "strict") do |page|
       assert_match(/direct-eval/, assert_raises(Domstride::Error) { page.visit("/") }.message)
     end

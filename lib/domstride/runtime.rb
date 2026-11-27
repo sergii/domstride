@@ -6,7 +6,7 @@ require "json"
 module Domstride
   module Runtime
     ROOT = File.expand_path("../..", __dir__)
-    FILES = %w[worker.cjs virtual_clock.cjs assets.cjs forms.cjs websocket.cjs package.json].freeze
+    FILES = %w[worker.cjs virtual_clock.cjs assets.cjs forms.cjs websocket.cjs media.cjs package.json].freeze
 
     def self.source
       File.join(ROOT, "runtime")

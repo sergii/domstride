@@ -29,6 +29,11 @@ module Domstride
       @settings = settings.freeze
       @assets = settings[:assets]
       @asset_warnings = settings[:asset_warnings]
+      @media_profile = settings[:media_profile]
+      raise ArgumentError, "Unknown media profile" unless %w[off static-desktop].include?(@media_profile)
+      if @media_profile != "off" && (runtime != "node" || !%w[jsdom jsdom31].include?(engine))
+        raise ArgumentError, "Static media profile requires Node/jsdom"
+      end
       raise ArgumentError, "Unknown asset warning policy" unless %w[strict direct-eval].include?(@asset_warnings)
       @websocket_url = settings[:websocket_url]
       if @websocket_url
@@ -74,7 +79,7 @@ module Domstride
 
     def mount_html(html, url: "https://example.test/", bridge: false)
       # Only explicitly marked final classic scripts are eligible.
-      clock_options = { clock: @clock, clock_epoch_ms: @clock_epoch_ms, assets: @assets, asset_warnings: @asset_warnings, websocket_url: @websocket_url }
+      clock_options = { clock: @clock, clock_epoch_ms: @clock_epoch_ms, assets: @assets, asset_warnings: @asset_warnings, media_profile: @media_profile, websocket_url: @websocket_url }
       match = @bundle_cache != "off" && /<script data-domstride-cache="bundle">([^<]*(?:<(?!\/script\b)[^<]*)*)<\/script>\s*<\/body>\s*<\/html>\s*\z/i.match(html)
       return call("mount", html: html, url: url, bridge: bridge, **clock_options) unless match
 

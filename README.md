@@ -160,3 +160,5 @@ Set `DOMSTRIDE_RECORD_DIR=tmp/domstride-recordings` for bounded metadata-only tr
 
 Export one recording with `bundle exec domstride replay RECORDING_DIRECTORY`. The local preview supports before/after state, highlighted targets and switchable sidebar position. See [roadmap](docs/roadmap.md).
 For controlled compatibility experiments only, `DOMSTRIDE_ASSET_WARNINGS=direct-eval` permits esbuild's exact direct-eval warning and reports its location. Strict is default. Other warnings, build errors and JavaScript exceptions remain fatal. Direct eval may change semantics when bundling; validate original tests.
+
+`DOMSTRIDE_MEDIA_PROFILE=static-desktop` is an opt-in Node/jsdom static media-query environment (1200x1000 logical dimensions, light, reduced motion). Supports only documented simple queries and throws for others. It does not emulate geometry, responsive rendering or resizing; default off.
