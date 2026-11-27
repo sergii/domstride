@@ -6,6 +6,7 @@ const forms = require("./forms.cjs");
 const { installWebSocket } = require("./websocket.cjs");
 const { installStaticMedia } = require("./media.cjs");
 let pageState;
+let confirmScope = null;
 const turn = () => new Promise(resolve => setImmediate(resolve));
 const pause = () => new Promise(resolve => setTimeout(resolve, 1));
 let bundleEntry = null;
@@ -222,8 +223,27 @@ function installOriginScroll(win) {
   win.scroll = scrollToOrigin;
 }
 
+// A scoped decision, not an interactive browser modal. Never auto-accept.
+function installConfirm(win) {
+  win.confirm = value => {
+    const text = value === undefined ? "" : String(value);
+    if (!confirmScope) {
+      reportJavaScript(new Error("UNEXPECTED_CONFIRM: use a scoped Capybara confirm handler"), "window.confirm");
+      return false;
+    }
+    if (confirmScope.result) {
+      reportJavaScript(new Error("UNEXPECTED_CONFIRM: multiple dialogs in one scope"), "window.confirm");
+      return false;
+    }
+    const matched = confirmScope.text === null || text.includes(confirmScope.text);
+    confirmScope.result = { text, matched };
+    return matched && confirmScope.accept;
+  };
+}
+
 function prepareWindow(win, bridge, state) {
   installErrorCapture(win);
+  installConfirm(win);
   if (state.mediaProfile === "static-desktop") installStaticMedia(win);
   if (bridge) {
     installBridge(win, state);
@@ -469,6 +489,13 @@ function scriptCommand(message) {
 }
 
 async function execute(message) {
+  if (message.command === "confirm_arm") {
+    if (confirmScope) throw new Error("UNSUPPORTED_NESTED_CONFIRM");
+    confirmScope = { accept: message.accept, text: message.text, result: null };
+    return true;
+  }
+  if (message.command === "confirm_result") return confirmScope?.result ?? null;
+  if (message.command === "confirm_clear") { confirmScope = null; return true; }
   if (["execute_script", "evaluate_script"].includes(message.command)) return scriptCommand(message);
   if (message.command === "mount") {
     const prepared = prepareBundle(message);
