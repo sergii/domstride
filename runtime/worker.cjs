@@ -144,6 +144,17 @@ function rackRequest(url, method, headers = {}, body = null, redirect = "follow"
     send({ kind: "request", request_id: id, url, method, headers, body, redirect, body_encoding: bodyEncoding });
   });
 }
+// DOM event listeners need the document's own AbortSignal. Adapt only at
+// the Node Request boundary, keeping the DOM constructors untouched.
+function bridgeAbortSignal(win, signal) {
+  if (signal == null || signal instanceof globalThis.AbortSignal) return null;
+  if (!win.AbortSignal || !(signal instanceof win.AbortSignal)) return null;
+  const controller = new globalThis.AbortController();
+  const abort = () => controller.abort(signal.reason);
+  if (signal.aborted) abort();
+  else signal.addEventListener("abort", abort, { once: true });
+  return { signal: controller.signal, cleanup: () => signal.removeEventListener("abort", abort) };
+}
 function installBridge(win, state) {
   forms.installFormData(win);
   win.Headers = globalThis.Headers;
@@ -151,13 +162,18 @@ function installBridge(win, state) {
   win.Response = globalThis.Response;
   win.fetch = async (input, init = {}) => {
     state.fetches += 1; state.activity += 1;
+    let bridgedSignal;
     try {
     const options = { ...init };
+    bridgedSignal = bridgeAbortSignal(win, options.signal);
+    if (bridgedSignal) options.signal = bridgedSignal.signal;
+    options.signal?.throwIfAborted?.();
     if (options.body instanceof win.URLSearchParams) {
       options.body = new URLSearchParams(options.body.toString());
     }
     if (win.FormData && options.body instanceof win.FormData) options.body = await forms.nodeFormData(win, options.body);
     const req = input instanceof Request ? new Request(input, options) : new Request(new URL(typeof input === "string" ? input : input.url || input.href, win.location.href), options);
+    req.signal.throwIfAborted();
     let body = null, encoding = null;
     if (!["GET", "HEAD"].includes(req.method)) {
       if ((req.headers.get("content-type") || "").startsWith("multipart/form-data;")) {
@@ -167,12 +183,19 @@ function installBridge(win, state) {
         encoding = "base64";
       } else body = await req.text();
     }
+    req.signal.throwIfAborted();
     const reply = await rackRequest(req.url, req.method, Object.fromEntries(req.headers), body, req.redirect, encoding);
+    // Rack requests already dispatched cannot be rolled back by aborting fetch.
+    // Do not expose their response to an aborted caller.
+    req.signal.throwIfAborted();
     const response = new Response(req.method === "HEAD" || [204, 205, 304].includes(reply.status) ? null : reply.body, { status: reply.status, headers: reply.headers });
     Object.defineProperty(response, "url", { value: reply.url });
     Object.defineProperty(response, "redirected", { value: Boolean(reply.redirected) });
     return response;
-    } finally { state.fetches -= 1; state.activity += 1; }
+    } finally {
+      bridgedSignal?.cleanup();
+      state.fetches -= 1; state.activity += 1;
+    }
   };
   if (!win.IntersectionObserver) win.IntersectionObserver = class {
     observe() {} unobserve() {} disconnect() {}

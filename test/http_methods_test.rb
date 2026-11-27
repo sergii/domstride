@@ -2,6 +2,47 @@ require "minitest/autorun"
 require "domstride"
 
 class HttpMethodsTest < Minitest::Test
+  def test_fetch_accepts_document_abort_signal_without_replacing_dom_constructors
+    requests = []
+    app = lambda do |env|
+      path = env["PATH_INFO"]
+      if path == "/"
+        [200, {"content-type" => "text/html"}, [<<~HTML]]
+          <p id="result">Pending</p>
+          <script>
+            (async () => {
+              const controller = new AbortController();
+              let events = 0;
+              document.addEventListener("probe", () => events++, {signal: controller.signal});
+              document.dispatchEvent(new Event("probe"));
+              const response = await fetch("/normal", {signal: controller.signal});
+              controller.abort();
+              document.dispatchEvent(new Event("probe"));
+              let aborted;
+              try { await fetch("/must-not-dispatch", {signal: controller.signal}); }
+              catch (error) { aborted = error.name; }
+              const active = new AbortController();
+              const inFlight = fetch("/already-dispatched", {signal: active.signal});
+              active.abort();
+              let inFlightAbort;
+              try { await inFlight; } catch (error) { inFlightAbort = error.name; }
+              document.querySelector("#result").textContent =
+                (await response.text()) + ":" + events + ":" + aborted + ":" + inFlightAbort;
+            })();
+          </script>
+        HTML
+      else
+        requests << path
+        [200, {"content-type" => "text/plain"}, ["OK"]]
+      end
+    end
+    Domstride::Session.open(app: app) do |page|
+      page.visit("/")
+      assert page.wait_for_text("#result", "OK:1:AbortError:AbortError")
+      assert_equal ["/normal", "/already-dispatched"], requests
+    end
+  end
+
   def test_mutating_methods_and_head
     requests = []
     app = lambda do |env|
