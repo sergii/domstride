@@ -90,7 +90,10 @@ module Domstride
             unless quality == "visual_candidates_unvalidated" && cues.empty? && focus.all? { |segment|
               segment["step_sequence"].is_a?(Integer) && steps.any? { |step| step["sequence"] == segment["step_sequence"] } &&
                 segment["label"].is_a?(String) && segment["label"].bytesize.between?(1,128) &&
-                (!segment.key?("transition") || (segment["transition"] == "navigation" && segment["kind"] == "click"))
+                (!segment.key?("transition") || (segment["transition"] == "navigation" && segment["kind"] == "click")) &&
+                (!segment.key?("element") || (segment["element"].is_a?(Hash) && segment["element"].key?("tag") &&
+                  segment["element"].all? { |key,value| %w[tag id name test_id type label].include?(key) && value.is_a?(String) && value.bytesize.between?(1,128) } &&
+                  !%w[password hidden file].include?(segment["element"]["type"].to_s.downcase)))
             }
               raise Error, "Invalid observed video focus"
             end
@@ -100,7 +103,7 @@ module Domstride
           bytes += encoded.bytesize
           raise Error, "Report payload limit exceeded" if bytes > MAX_PAYLOAD_BYTES
           {label: attachment["label"], base64: encoded, cues: cues.map { |cue| cue.slice("kind","sequence","time_ms") },
-            timing_quality: quality, focus: focus.map { |segment| segment.slice("kind","status","start_ms","end_ms","x","y","width","height", *(quality ? %w[step_sequence label transition] : [])) }}
+            timing_quality: quality, focus: focus.map { |segment| segment.slice("kind","status","start_ms","end_ms","x","y","width","height", *(quality ? %w[step_sequence label transition element] : [])) }}
         end
         {name: item["name"], status: item["status"], duration_ms: item["duration_ms"],
           **metadata,

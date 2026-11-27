@@ -6,7 +6,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 type Screenshot = { stepId: string; file: string; url: string; phase: 'after' };
-type FocusObservation = { transition?: 'navigation'; stepId: string; action: number; observedWallMs: number; observedMonotonicMs: number; bounds: {x:number;y:number;width:number;height:number}; viewport: {width:number;height:number} };
+type ElementInfo = {tag:string; id?:string; name?:string; test_id?:string; type?:string; label?:string};
+type FocusObservation = { element?:ElementInfo; transition?: 'navigation'; stepId: string; action: number; observedWallMs: number; observedMonotonicMs: number; bounds: {x:number;y:number;width:number;height:number}; viewport: {width:number;height:number} };
 type FrameObservation = { sequence:number; bytes:number; receivedWallMs:number; receivedMonotonicMs:number };
 class ListingWorld extends World {
   browser?: Browser;
@@ -45,7 +46,13 @@ class ListingWorld extends World {
       this.focusCount++;
       const geometry=await target.evaluate(el=>{
         const rect=el.getBoundingClientRect();
-        return {bounds:{x:rect.x,y:rect.y,width:rect.width,height:rect.height},viewport:{width:window.innerWidth,height:window.innerHeight}};
+        const type=el.getAttribute('type')||'';
+        const element: ElementInfo|undefined=['password','hidden','file'].includes(type.toLowerCase())?undefined:{tag:el.localName};
+        if(element)for(const [key,attr] of [['id','id'],['name','name'],['test_id','data-testid'],['type','type'],['label','aria-label']] as const){
+          const value=el.getAttribute(attr);
+          if(value&&value.length<=128)element[key]=value;
+        }
+        return {bounds:{x:rect.x,y:rect.y,width:rect.width,height:rect.height},viewport:{width:window.innerWidth,height:window.innerHeight},element};
       });
       this.focusObservations.push({stepId:this.currentStepId,action:this.focusCount,observedWallMs:Date.now(),observedMonotonicMs:performance.now(),...geometry});
       await this.hold(beforeMs);

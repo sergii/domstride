@@ -33,6 +33,8 @@ Dir.mktmpdir("domstride-protocol-test") do |tmp|
     "missing_step" => ->(v) { v["focus"].first["step_sequence"] = 999 },
     "mixed_cues" => ->(v) { v["cues"] = [{ "kind" => "step", "sequence" => 1, "time_ms" => 0 }] },
     "overlap" => ->(v) { v["focus"][1]["start_ms"] = v["focus"][0]["start_ms"] },
+    "unexpected_element_value" => ->(v) { v["focus"].first["element"] = { "tag" => "input", "value" => "secret" } },
+    "password_element" => ->(v) { v["focus"].first["element"] = { "tag" => "input", "type" => "password" } },
     "bad_geometry" => ->(v) { v["focus"].first["width"] = 2 }
   }
   mutations.each do |name, mutate|
@@ -46,4 +48,4 @@ Dir.mktmpdir("domstride-protocol-test") do |tmp|
     raise "Accepted invalid manifest: #{name}"
   end
 end
-puts "Verified observed focus validation, seven malformed manifests and legacy video export."
+puts "Verified observed focus validation, nine malformed manifests and legacy video export."

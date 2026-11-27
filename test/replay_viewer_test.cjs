@@ -14,7 +14,7 @@ test("offline viewer switches panels without losing selection or executing snaps
     const malicious = '<script>globalThis.injected = true</script><img src="https://example.invalid/track" onerror="globalThis.injected = true"><iframe src="https://example.invalid/frame"></iframe>';
     fs.writeFileSync(path.join(directory, "000001-after.html"), '<label>Amount <input value="0"></label>');
     fs.writeFileSync(path.join(directory, "000002-before.html"), '<label>Amount <input value="0"></label>');
-    fs.writeFileSync(path.join(directory, "000002-after.html"), '<label>Amount <input value="25"></label>' + malicious);
+    fs.writeFileSync(path.join(directory, "000002-after.html"), '<label>Amount <input id="amount-field" data-testid="amount" value="25"></label>' + malicious);
     const frame = (sequence, phase) => ({ snapshot: String(sequence).padStart(6, "0") + "-" + phase + ".html", body_path: [1], target_path: [1, 0, 0] });
     const events = [
       {type:"header", schema_version:1},
@@ -33,6 +33,16 @@ test("offline viewer switches panels without losing selection or executing snaps
     await page.locator("#next").click();
     assert.equal(await page.locator("#viewport input.target").inputValue(), "25");
     assert.equal(await page.locator("#position").innerText(), "2 / 2");
+    assert.equal(await page.locator("#inspect-elements").isChecked(),false);
+    await page.locator("#inspect-elements").check();
+    const input=await page.locator("#viewport input.target").boundingBox();
+    await page.mouse.move(input.x+input.width/2,input.y+input.height/2);
+    await page.waitForFunction(()=>!document.querySelector("#element-tooltip").hidden);
+    assert.match(await page.locator("#element-tooltip").innerText(),/amount-field/);
+    assert.match(await page.locator("#element-tooltip").innerText(),/Test ID/);
+    assert.equal(await page.locator("#viewport input.target").getAttribute("id"),null);
+    await page.locator("#inspect-elements").uncheck();
+    assert.equal(await page.locator("#element-tooltip").isVisible(),false);
     const viewport = page.locator("main > section");
     const sidebar = page.locator("main > aside");
     assert.ok((await viewport.boundingBox()).x < (await sidebar.boundingBox()).x);

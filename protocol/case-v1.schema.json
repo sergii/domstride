@@ -288,6 +288,45 @@
                 },
                 "transition": {
                   "const": "navigation"
+                },
+                "element": {
+                  "type": "object",
+                  "required": [
+                    "tag"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "tag": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "test_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "type": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  }
                 }
               }
             }

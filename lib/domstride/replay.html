@@ -56,9 +56,9 @@ body.shade-unreplayed #gherkin-steps .step-card[data-replay=none]:not([aria-curr
 .action-icon[data-kind=form]{background:var(--ds-accent-soft);color:var(--ds-accent-ink)}
 .step-action-chip.active{color:var(--ds-accent-ink)}
 @media(max-width:680px){#suite label{max-width:100%}#suite label select{min-width:0}#case-select{max-width:100%}}
-/* Two live control shapes; panels, step cards and recording content stay unchanged. */
+/* Rounded control and tag tokens. */
 :root{--ds-control-radius:7px;--ds-tag-radius:5px}
-body[data-control-shape=pill]{--ds-control-radius:999px;--ds-tag-radius:999px}
+
 header select,#suite select,#suite input,#video-evidence select,#evidence-choice select,#video-controls button,#observed-actions button,#open-recorded-case,footer button{border-radius:var(--ds-control-radius)}
 .summary-pill,.step-status,.step-action-chip,#gherkin-steps .step-card[data-replay=none] .step-evidence,.provenance-tag{border-radius:var(--ds-tag-radius)}
 #suite:not([hidden]){display:flex;flex-direction:column;align-items:stretch;gap:9px;padding:10px 20px}
@@ -74,6 +74,17 @@ header select,#suite select,#suite input,#video-evidence select,#evidence-choice
 #case-select{width:100%;max-width:none;min-width:0}
 #suite #trace-picker[hidden]{display:none}
 @media(max-width:680px){.case-picker{flex:1 1 100%;flex-wrap:wrap}.case-picker .case-search-label,.case-picker .case-select-label{flex:1 1 100%!important}.suite-filters{gap:8px}.suite-context{gap:8px}#suite:not([hidden]){padding:10px 14px}}
+/* Native checkbox semantics with consistent compact visual states. */
+header input[type=checkbox],#focus-settings input[type=checkbox],#observed-controls input[type=checkbox],.shade-toggle input[type=checkbox]{appearance:none;-webkit-appearance:none;position:relative;display:inline-grid;place-content:center;flex:none;width:16px;height:16px;margin:0;border:1px solid #94a3b8;border-radius:4px;background:#fff;accent-color:var(--ds-accent);cursor:pointer;vertical-align:middle}
+header input[type=checkbox]:checked,#focus-settings input[type=checkbox]:checked,#observed-controls input[type=checkbox]:checked,.shade-toggle input[type=checkbox]:checked{background:var(--ds-accent);border-color:var(--ds-accent)}
+header input[type=checkbox]:checked::after,#focus-settings input[type=checkbox]:checked::after,#observed-controls input[type=checkbox]:checked::after,.shade-toggle input[type=checkbox]:checked::after{content:"";width:7px;height:4px;border-left:2px solid white;border-bottom:2px solid white;transform:translateY(-1px) rotate(-45deg)}
+header input[type=checkbox]:disabled,#focus-settings input[type=checkbox]:disabled,#observed-controls input[type=checkbox]:disabled,.shade-toggle input[type=checkbox]:disabled{background:#e2e8f0;border-color:#cbd5e1;cursor:not-allowed}
+header input[type=checkbox]:disabled::after,#focus-settings input[type=checkbox]:disabled::after,#observed-controls input[type=checkbox]:disabled::after,.shade-toggle input[type=checkbox]:disabled::after{border-color:#94a3b8}
+header input[type=checkbox]:focus-visible,#focus-settings input[type=checkbox]:focus-visible,#observed-controls input[type=checkbox]:focus-visible,.shade-toggle input[type=checkbox]:focus-visible{outline:2px solid var(--ds-accent);outline-offset:3px}
+@media(forced-colors:active){header input[type=checkbox],#focus-settings input[type=checkbox],#observed-controls input[type=checkbox],.shade-toggle input[type=checkbox]{appearance:auto}}
+#element-tooltip:not([hidden]){position:fixed;z-index:20;pointer-events:none;max-width:min(280px,calc(100vw - 16px));min-width:155px;background:white;color:#334155;border:1px solid #dbe2ea;border-radius:8px;padding:10px 12px;box-shadow:0 6px 22px #0f172a20;font-size:12px;overflow-wrap:anywhere}
+#element-tooltip strong{display:block;color:#17202a;font-weight:600;font-size:13px;margin-bottom:5px}
+#element-tooltip dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;margin:0}#element-tooltip dt{color:#64748b}#element-tooltip dd{margin:0}
 </style>
 <!-- Lucide icons 0.456.0 | https://github.com/lucide-icons/lucide
 ISC License
@@ -94,10 +105,10 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 -->
 </head>
 <body class="shade-unreplayed">
-<header><strong>Domstride Replay</strong><span id="notice">Inert DOM preview · no application execution</span><span class="spacer"></span><label>Layout <select id="layout"><option value="right">Viewport left / steps right</option><option value="left">Steps left / viewport right</option></select></label><label>State <select id="phase"><option value="after">After</option><option value="before">Before</option></select></label><label>Shape <select id="control-shape"><option value="rounded">Rounded</option><option value="pill">Pill</option></select></label></header>
+<header><strong>Domstride Replay</strong><span id="notice">Inert DOM preview · no application execution</span><span class="spacer"></span><label>Layout <select id="layout"><option value="right">Viewport left / steps right</option><option value="left">Steps left / viewport right</option></select></label><label>State <select id="phase"><option value="after">After</option><option value="before">Before</option></select></label><label class="viewer-inspect"><input type="checkbox" id="inspect-elements"> Inspect elements</label></header>
 <div id="suite" hidden><div class="suite-context"><div id="suite-summary"></div><div id="case-provenance" aria-label="Selected test metadata"></div></div><div class="suite-filters"><div class="case-picker" role="group" aria-label="Find and select a test"><label class="case-search-label">Search <input id="case-search" type="search" placeholder="Find a test"></label><label class="case-select-label">Test <select id="case-select"></select></label></div><label>Status <select id="case-status"><option value="">All</option><option>passed</option><option>failed</option><option>skipped</option><option>pending</option><option>unknown</option></select></label><label id="trace-picker" hidden>DOM recording <select id="trace-select"></select></label></div></div>
 <main id="workspace"><section><div id="evidence-choice" hidden><label>Evidence <select id="evidence-mode"><option value="dom">DOM snapshot</option><option value="video">Browser video</option></select></label></div><div id="no-evidence" hidden><h2 id="no-evidence-title">No replay captured</h2><p id="no-evidence-message"></p><button id="open-recorded-case" type="button" hidden>Open recorded scenario</button></div><div id="dom-evidence"><h2>DOM snapshot</h2><div id="viewport"></div></div><div id="video-evidence" hidden><h2>Browser video</h2><label>Recording <select id="video-select"></select></label><div id="focus-settings" hidden><label><input type="checkbox" id="smart-zoom" checked> Smart Zoom</label><label><input type="checkbox" id="focus-highlight" checked> Highlight</label><label>Zoom <select id="focus-scale"><option value="1.25">1.25×</option><option value="1.5" selected>1.5×</option><option value="2">2×</option><option value="2.5">2.5×</option></select></label><label>Zoom motion <select id="focus-speed"><option value="0">Off</option><option value="120">Fast</option><option value="220" selected>Normal</option><option value="400">Slow</option></select></label></div><div id="video-stage"><div id="video-layer"><video id="browser-video" playsinline preload="metadata"></video><div id="focus-outline" hidden></div></div><div id="page-transition" hidden></div></div><div id="video-controls"><button id="video-play" type="button">Play</button><input id="video-seek" type="range" min="0" max="0" value="0" step="0.01" aria-label="Video position"><span id="video-time">0.00 / 0.00 s</span><button id="video-mute" type="button">Mute</button></div><div id="observed-controls" hidden><label><input type="checkbox" id="observed-cc" checked> Focus captions</label></div><div id="observed-actions" hidden aria-label="Observed action chapters"></div><p id="observed-caption" hidden></p><p id="video-note">Recorded browser playback. Select an explicitly timestamped step or assertion to seek.</p></div></section><aside><div id="gherkin" hidden><div class="steps-heading"><h2>Scenario steps</h2><label class="shade-toggle" title="Shade steps that have no linked replay evidence"><input type="checkbox" id="shade-unreplayed" checked> Shade unreplayed</label></div><div id="gherkin-steps"></div></div><div id="assertions-panel" hidden><h2>Assertions</h2><div id="assertion-steps"></div></div><h2>Interaction steps</h2><div id="steps"></div></aside></main>
-<footer><button id="previous">Previous</button><button id="next">Next</button><span id="position"></span></footer>
+<div id="element-tooltip" role="tooltip" hidden></div><footer><button id="previous">Previous</button><button id="next">Next</button><span id="position"></span></footer>
 <script type="application/json" id="recording-data">__RECORDING_JSON__</script>
 <script nonce="__NONCE__">
 "use strict";
@@ -113,7 +124,63 @@ let pendingSeek = null;
 let observedTracks = null;
 const safeTags = new Set("div span p section article main header footer nav aside h1 h2 h3 h4 h5 h6 ul ol li dl dt dd table thead tbody tfoot tr th td caption label input textarea select option button output strong em b i small pre code blockquote br hr details summary dialog fieldset legend time".split(" "));
 const blocked = new Set("head script style link meta base iframe frame object embed template svg math noscript canvas video audio source picture img".split(" "));
+
+let inspectedNodes=[];
+let inspectPointer=null;
+function elementInfo(node){
+  const tag=node.localName;
+  const type=node.getAttribute("type")||"";
+  if(!tag||["password","hidden","file"].includes(type.toLowerCase()))return null;
+  const info={tag};
+  for(const [key,attr] of [["id","id"],["name","name"],["test_id","data-testid"],["type","type"],["label","aria-label"]]){
+    const value=node.getAttribute(attr);
+    if(value&&value.length<=128)info[key]=value;
+  }
+  if(!["input","textarea","select","button","a","label"].includes(tag)&&!info.id&&!info.test_id&&!info.label&&!info.name)return null;
+  return info;
+}
+function hideInspector(){ $("element-tooltip").hidden=true; }
+function inspectAt(){
+  hideInspector();
+  if(!$("inspect-elements").checked||!inspectPointer)return;
+  const {x,y}=inspectPointer;
+  const inside=(rect)=>x>=rect.left&&x<=rect.right&&y>=rect.top&&y<=rect.bottom&&rect.width>0&&rect.height>0;
+  let info=null;
+  if(!$("video-evidence").hidden && videoUrl && inside($("video-stage").getBoundingClientRect())){
+    const video=$("browser-video"),item=activeCase?.videos?.[Number($("video-select").value)];
+    const rect=video.getBoundingClientRect();
+    if(!rect.width||!rect.height)return;
+    const px=(x-rect.left)/rect.width,py=(y-rect.top)/rect.height,ms=video.currentTime*1000;
+    const segment=item?.focus?.find(s=>s.element&&ms>=s.start_ms&&ms<s.end_ms&&px>=s.x&&px<=s.x+s.width&&py>=s.y&&py<=s.y+s.height);
+    if(segment)info={...segment.element,label:segment.element.label||segment.label};
+  }else if(!$("dom-evidence").hidden&&inside($("viewport").getBoundingClientRect())){
+    // Snapshot remains inert: hit-test copied nodes without enabling application interaction.
+    for(let i=inspectedNodes.length-1;i>=0;i--){
+      const entry=inspectedNodes[i];
+      if(entry.node.isConnected&&inside(entry.node.getBoundingClientRect())){info=entry.info;break;}
+    }
+  }
+  if(!info)return;
+  const tip=$("element-tooltip"),title=document.createElement("strong"),dl=document.createElement("dl");
+  title.textContent=info.label||info.tag;
+  for(const [key,label] of [["tag","Element"],["id","HTML ID"],["name","Name"],["test_id","Test ID"],["type","Type"]]){
+    if(!info[key])continue;
+    const dt=document.createElement("dt"),dd=document.createElement("dd");
+    dt.textContent=label;dd.textContent=info[key];dl.append(dt,dd);
+  }
+  tip.replaceChildren(title,dl);tip.hidden=false;
+  tip.style.left=Math.max(8,Math.min(x+14,innerWidth-tip.offsetWidth-8))+"px";
+  tip.style.top=Math.max(8,Math.min(y+14,innerHeight-tip.offsetHeight-8))+"px";
+}
+$("inspect-elements").onchange=()=>{hideInspector();inspectPointer=null;};
+const previewPanel=document.querySelector("#workspace > section");
+previewPanel.addEventListener("pointermove",e=>{if(!$("inspect-elements").checked)return;inspectPointer={x:e.clientX,y:e.clientY};inspectAt();});
+previewPanel.addEventListener("pointerleave",()=>{inspectPointer=null;hideInspector();});
+previewPanel.addEventListener("scroll",()=>{inspectPointer=null;hideInspector();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){inspectPointer=null;hideInspector();}});
+
 function renderSnapshot(frame) {
+  inspectedNodes=[]; hideInspector();
   const viewport = $("viewport"); viewport.replaceChildren(); viewport.classList.remove("target");
   if (!frame || typeof frame.html !== "string") { viewport.textContent = "Snapshot unavailable or not recorded."; return; }
   // Parse in a detached template. No original node, URL, CSS, event handler or script is inserted into the live DOM.
@@ -148,6 +215,8 @@ function renderSnapshot(frame) {
     if (tag === "select" || tag === "button") el.disabled = true;
     if (tag === "select") el.multiple = node.hasAttribute("multiple");
     if (tag === "dialog" || tag === "details") { if (node.hasAttribute("open")) el.setAttribute("open", ""); }
+    const info=elementInfo(node);
+    if(info)inspectedNodes.push({node:el,info});
     if (tag !== "textarea") for (const child of node.childNodes) el.append(copy(child, depth+1));
     return el;
   }
@@ -453,6 +522,7 @@ function stepContent(button,kind,text,status,duration,detail,children=[]) {
 }
 
 function show() {
+  hideInspector();inspectPointer=null;inspectedNodes=[];
   const e = events[index]; const steps = $("steps"); steps.replaceChildren();
   for (const [i, event] of events.entries()) {
     const b = document.createElement("button"); b.type = "button";
@@ -495,6 +565,7 @@ function loadObservedTracks(video,segments) {
   observedTracks.captions.mode=$("observed-cc").checked?"hidden":"disabled";
 }
 function releaseVideo() {
+  hideInspector();inspectPointer=null;
   const video = $("browser-video");
   pendingSeek = null;
   resetFocus();
@@ -607,6 +678,7 @@ function syncVideoHighlight() {
   const ms=pendingSeek ? pendingSeek.seconds*1000 : video.currentTime*1000;
   updateFocus(item,ms);
   updateVideoControls();
+  if(inspectPointer)inspectAt();
   const latest = kind => (item.cues || []).filter(c=>c.kind===kind && c.time_ms<=ms+0.5)
     .sort((a,b)=>b.time_ms-a.time_ms || b.sequence-a.sequence)[0];
   const observed=item.timing_quality==="visual_candidates_unvalidated";
@@ -735,7 +807,7 @@ function renderGherkin(event) {
     root.append(b);
   }
 }
-$("control-shape").onchange = () => { document.body.dataset.controlShape=$("control-shape").value; };
+
 $("shade-unreplayed").onchange = () => document.body.classList.toggle("shade-unreplayed",$("shade-unreplayed").checked);
 $("layout").onchange = () => $("workspace").classList.toggle("sidebar-left", $("layout").value === "left");
 $("phase").onchange = show;

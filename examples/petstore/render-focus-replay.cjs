@@ -27,7 +27,7 @@ const focus=cues.map(t=>{
  const {bounds:b,viewport:v}=target;
  const x=Math.max(0,b.x),y=Math.max(0,b.y),right=Math.min(v.width,b.x+b.width),bottom=Math.min(v.height,b.y+b.height);
  assert.ok(right>x&&bottom>y);
- return {kind:t.action===6?'click':[3,4].includes(t.action)?'select':'fill',status:step.status==='passed'?'passed':'unknown',start_ms:t.first_visible_pts_ms,end_ms:t.last_visible_pts_ms,x:x/v.width,y:y/v.height,width:(right-x)/v.width,height:(bottom-y)/v.height,step_sequence:step.sequence,label:t.label,...(target.transition==='navigation'&&t.action===6?{transition:'navigation'}:{})};
+ return {kind:t.action===6?'click':[3,4].includes(t.action)?'select':'fill',status:step.status==='passed'?'passed':'unknown',start_ms:t.first_visible_pts_ms,end_ms:t.last_visible_pts_ms,x:x/v.width,y:y/v.height,width:(right-x)/v.width,height:(bottom-y)/v.height,step_sequence:step.sequence,label:t.label,...(target.element?{element:target.element}:{}),...(target.transition==='navigation'&&t.action===6?{transition:'navigation'}:{})};
 });
 assert.equal(c.videos.length,1);assert.equal(c.videos[0].role,'guided');
 c.videos[0].timing_quality='visual_candidates_unvalidated';c.videos[0].focus=focus;
