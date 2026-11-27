@@ -82,7 +82,7 @@ test("suite report filters cases and selects recordings independently of operati
     const errors = [];
     page.on("pageerror",error=>errors.push(error.message));
     await page.goto(pathToFileURL(path.join(directory,"report.html")).href);
-    assert.match(await page.locator("#suite-summary").innerText(),/3 tests · 1 passed · 1 failed · 1 skipped/);
+    assert.deepEqual(await page.locator("#suite-summary .summary-pill").allTextContents(),["3 tests","1 passed","1 failed","1 skipped","0 pending","0 unknown"]);
     assert.equal(await page.locator("#viewport").innerText(),"Create expense");
     await page.locator("#case-status").selectOption("failed");
     assert.equal(await page.locator("#viewport").innerText(),"Failed assertion");
@@ -93,12 +93,15 @@ test("suite report filters cases and selects recordings independently of operati
     assert.equal(await page.locator("#viewport").innerText(),"Failed assertion");
     await page.locator("#layout").selectOption("left");
     await page.locator("#case-status").selectOption("skipped");
-    assert.equal(await page.locator("#viewport").innerText(),"No recorded interactions.");
+    assert.equal(await page.locator("#no-evidence-title").innerText(),"No replay captured");
+    assert.equal(await page.locator("#no-evidence").isVisible(),true);
+    assert.equal(await page.locator("#dom-evidence").isVisible(),false);
     assert.equal(await page.locator("#layout").inputValue(),"left");
     await page.locator("#case-status").selectOption("");
     await page.locator("#case-search").fill("no match");
     assert.equal(await page.locator("#case-select option").count(),0);
-    assert.equal(await page.locator("#viewport").innerText(),"No recorded interactions.");
+    assert.equal(await page.locator("#no-evidence-title").innerText(),"No matching tests");
+    assert.equal(await page.locator("#no-evidence").isVisible(),true);
     assert.deepEqual(errors,[]);
   } finally {
     await browser?.close();

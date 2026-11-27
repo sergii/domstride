@@ -121,3 +121,7 @@ User requested a universal enterprise blue/gray/white palette rather than emeral
 ## Replay refinement: icons, evidence styling and summary
 
 Replaced hand-drawn icons with vendored Lucide 0.456.0 SVG geometry and embedded license, introduced consistent native select controls, default subtle hatch for missing replay evidence with toggle, concise evidence labels and six summary pills. Added Chromium assertions for UI and icon mapping. Full step highlighting beyond observed focus intervals requires independent calibrated step intervals; documented [design and acceptance](../replay-ui-refinement.md) instead of inventing timing from durations. No new capture work in this commit. CI pending.
+
+## Replay refinement CI fixes
+
+CI 46058398023 confirmed the new icon/shading/summary assertions until a higher-specificity obsolete select rule overrode the shared padding (9 px vs 30 px). Remove that redundant rule. CI 46058397983 failed on the old single-line summary expectation; assert all six distinct pill values instead, and explicitly verify results-only/no-match empty states. Preserve filtering and recording selection tests. Fizzy remains unresolved. New CI pending.
