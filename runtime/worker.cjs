@@ -496,6 +496,15 @@ function scriptCommand(message) {
 }
 
 async function execute(message) {
+  if (message.command === "memory_state") {
+    // Metadata only. No forced GC, snapshots or application data.
+    const memory = process.memoryUsage();
+    return { pid: process.pid, rss: memory.rss, heapTotal: memory.heapTotal,
+      heapUsed: memory.heapUsed, external: memory.external, arrayBuffers: memory.arrayBuffers,
+      handles: handles.size, pending_requests: pending.size,
+      active_fetches: pageState?.fetches || 0, error_listeners: errorListeners.size,
+      has_document: Boolean(window), confirm_armed: Boolean(confirmScope) };
+  }
   if (message.command === "reset_document") {
     // Never allow outstanding Rack work or a confirmation to cross test boundaries.
     if (pending.size || pageState?.fetches || confirmScope) throw new Error("UNSAFE_WORKER_RESET: outstanding work");

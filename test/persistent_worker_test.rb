@@ -28,7 +28,18 @@ class PersistentWorkerTest < Minitest::Test
     driver.visit("/set")
     pid = driver.worker.worker_pid
     old = driver.find_css("#result").first
+    mounted = driver.worker.dom_command("memory_state")
+    assert_equal pid, mounted.fetch("pid")
+    assert_equal true, mounted.fetch("has_document")
+    assert_operator mounted.fetch("handles"), :>, 0
+    assert_operator mounted.fetch("heapUsed"), :>, 0
     driver.reset!
+    reset = driver.worker.dom_command("memory_state")
+    assert_equal pid, reset.fetch("pid")
+    assert_equal false, reset.fetch("has_document")
+    assert_equal 0, reset.fetch("handles")
+    assert_equal 0, reset.fetch("pending_requests")
+    assert_equal 0, reset.fetch("active_fetches")
     assert_equal "about:blank", driver.current_url
     assert_equal "", driver.html
     assert_raises(Domstride::CapybaraAdapter::StaleElement) { old.all_text }
