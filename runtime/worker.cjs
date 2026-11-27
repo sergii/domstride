@@ -433,7 +433,7 @@ async function execute(message) {
     let moduleCode;
     if (message.assets === "bundle" && message.bridge) {
       const { prepareAssets } = require("./assets.cjs");
-      const resolved = await prepareAssets(prepared.html, message.url, url => rackRequest(url, "GET"));
+      const resolved = await prepareAssets(prepared.html, message.url, url => rackRequest(url, "GET"), message.asset_warnings);
       prepared.html = resolved.html;
       moduleCode = resolved.moduleCode;
     }

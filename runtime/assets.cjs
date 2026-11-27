@@ -31,7 +31,8 @@ function rewriteDynamicImports(source, imports) {
     " default: return Promise.reject(new Error('UNSUPPORTED_DYNAMIC_IMPORT: ' + specifier)); } }\n" + source;
 }
 
-async function prepareAssets(html, url, request) {
+async function prepareAssets(html, url, request, warningPolicy = "strict") {
+  if (!["strict", "direct-eval"].includes(warningPolicy)) throw new Error("Unknown asset warning policy");
   const { JSDOM } = require("jsdom");
   const parsed = new JSDOM(html, { url });
   const doc = parsed.window.document;
@@ -124,7 +125,14 @@ async function prepareAssets(html, url, request) {
           }
         }]
       });
-      if (bundled.warnings.length) throw new Error("Module bundle warnings: " + bundled.warnings.map(w => w.text).join("; "));
+      const fatal = bundled.warnings.filter(warning => warningPolicy !== "direct-eval" || warning.id !== "direct-eval");
+      for (const warning of bundled.warnings.filter(w => !fatal.includes(w))) {
+        const location = warning.location;
+        const site = location ? location.file + ":" + location.line + ":" + location.column : "(unknown location)";
+        // Keep the warning visible without logging the source line or executing a different program.
+        process.stderr.write("[domstride assets] permitted warning direct-eval at " + site + "\n");
+      }
+      if (fatal.length) throw new Error("Module bundle warnings: " + fatal.map(w => "[" + w.id + "] " + w.text).join("; "));
       moduleCode = bundled.outputFiles[0].text;
     }
     return { html: parsed.serialize(), moduleCode };

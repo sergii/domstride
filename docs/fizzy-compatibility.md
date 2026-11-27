@@ -29,3 +29,7 @@ The dedicated workflow fails unless selected functional cases pass. The broader 
 ## Observed result at a5a9e7c
 
 [Fizzy functional run 45912190145](https://github.com/sergii/domstride/actions/runs/45912190145): all 8 original Chrome cases passed (24 assertions). All 8 Domstride candidates errored before any assertion with esbuild direct eval warnings promoted to errors by the asset loader. This is the next concrete asset compatibility blocker, not a business assertion failure. Retain the strict gate; investigate warning policy and direct eval semantics separately from recording.
+
+## Follow-up: direct eval warning policy
+
+The original 8-case baseline passed, while the candidate stopped at esbuild direct-eval warnings. The default remains strict. Only an explicit DOMSTRIDE_ASSET_WARNINGS=direct-eval permits esbuild's exact direct-eval warning ID; each permitted warning reports its source location to stderr without the source line. All other warnings, build errors and runtime JavaScript exceptions remain fatal. The candidate records this policy and retains original tests, counts and assertion-parity gates. A passing synthetic lexical-scope regression is not proof of arbitrary eval or module semantic equivalence. No success claim until original cases pass.

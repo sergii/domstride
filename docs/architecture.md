@@ -115,3 +115,7 @@ Do not fake driver.browser or CDP. Keep Chromium Trusted Types inventory on brow
 ## ADR-026: bounded opt-in interaction recording
 
 Capture target structural paths before/after selected protocol commands and optional raw HTML snapshots in the same worker reply. No live DOM mutation or replayed application requests. Persist private per-worker JSONL metadata and bounded HTML files; do not retain selectors, arguments, URLs, exceptions or results. Explicit BDD wrapper correlation via step_sequence. No automatic Capybara assertion or Gherkin event capture. Snapshot HTML is sensitive and must be rendered inert by a future viewer. Disabled by default; no claims of screenshot fidelity.
+
+## ADR-027: explicit direct-eval asset warning exception
+
+Strict by default; only opt-in direct-eval warning ID may proceed with visible source-location diagnostics. No global warning suppression, source rewrites, fake browser APIs or relaxed test assertions. The Fizzy discovery candidate opts in and retains all original gates. Synthetic tests verify lexical eval behavior and error propagation, not general module equivalence.

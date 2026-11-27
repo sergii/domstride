@@ -159,3 +159,4 @@ Use `require "domstride/bdd"` and explicit scenario-scoped Capybara sessions in 
 Set `DOMSTRIDE_RECORD_DIR=tmp/domstride-recordings` for bounded metadata-only traces. Add `DOMSTRIDE_RECORD_HTML=1` for sensitive raw HTML snapshots with structural target paths. Disabled by default. See [recording contract](docs/recording.md); this is the artifact layer for a future viewer, not executable replay or rendered video.
 
 Export one recording with `bundle exec domstride replay RECORDING_DIRECTORY`. The local preview supports before/after state, highlighted targets and switchable sidebar position. See [roadmap](docs/roadmap.md).
+For controlled compatibility experiments only, `DOMSTRIDE_ASSET_WARNINGS=direct-eval` permits esbuild's exact direct-eval warning and reports its location. Strict is default. Other warnings, build errors and JavaScript exceptions remain fatal. Direct eval may change semantics when bundling; validate original tests.
