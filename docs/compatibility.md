@@ -16,8 +16,11 @@ Maintained subset, not the complete upstream Capybara spec suite. Evidence: BATC
 | Explicit fixture attachment and binary multipart fetch | Experimental opt-in usage, tested | Attachment unsupported |
 | Loopback Action Cable/Turbo source | Experimental opt-in, tested | Unsupported |
 | Single-window identity | Contract tested | Contract tested |
+| Immediate window scroll to origin (Rack bridge only) | Narrow compatibility shim; no layout or scroll events | Not changed by shim |
 | Layout, geometry, screenshots, hit testing, multiple windows | Unsupported | Unsupported |
 | Browser form navigation/history, native module semantics, arbitrary dynamic imports, full Web APIs | Unsupported | Unsupported |
+
+The jsdom Rack bridge accepts immediate `window.scrollTo(0, 0)` / `window.scroll(0, 0)` and equivalent zero-coordinate options for Turbo navigation. Nonzero positions and smooth scrolling raise `UNSUPPORTED_SCROLL`; scroll restoration, element scrolling, geometry and scroll events are not provided by this shim. JavaScript error reporting remains enabled.
 
 Real Action Cable integration does not cover cookie-authenticated connections or full turbo-rails custom element behavior. Virtual clock and sockets cannot be combined. File upload is a FileList approximation with 8 MiB cap. Keyboard modifiers, IME, automatic keyboard submit and native focus traversal are not implemented. Use explicitly selected real-browser driver for these scenarios, never automatic retry after failure.
 

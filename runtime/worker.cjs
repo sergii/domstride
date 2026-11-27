@@ -206,11 +206,28 @@ function installBridge(win, state) {
   if (!win.cancelAnimationFrame) win.cancelAnimationFrame = id => win.clearTimeout(id);
 }
 
+// A layout-free document is always at the origin. Support the ordinary
+// Turbo scroll-to-top request without claiming viewport or geometry parity.
+function installOriginScroll(win) {
+  const scrollToOrigin = (first, second) => {
+    const options = first !== null && typeof first === "object" ? first : null;
+    const x = Number((options ? options.left : first) ?? 0);
+    const y = Number((options ? options.top : second) ?? 0);
+    const behavior = options?.behavior ?? "auto";
+    if (x !== 0 || y !== 0 || !["auto", "instant"].includes(behavior)) {
+      throw new Error("UNSUPPORTED_SCROLL: jsdom bridge supports immediate scroll to origin only");
+    }
+  };
+  win.scrollTo = scrollToOrigin;
+  win.scroll = scrollToOrigin;
+}
+
 function prepareWindow(win, bridge, state) {
   installErrorCapture(win);
   if (state.mediaProfile === "static-desktop") installStaticMedia(win);
   if (bridge) {
     installBridge(win, state);
+    if (engine === "jsdom" || engine === "jsdom31") installOriginScroll(win);
     if (state.websocketUrl && typeof win.WebSocket !== "function") throw new Error("UNSUPPORTED_WEBSOCKET_ENGINE");
     if (typeof win.WebSocket === "function") installWebSocket(win, state);
   }
