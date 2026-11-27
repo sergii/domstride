@@ -117,3 +117,7 @@ User feedback: restore semantic and recorded action icons, distinguish form fill
 ## Neutral blue product palette
 
 User requested a universal enterprise blue/gray/white palette rather than emerald. Keep current layouts, sizes, spacing and icon paths. Use blue #2563eb for active states, outlines and controls, light blue #eff6ff for selected surfaces, slate neutrals for text/borders, and green/red only for semantic success/failure. Align core Replay, experimental reference player and Domstride-owned documentation themes. Do not recolor the application under test or alter historical recordings. New guided focus annotations are blue and declare outline_color; visual detector supports explicit blue and defaults to historic green when the field is absent. CI must reconfirm all six media intervals and actual browser UI. No new layout redesign or merge.
+
+## Replay refinement: icons, evidence styling and summary
+
+Replaced hand-drawn icons with vendored Lucide 0.456.0 SVG geometry and embedded license, introduced consistent native select controls, default subtle hatch for missing replay evidence with toggle, concise evidence labels and six summary pills. Added Chromium assertions for UI and icon mapping. Full step highlighting beyond observed focus intervals requires independent calibrated step intervals; documented [design and acceptance](../replay-ui-refinement.md) instead of inventing timing from durations. No new capture work in this commit. CI pending.

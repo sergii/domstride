@@ -17,6 +17,23 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  const video=page.locator('#browser-video'),segments=data.cases[idx].videos[0].focus;assert.equal(segments.length,6);
  await expect.poll(()=>video.evaluate(v=>v.readyState>=1&&Number.isFinite(v.duration))).toBe(true);
  await page.locator('#focus-speed').selectOption('0');
+ await expect(page.locator('#suite-summary .summary-pill')).toHaveCount(6);
+ await expect(page.locator('#suite-summary [data-status=passed]')).toHaveText('4 passed');
+ await expect(page.locator('#shade-unreplayed')).toBeChecked();
+ const unrecorded=page.locator('#gherkin-steps [data-replay=none]').first();
+ await expect(unrecorded).toBeVisible();
+ assert.match(await unrecorded.evaluate(el=>getComputedStyle(el).backgroundImage),/repeating-linear-gradient/);
+ await page.locator('#shade-unreplayed').uncheck();
+ assert.equal(await unrecorded.evaluate(el=>getComputedStyle(el).backgroundImage),'none');
+ await page.locator('#shade-unreplayed').check();
+ await expect(page.locator('#gherkin-steps .step-card [data-lucide=file-pen-line]')).toHaveCount(1);
+ await expect(page.locator('#gherkin-steps .step-action-chip [data-lucide=text-cursor-input]')).toHaveCount(3);
+ await expect(page.locator('#gherkin-steps .step-action-chip [data-lucide=list-filter]')).toHaveCount(2);
+ await expect(page.locator('#gherkin-steps .step-action-chip [data-lucide=send]')).toHaveCount(1);
+ for(const id of ['layout','phase','case-select','video-select','focus-scale','focus-speed']){
+   const style=await page.locator('#'+id).evaluate(el=>({appearance:getComputedStyle(el).appearance,padding:getComputedStyle(el).paddingRight,height:getComputedStyle(el).height}));
+   assert.deepEqual(style,{appearance:'none',padding:'30px',height:'34px'});
+ }
  assert.equal(await page.locator('#smart-zoom').evaluate(el=>getComputedStyle(el).accentColor),'rgb(37, 99, 235)');
  assert.equal(await page.locator('#gherkin-steps .step-status[data-status=passed]').first().evaluate(el=>getComputedStyle(el).color),'rgb(51, 115, 78)');
  await expect(page.locator('#gherkin-steps .action-icon')).not.toHaveCount(0);

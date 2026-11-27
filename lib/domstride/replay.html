@@ -37,12 +37,48 @@
 #observed-actions button{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;font-size:12px}#observed-actions .action-icon{width:19px;height:19px;background:none}#observed-actions svg{width:15px;height:15px}
 #page-transition:not([hidden]){position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid #bfdbfe;background:rgba(255,255,255,.96);border-radius:8px;color:#1e40af;font-size:12px;box-shadow:0 2px 12px #0002;pointer-events:none;z-index:2}
 #page-transition .action-icon{background:none;width:20px;height:20px}#page-transition.playing .action-icon svg{animation:hourglass-turn .8s ease-in-out infinite}@keyframes hourglass-turn{0%,30%{transform:rotate(0)}80%,100%{transform:rotate(180deg)}}@media(prefers-reduced-motion:reduce){#page-transition.playing .action-icon svg{animation:none}}
+/* Shared native controls: consistent caret, text spacing, and keyboard behavior. */
+header label,#suite label,#evidence-choice label{display:inline-flex;align-items:center;gap:7px;min-width:0;font-size:12px;color:#475569}
+header select,#suite select,#evidence-choice select,#video-evidence select{appearance:none;-webkit-appearance:none;height:34px;box-sizing:border-box;padding:5px 30px 5px 10px;background-color:#fff;background-image:linear-gradient(45deg,transparent 50%,#64748b 50%),linear-gradient(135deg,#64748b 50%,transparent 50%);background-position:calc(100% - 15px) center,calc(100% - 11px) center;background-size:4px 4px;background-repeat:no-repeat;font-size:13px;line-height:20px;border:1px solid #dbe2ea;border-radius:7px;min-width:55px;max-width:100%;text-overflow:ellipsis}
+header select:disabled,#suite select:disabled{background-color:#f8fafc;color:#94a3b8}
+#suite-summary{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:400}
+.summary-pill{display:inline-flex;align-items:center;padding:3px 8px;font-size:12px;font-weight:400;line-height:1.5;border:1px solid #e2e8f0;border-radius:5px;color:#64748b;background:#f8fafc;font-variant-numeric:tabular-nums}
+.summary-pill[data-status=total]{color:#334155;background:#fff}
+.summary-pill[data-status=passed]:not([data-zero=true]){color:#33734e;background:#e9f4ed;border-color:#d9eade}
+.summary-pill[data-status=failed]:not([data-zero=true]){color:#b91c1c;background:#fef2f2;border-color:#fecaca}
+.summary-pill[data-zero=true]{color:#64748b;background:#fff}
+.steps-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px}.steps-heading h2{margin:0}
+.shade-toggle{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#64748b;white-space:nowrap}.shade-toggle input{margin:0;accent-color:var(--ds-accent)}
+#gherkin-steps .step-card:disabled{background:#fff}
+body.shade-unreplayed #gherkin-steps .step-card[data-replay=none]:not([aria-current=true]){background-color:#fbfcfe;background-image:repeating-linear-gradient(135deg,transparent 0,transparent 7px,rgba(100,116,139,.055) 7px,rgba(100,116,139,.055) 8px)}
+#gherkin-steps .step-card[data-replay=none] .step-evidence{border:1px solid #e2e8f0;border-radius:4px;padding:0 4px;background:rgba(255,255,255,.7)}
+#gherkin-steps .step-card[data-replay=video] .step-evidence{color:var(--ds-accent-ink)}
+.action-icon[data-kind=form]{background:var(--ds-accent-soft);color:var(--ds-accent-ink)}
+.step-action-chip.active{color:var(--ds-accent-ink)}
+@media(max-width:680px){#suite label{max-width:100%}#suite label select{min-width:0}#case-select{max-width:100%}}
 </style>
+<!-- Lucide icons 0.456.0 | https://github.com/lucide-icons/lucide
+ISC License
+
+Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributors 2022.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+-->
 </head>
-<body>
+<body class="shade-unreplayed">
 <header><strong>Domstride Replay</strong><span id="notice">Inert DOM preview · no application execution</span><span class="spacer"></span><label>Layout <select id="layout"><option value="right">Viewport left / steps right</option><option value="left">Steps left / viewport right</option></select></label><label>State <select id="phase"><option value="after">After</option><option value="before">Before</option></select></label></header>
 <div id="suite" hidden><div id="suite-summary"></div><span id="case-provenance"></span><label>Search <input id="case-search" type="search" placeholder="Test name"></label><label>Status <select id="case-status"><option value="">All</option><option>passed</option><option>failed</option><option>skipped</option><option>pending</option><option>unknown</option></select></label><label>Test <select id="case-select"></select></label><label>Recording <select id="trace-select"></select></label></div>
-<main id="workspace"><section><div id="evidence-choice" hidden><label>Evidence <select id="evidence-mode"><option value="dom">DOM snapshot</option><option value="video">Browser video</option></select></label></div><div id="no-evidence" hidden><h2 id="no-evidence-title">No replay captured</h2><p id="no-evidence-message"></p><button id="open-recorded-case" type="button" hidden>Open recorded scenario</button></div><div id="dom-evidence"><h2>DOM snapshot</h2><div id="viewport"></div></div><div id="video-evidence" hidden><h2>Browser video</h2><label>Recording <select id="video-select"></select></label><div id="focus-settings" hidden><label><input type="checkbox" id="smart-zoom" checked> Smart Zoom</label><label><input type="checkbox" id="focus-highlight" checked> Highlight</label><label>Zoom <select id="focus-scale"><option value="1.25">1.25×</option><option value="1.5" selected>1.5×</option><option value="2">2×</option><option value="2.5">2.5×</option></select></label><label>Zoom motion <select id="focus-speed"><option value="0">Off</option><option value="120">Fast</option><option value="220" selected>Normal</option><option value="400">Slow</option></select></label></div><div id="video-stage"><div id="video-layer"><video id="browser-video" playsinline preload="metadata"></video><div id="focus-outline" hidden></div></div><div id="page-transition" hidden></div></div><div id="video-controls"><button id="video-play" type="button">Play</button><input id="video-seek" type="range" min="0" max="0" value="0" step="0.01" aria-label="Video position"><span id="video-time">0.00 / 0.00 s</span><button id="video-mute" type="button">Mute</button></div><div id="observed-controls" hidden><label><input type="checkbox" id="observed-cc" checked> Focus captions</label></div><div id="observed-actions" hidden aria-label="Observed action chapters"></div><p id="observed-caption" hidden></p><p id="video-note">Recorded browser playback. Select an explicitly timestamped step or assertion to seek.</p></div></section><aside><div id="gherkin" hidden><h2>Scenario steps</h2><div id="gherkin-steps"></div></div><div id="assertions-panel" hidden><h2>Assertions</h2><div id="assertion-steps"></div></div><h2>Interaction steps</h2><div id="steps"></div></aside></main>
+<main id="workspace"><section><div id="evidence-choice" hidden><label>Evidence <select id="evidence-mode"><option value="dom">DOM snapshot</option><option value="video">Browser video</option></select></label></div><div id="no-evidence" hidden><h2 id="no-evidence-title">No replay captured</h2><p id="no-evidence-message"></p><button id="open-recorded-case" type="button" hidden>Open recorded scenario</button></div><div id="dom-evidence"><h2>DOM snapshot</h2><div id="viewport"></div></div><div id="video-evidence" hidden><h2>Browser video</h2><label>Recording <select id="video-select"></select></label><div id="focus-settings" hidden><label><input type="checkbox" id="smart-zoom" checked> Smart Zoom</label><label><input type="checkbox" id="focus-highlight" checked> Highlight</label><label>Zoom <select id="focus-scale"><option value="1.25">1.25×</option><option value="1.5" selected>1.5×</option><option value="2">2×</option><option value="2.5">2.5×</option></select></label><label>Zoom motion <select id="focus-speed"><option value="0">Off</option><option value="120">Fast</option><option value="220" selected>Normal</option><option value="400">Slow</option></select></label></div><div id="video-stage"><div id="video-layer"><video id="browser-video" playsinline preload="metadata"></video><div id="focus-outline" hidden></div></div><div id="page-transition" hidden></div></div><div id="video-controls"><button id="video-play" type="button">Play</button><input id="video-seek" type="range" min="0" max="0" value="0" step="0.01" aria-label="Video position"><span id="video-time">0.00 / 0.00 s</span><button id="video-mute" type="button">Mute</button></div><div id="observed-controls" hidden><label><input type="checkbox" id="observed-cc" checked> Focus captions</label></div><div id="observed-actions" hidden aria-label="Observed action chapters"></div><p id="observed-caption" hidden></p><p id="video-note">Recorded browser playback. Select an explicitly timestamped step or assertion to seek.</p></div></section><aside><div id="gherkin" hidden><div class="steps-heading"><h2>Scenario steps</h2><label class="shade-toggle" title="Shade steps that have no linked replay evidence"><input type="checkbox" id="shade-unreplayed" checked> Shade unreplayed</label></div><div id="gherkin-steps"></div></div><div id="assertions-panel" hidden><h2>Assertions</h2><div id="assertion-steps"></div></div><h2>Interaction steps</h2><div id="steps"></div></aside></main>
 <footer><button id="previous">Previous</button><button id="next">Next</button><span id="position"></span></footer>
 <script type="application/json" id="recording-data">__RECORDING_JSON__</script>
 <script nonce="__NONCE__">
@@ -102,24 +138,271 @@ function renderSnapshot(frame) {
 }
 
 // Local, inert SVG icons. Only known action types select paths.
+// Vendored Lucide 0.456.0 geometry; upstream license appears in this HTML.
 const actionIcons={
-  fill:["M3 5h18M3 19h18M12 5v14M8 9h8M8 15h8","Text input"],
-  select:["M4 7h16M4 12h12M4 17h8M17 15l3 3 3-3","Select option"],
-  click:["m8 3 12 11-6 1-3 6-3-18z","Click"],
-  submit:["M4 12h15m-6-6 6 6-6 6M4 4v16","Submit"],
-  navigate:["M13 5h6v6m0-6-9 9M10 5H5v14h14v-5","Navigation"],
-  assert:["M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0zM8 12l3 3 5-6","Verification"],
-  setup:["M12 3 3 7v10l9 4 9-4V7l-9-4zM3 7l9 4 9-4M12 11v10","Setup"],
-  action:["m9 5 12 7-12 7z","Action"],
-  hourglass:["M6 3h12M6 21h12M7 3v3c0 3 5 6 5 6s5-3 5-6V3M7 21v-3c0-3 5-6 5-6s5 3 5 6v3","Transition"]
+  "fill": [
+    "text-cursor-input",
+    "Text input",
+    [
+      [
+        "path",
+        {
+          "d": "M5 4h1a3 3 0 0 1 3 3 3 3 0 0 1 3-3h1"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M13 20h-1a3 3 0 0 1-3-3 3 3 0 0 1-3 3H5"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M5 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M13 8h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M9 7v10"
+        }
+      ]
+    ]
+  ],
+  "select": [
+    "list-filter",
+    "Select option",
+    [
+      [
+        "path",
+        {
+          "d": "M3 6h18"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M7 12h10"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M10 18h4"
+        }
+      ]
+    ]
+  ],
+  "click": [
+    "mouse-pointer-click",
+    "Click",
+    [
+      [
+        "path",
+        {
+          "d": "M14 4.1 12 6"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "m5.1 8-2.9-.8"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "m6 12-1.9 2"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M7.2 2.2 8 5.1"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z"
+        }
+      ]
+    ]
+  ],
+  "submit": [
+    "send",
+    "Submit",
+    [
+      [
+        "path",
+        {
+          "d": "M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "m21.854 2.147-10.94 10.939"
+        }
+      ]
+    ]
+  ],
+  "navigate": [
+    "external-link",
+    "Navigation",
+    [
+      [
+        "path",
+        {
+          "d": "M15 3h6v6"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M10 14 21 3"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+        }
+      ]
+    ]
+  ],
+  "assert": [
+    "circle-check",
+    "Verification",
+    [
+      [
+        "circle",
+        {
+          "cx": "12",
+          "cy": "12",
+          "r": "10"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "m9 12 2 2 4-4"
+        }
+      ]
+    ]
+  ],
+  "setup": [
+    "package",
+    "Setup",
+    [
+      [
+        "path",
+        {
+          "d": "M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M12 22V12"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "m7.5 4.27 9 5.15"
+        }
+      ]
+    ]
+  ],
+  "action": [
+    "play",
+    "Action",
+    [
+      [
+        "polygon",
+        {
+          "points": "6 3 20 12 6 21 6 3"
+        }
+      ]
+    ]
+  ],
+  "hourglass": [
+    "hourglass",
+    "Transition",
+    [
+      [
+        "path",
+        {
+          "d": "M5 22h14"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M5 2h14"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"
+        }
+      ]
+    ]
+  ],
+  "form": [
+    "file-pen-line",
+    "Fill form",
+    [
+      [
+        "path",
+        {
+          "d": "m18 5-2.414-2.414A2 2 0 0 0 14.172 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M21.378 12.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M8 18h1"
+        }
+      ]
+    ]
+  ]
 };
 function actionIcon(kind) {
-  const [d,label]=actionIcons[kind]||actionIcons.action;
+  const [name,label,elements]=actionIcons[kind]||actionIcons.action;
   const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
   svg.setAttribute("viewBox","0 0 24 24");svg.setAttribute("width","18");svg.setAttribute("height","18");
   svg.setAttribute("fill","none");svg.setAttribute("stroke","currentColor");svg.setAttribute("stroke-width","1.7");
   svg.setAttribute("stroke-linecap","round");svg.setAttribute("stroke-linejoin","round");svg.setAttribute("aria-hidden","true");
-  const p=document.createElementNS(svg.namespaceURI,"path");p.setAttribute("d",d);svg.append(p);
+  for(const [tag,attrs] of elements){const el=document.createElementNS(svg.namespaceURI,tag);for(const [key,value] of Object.entries(attrs))el.setAttribute(key,value);svg.append(el);}
+  svg.dataset.lucide=name;
   const wrapper=document.createElement("span");wrapper.className="action-icon";wrapper.dataset.kind=kind;wrapper.title=label;wrapper.append(svg);return wrapper;
 }
 function actionKind(value) {
@@ -421,8 +704,9 @@ function renderGherkin(event) {
     const video=activeCase.videos?.[Number($("video-select").value)];
     const children=video?.timing_quality==="visual_candidates_unvalidated"?video.focus.filter(s=>s.step_sequence===step.sequence):[];
     const recorded=activeCase.recordings.flatMap(trace=>trace.events).find(e=>e.step_sequence===step.sequence);
-    const kind=children.length?(children[0].transition==="navigation"?"submit":actionKind(children[0].kind)):recorded?actionKind(recorded.kind):semantic;
-    stepContent(b,kind,[step.keyword.trim(),step.text||"Step "+step.sequence].join(" "),step.status,step.duration_ms,cue?"Video "+(cue.time_ms/1000).toFixed(2)+" s":matching.length?"":"No replay cue",children);
+    const kind=children.length>1?"form":children.length?(children[0].transition==="navigation"?"submit":actionKind(children[0].kind)):recorded?actionKind(recorded.kind):semantic;
+    b.dataset.replay=cue?"video":matching.length?"dom":"none";
+    stepContent(b,kind,[step.keyword.trim(),step.text||"Step "+step.sequence].join(" "),step.status,step.duration_ms,cue?"Video "+(cue.time_ms/1000).toFixed(2)+" s":matching.length?"DOM replay":activeCase.videos?.length?"No video cue":"Results only",children);
     b.disabled = !matching.length && !cue;
     b.onclick = () => {
       if (cue && (videoMode || !matching.length)) {seekCue(cue);return;}
@@ -433,6 +717,7 @@ function renderGherkin(event) {
     root.append(b);
   }
 }
+$("shade-unreplayed").onchange = () => document.body.classList.toggle("shade-unreplayed",$("shade-unreplayed").checked);
 $("layout").onchange = () => $("workspace").classList.toggle("sidebar-left", $("layout").value === "left");
 $("phase").onchange = show;
 $("previous").onclick = () => { if(index>0){index--;show();} };
@@ -443,7 +728,10 @@ if (Array.isArray(data.cases)) {
   document.title = "Domstride Test Report";
   document.querySelector("header strong").textContent = "Domstride Test Report";
   const counts = Object.fromEntries(["passed","failed","skipped","pending","unknown"].map(status => [status,data.cases.filter(item=>item.status===status).length]));
-  $("suite-summary").textContent = [data.cases.length+" tests", ...Object.entries(counts).map(([status,count])=>count+" "+status)].join(" · ");
+  for(const [status,count] of [["total",data.cases.length],...Object.entries(counts)]){
+    const pill=document.createElement("span");pill.className="summary-pill";pill.dataset.status=status;pill.dataset.zero=String(count===0);
+    pill.textContent=count+" "+(status==="total"?"tests":status);$("suite-summary").append(pill);
+  }
   function traces() {
     const item = data.cases[$("case-select").value === "" ? -1 : Number($("case-select").value)];
     const select = $("trace-select"); select.replaceChildren();
