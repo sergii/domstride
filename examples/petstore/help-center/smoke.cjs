@@ -17,7 +17,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   await details.locator('summary').click();
   await expect(details.getByText('Original executed steps (including setup):')).toBeVisible();
   await details.locator('summary').click();
-  await expect(page.locator('main a[href="/generated/lst-001-02/"]')).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link',{name:'Reject an invalid listing price',exact:true})).toBeVisible();
   await expect(page.locator('main img')).toHaveCount(6);
   for(const img of await page.locator('main img').all()){await img.scrollIntoViewIfNeeded();await expect.poll(()=>img.evaluate(el=>el.complete&&el.naturalWidth>0)).toBe(true);}
   await expect(page.locator('main video')).toHaveCount(2);
