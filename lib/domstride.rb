@@ -41,6 +41,12 @@ module Domstride
       end
       raise ArgumentError, "Unknown asset warning policy" unless %w[strict direct-eval].include?(@asset_warnings)
       @websocket_url = settings[:websocket_url]
+      names = settings[:websocket_cookie_names]
+      @websocket_cookie_names = names.nil? ? [] : names.to_s.split(",", -1)
+      unless @websocket_cookie_names.size <= 16 && @websocket_cookie_names.uniq == @websocket_cookie_names && @websocket_cookie_names.all? { |name| /\A[A-Za-z0-9_.-]{1,128}\z/.match?(name) }
+        raise ArgumentError, "Invalid WebSocket cookie allowlist"
+      end
+      raise ArgumentError, "WebSocket cookie forwarding requires endpoint" if !@websocket_cookie_names.empty? && !@websocket_url
       if @websocket_url
         endpoint = URI.parse(@websocket_url)
         unless endpoint.scheme == "ws" && endpoint.host == "127.0.0.1" && endpoint.port && endpoint.port.between?(1, 65535) && endpoint.path.start_with?("/") && !endpoint.userinfo && !endpoint.query && !endpoint.fragment
@@ -84,7 +90,7 @@ module Domstride
 
     def mount_html(html, url: "https://example.test/", bridge: false)
       # Only explicitly marked final classic scripts are eligible.
-      clock_options = { clock: @clock, clock_epoch_ms: @clock_epoch_ms, assets: @assets, asset_warnings: @asset_warnings, media_profile: @media_profile, dom_profile: @dom_profile, websocket_url: @websocket_url }
+      clock_options = { clock: @clock, clock_epoch_ms: @clock_epoch_ms, assets: @assets, asset_warnings: @asset_warnings, media_profile: @media_profile, dom_profile: @dom_profile, websocket_url: @websocket_url, websocket_auth: !@websocket_cookie_names.empty?, websocket_cookie: websocket_cookie_header }
       match = @bundle_cache != "off" && /<script data-domstride-cache="bundle">([^<]*(?:<(?!\/script\b)[^<]*)*)<\/script>\s*<\/body>\s*<\/html>\s*\z/i.match(html)
       return call("mount", html: html, url: url, bridge: bridge, **clock_options) unless match
 
@@ -258,7 +264,7 @@ module Domstride
         result = request_once(current)
         location = result[:headers].find { |name, _| name.downcase == "location" }&.last
         unless REDIRECT_STATUSES.include?(result[:status]) && location
-          return result.merge(redirected: redirects.positive?)
+          return result.merge(redirected: redirects.positive?, websocket_cookie: websocket_cookie_header)
         end
         raise Error, "Redirect forbidden by fetch mode" if mode == "error"
         # Opaque redirect responses are not representable by the current bridge.
@@ -284,6 +290,23 @@ module Domstride
 
     def validate_origin!(uri)
       raise Error, "Only same-origin requests are supported" unless uri.scheme == "http" && uri.host == "example.test" && uri.port == 80 && uri.userinfo.nil?
+    end
+
+    # Only explicitly named Rack cookies valid for the logical cable path are forwarded.
+    # Never expose the header to application fetch Response or document.cookie.
+    def websocket_cookie_header
+      return nil if @websocket_cookie_names.empty?
+      path = URI.parse(@websocket_url).path
+      uri = URI.parse("http://example.test#{path}")
+      raw = @websocket_cookie_names.filter_map do |name|
+        cookie = @rack_session.cookie_jar.get_cookie(name)
+        next unless cookie && cookie.matches?(uri)
+        scope = cookie.path
+        next unless scope.empty? || scope == "/" || path == scope || path.start_with?(scope.end_with?("/") ? scope : "#{scope}/")
+        cookie.raw
+      end.join("; ")
+      raise Error, "Invalid WebSocket cookie header" if raw.bytesize > 8192 || raw.match?(/[\r\n\x00]/)
+      raw
     end
 
     def request_once(message)

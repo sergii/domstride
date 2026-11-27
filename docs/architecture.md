@@ -127,3 +127,7 @@ Observed Fizzy Turbo matchMedia blocker after asset boot. Provide an explicit No
 ## ADR-029: explicit logical DOM API subset
 
 Add opt-in logical visibility, dialog open/returnValue/close lifecycle, and window scroll offset state with event delivery. Preserve native visibility/dialog implementations if complete; do not override a partially implemented dialog API. No fake geometry or modal inertness, no smooth scroll or automatic intersections. Default off, Node/jsdom only. Authenticated Action Cable remains separate. Verify state transitions and unsupported behavior with regression tests; retain original Fizzy assertions.
+
+## ADR-030: explicit authenticated loopback Action Cable transport
+
+jsdom 26 and 31 have different native WebSocket cookie behavior. Keep existing native bridge for anonymous use. Opt into a separate text-only ws transport with explicit named Rack cookie forwarding to the single loopback endpoint. Use latest Rack HTTP cookie snapshot, validate logical path and secure/expiry eligibility, never expose cookie headers in fetch Response, document.cookie, diagnostics or recording metadata. No redirects, external endpoints or binary messages. Verify Rails signed HttpOnly cookie authentication and two isolated private channels. Existing socket credentials are fixed at handshake; reconnect after login/logout. No account-path or full browser socket parity.

@@ -169,6 +169,7 @@ function installBridge(win, state) {
       } else body = await req.text();
     }
     const reply = await rackRequest(req.url, req.method, Object.fromEntries(req.headers), body, req.redirect, encoding);
+    if (state.websocketAuth && typeof reply.websocket_cookie === "string") state.websocketCookie = reply.websocket_cookie;
     const response = new Response(req.method === "HEAD" || [204, 205, 304].includes(reply.status) ? null : reply.body, { status: reply.status, headers: reply.headers });
     Object.defineProperty(response, "url", { value: reply.url });
     Object.defineProperty(response, "redirected", { value: Boolean(reply.redirected) });
@@ -435,9 +436,14 @@ async function execute(message) {
   if (message.command === "mount") {
     const prepared = prepareBundle(message);
     let moduleCode;
+    let websocketCookie = message.websocket_cookie;
     if (message.assets === "bundle" && message.bridge) {
       const { prepareAssets } = require("./assets.cjs");
-      const resolved = await prepareAssets(prepared.html, message.url, url => rackRequest(url, "GET"), message.asset_warnings);
+      const resolved = await prepareAssets(prepared.html, message.url, async url => {
+        const reply = await rackRequest(url, "GET");
+        if (typeof reply.websocket_cookie === "string") websocketCookie = reply.websocket_cookie;
+        return reply;
+      }, message.asset_warnings);
       prepared.html = resolved.html;
       moduleCode = resolved.moduleCode;
     }
@@ -448,7 +454,7 @@ async function execute(message) {
       await closeWindow(window);
     }
     handles.clear(); identities = new WeakMap();
-    pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, websocketUrl: message.websocket_url, mediaProfile: message.media_profile, domProfile: message.dom_profile, fetches: 0, activity: 0 };
+    pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, websocketUrl: message.websocket_url, websocketAuth: message.websocket_auth, websocketCookie, mediaProfile: message.media_profile, domProfile: message.dom_profile, fetches: 0, activity: 0 };
     window = createWindow(prepared.html, message.url || "https://example.test/", message.bridge, prepared.compiled, pageState);
     if (moduleCode) {
       try { window.eval(moduleCode); }
