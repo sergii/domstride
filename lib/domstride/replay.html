@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-__NONCE__'; style-src 'nonce-__NONCE__'; base-uri 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-__NONCE__'; style-src 'nonce-__NONCE__'; base-uri 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; frame-src 'none'; media-src blob:">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Domstride Replay</title>
 <style nonce="__NONCE__">
@@ -10,12 +10,13 @@
 #suite:not([hidden]){display:flex;gap:12px;align-items:center;padding:12px 20px;background:white;flex-wrap:wrap;border-bottom:1px solid #dce1e7}#suite-summary{font-weight:600;width:100%}#case-select{max-width:360px}#case-search{font:inherit;border:1px solid #cdd5de;padding:8px;border-radius:7px}body.suite-mode main{height:calc(100vh - 220px)}@media(max-width:680px){body.suite-mode main{height:auto}#case-select{max-width:100%}}
 #gherkin-steps{display:grid;gap:5px;margin-bottom:16px}#gherkin-steps button{text-align:left;white-space:normal}#gherkin-steps button[aria-current=true]{border:2px solid #059669;background:#ecfdf5}#gherkin-steps small{display:block;color:#596573;margin-top:4px}
 #assertion-steps{display:grid;gap:5px;margin-bottom:16px}#assertion-steps button{text-align:left;white-space:normal}#assertion-steps button[aria-current=true]{border:2px solid #059669;background:#ecfdf5}#assertion-steps small{display:block;margin-top:4px}#assertion-steps .no-evidence{color:#596573}
+#evidence-choice{margin-bottom:16px}#browser-video{display:block;width:100%;max-height:60vh;margin-top:12px;background:#111827;border-radius:6px}#video-note{color:#596573;font-size:12px}
 </style>
 </head>
 <body>
 <header><strong>Domstride Replay</strong><span id="notice">Inert DOM preview · no application execution</span><span class="spacer"></span><label>Layout <select id="layout"><option value="right">Viewport left / steps right</option><option value="left">Steps left / viewport right</option></select></label><label>State <select id="phase"><option value="after">After</option><option value="before">Before</option></select></label></header>
 <div id="suite" hidden><div id="suite-summary"></div><label>Search <input id="case-search" type="search" placeholder="Test name"></label><label>Status <select id="case-status"><option value="">All</option><option>passed</option><option>failed</option><option>skipped</option><option>pending</option><option>unknown</option></select></label><label>Test <select id="case-select"></select></label><label>Recording <select id="trace-select"></select></label></div>
-<main id="workspace"><section><h2>DOM snapshot</h2><div id="viewport"></div></section><aside><div id="gherkin" hidden><h2>Scenario steps</h2><div id="gherkin-steps"></div></div><div id="assertions-panel" hidden><h2>Assertions</h2><div id="assertion-steps"></div></div><h2>Interaction steps</h2><div id="steps"></div></aside></main>
+<main id="workspace"><section><div id="evidence-choice" hidden><label>Evidence <select id="evidence-mode"><option value="dom">DOM snapshot</option><option value="video">Browser video</option></select></label></div><div id="dom-evidence"><h2>DOM snapshot</h2><div id="viewport"></div></div><div id="video-evidence" hidden><h2>Browser video</h2><label>Recording <select id="video-select"></select></label><video id="browser-video" controls playsinline preload="metadata"></video><p id="video-note">Recorded browser playback. Not synchronized with assertion or DOM interaction timestamps.</p></div></section><aside><div id="gherkin" hidden><h2>Scenario steps</h2><div id="gherkin-steps"></div></div><div id="assertions-panel" hidden><h2>Assertions</h2><div id="assertion-steps"></div></div><h2>Interaction steps</h2><div id="steps"></div></aside></main>
 <footer><button id="previous">Previous</button><button id="next">Next</button><span id="position"></span></footer>
 <script type="application/json" id="recording-data">__RECORDING_JSON__</script>
 <script nonce="__NONCE__">
@@ -26,6 +27,7 @@ let events = data.events || [];
 const $ = id => document.getElementById(id);
 let index = 0;
 let activeCase = null;
+let videoUrl = null;
 const safeTags = new Set("div span p section article main header footer nav aside h1 h2 h3 h4 h5 h6 ul ol li dl dt dd table thead tbody tfoot tr th td caption label input textarea select option button output strong em b i small pre code blockquote br hr details summary dialog fieldset legend time".split(" "));
 const blocked = new Set("head script style link meta base iframe frame object embed template svg math noscript canvas video audio source picture img".split(" "));
 function renderSnapshot(frame) {
@@ -81,12 +83,47 @@ function show() {
   }
   renderGherkin(e);
   renderAssertions(e);
+  updateEvidenceVisibility();
   if (e) renderSnapshot(e[$("phase").value]); else $("viewport").textContent = "No recorded interactions.";
   $("position").textContent = events.length ? (index+1)+" / "+events.length : "0 / 0";
   $("previous").disabled = index === 0;
   $("next").disabled = index >= events.length-1;
   $("notice").textContent = active.complete ? "Inert DOM preview · no application execution" : "Incomplete or unavailable recording · inert preview";
 }
+function releaseVideo() {
+  const video = $("browser-video");
+  video.pause(); video.removeAttribute("src"); video.load();
+  if (videoUrl) URL.revokeObjectURL(videoUrl);
+  videoUrl = null;
+}
+function loadVideo() {
+  releaseVideo();
+  const item = activeCase?.videos?.[Number($("video-select").value)];
+  if (!item || $("evidence-mode").value !== "video") return;
+  const binary = atob(item.base64);
+  const bytes = Uint8Array.from(binary, c=>c.charCodeAt(0));
+  videoUrl = URL.createObjectURL(new Blob([bytes],{type:"video/webm"}));
+  $("browser-video").src = videoUrl;
+}
+function updateEvidenceVisibility() {
+  const available = !!activeCase?.videos?.length;
+  $("evidence-choice").hidden = !available;
+  const playing = available && $("evidence-mode").value === "video";
+  $("dom-evidence").hidden = playing;
+  $("video-evidence").hidden = !playing;
+}
+function selectCaseVideo() {
+  releaseVideo();
+  const select = $("video-select"); select.replaceChildren();
+  for (const [i, item] of (activeCase?.videos || []).entries()) {
+    const option = document.createElement("option"); option.value=String(i); option.textContent=item.label; select.append(option);
+  }
+  $("evidence-mode").value = activeCase?.videos?.length && !activeCase?.recordings?.length ? "video" : "dom";
+  updateEvidenceVisibility();
+  loadVideo();
+}
+$("evidence-mode").onchange = () => {updateEvidenceVisibility();loadVideo();};
+$("video-select").onchange = loadVideo;
 function renderAssertions(event) {
   const assertions = activeCase?.assertion_events || [];
   $("assertions-panel").hidden = !assertions.length;
@@ -105,7 +142,8 @@ function renderAssertions(event) {
       const candidates = matching.filter(m=>m.i===Number($("trace-select").value));
       const match = (candidates.length?candidates:matching).at(-1);
       $("trace-select").value=String(match.i);
-      active=activeCase.recordings[match.i]; events=active.events; index=match.j; show();
+      active=activeCase.recordings[match.i]; events=active.events; index=match.j;
+      $("evidence-mode").value="dom"; releaseVideo(); show();
     };
     root.append(b);
   }
@@ -126,7 +164,7 @@ function renderGherkin(event) {
     b.onclick = () => {
       const match = matching.find(m=>m.i===Number($("trace-select").value)) || matching[0];
       $("trace-select").value=String(match.i);
-      active=activeCase.recordings[match.i]; events=active.events; index=match.j; show();
+      active=activeCase.recordings[match.i]; events=active.events; index=match.j; $("evidence-mode").value="dom"; releaseVideo(); show();
     };
     root.append(b);
   }
@@ -155,7 +193,9 @@ if (Array.isArray(data.cases)) {
   }
   function switchTrace() {
     const item = data.cases[$("case-select").value === "" ? -1 : Number($("case-select").value)];
+    const changed = activeCase !== (item || null);
     activeCase = item || null;
+    if (changed) selectCaseVideo();
     active = item?.recordings[Number($("trace-select").value)] || {events:[],complete:false};
     events = active.events; index = 0; show();
   }

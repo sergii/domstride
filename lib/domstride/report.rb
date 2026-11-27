@@ -1,4 +1,5 @@
 require_relative "replay"
+require_relative "video"
 
 module Domstride
   module Report
@@ -51,10 +52,23 @@ module Domstride
           raise Error, "Report payload limit exceeded" if bytes > MAX_PAYLOAD_BYTES
           trace
         end
+        attachments = item.fetch("videos", [])
+        raise Error, "Invalid video attachments" unless attachments.is_a?(Array) && attachments.size <= Video::MAX_VIDEOS
+        videos = attachments.each_with_index.map do |attachment, index|
+          name = format("video-%02d.webm", index + 1)
+          unless attachment.is_a?(Hash) && attachment["file"] == name && attachment["label"].is_a?(String) && attachment["label"].bytesize.between?(1,128)
+            raise Error, "Invalid video attachment"
+          end
+          content = Video.read_webm(File.join(path, name))
+          encoded = Base64.strict_encode64(content)
+          bytes += encoded.bytesize
+          raise Error, "Report payload limit exceeded" if bytes > MAX_PAYLOAD_BYTES
+          {label: attachment["label"], base64: encoded}
+        end
         {name: item["name"], status: item["status"], duration_ms: item["duration_ms"],
           framework: %w[rspec minitest cucumber turnip].include?(item["framework"]) ? item["framework"] : nil,
           assertions: item["assertions"].is_a?(Integer) && item["assertions"] >= 0 ? item["assertions"] : nil,
-          recordings: traces, steps: steps, assertion_events: assertions}
+          recordings: traces, steps: steps, assertion_events: assertions, videos: videos}
       end
       Replay.render({cases: cases}, output || File.join(root, "report.html"))
     rescue JSON::ParserError => error

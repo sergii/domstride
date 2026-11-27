@@ -34,8 +34,9 @@ jobs:
       - run: bundle exec ruby -Ilib test/recording_test.rb
       - run: bundle exec ruby -Ilib test/report_test.rb
       - run: bundle exec ruby -Ilib test/reporting_integration_test.rb
+      - run: bundle exec ruby -Ilib test/video_attachment_test.rb
       - name: Replay viewer browser contract
         if: matrix.engine == 'jsdom31'
         run: |
-          npx playwright install --with-deps chromium
-          node --test test/replay_viewer_test.cjs
+          npx playwright install chromium
+          node --test test/replay_viewer_test.cjs test/browser_video_test.cjs

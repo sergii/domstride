@@ -159,3 +159,7 @@ Cucumber test-case/test-step events and Turnip custom RSpec step events own step
 ## ADR-037: bounded assertion evidence
 
 Capture outer assertion calls via explicit framework adapter installation and native assert_text. Track assertion outcome independently of operation outcome; handle aggregated RSpec failures through expectation failure helper. Correlate operations only within active assertion scope; bounded additional read evidence and no assumed association to earlier DOM calls. No expected/actual serialization; preserve errors and exit status. RSpec private handlers version-sensitive; test against pinned reference family. No physical snapshot claims.
+
+## ADR-038: bounded local browser video evidence
+
+First slice uses Playwright real Chromium WebM recording and explicit case attachment. Separate media evidence from DOM interaction/assertion outcomes. No synthetic video or inferred playback timestamps. Embed bounded local WebM with blob-only media CSP, revoke URLs when switching; private copies, no remote resources, no automatic upload. Browser context finalization before import. Keep Selenium/Cuprite lifecycle integration separate.

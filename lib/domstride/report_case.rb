@@ -13,7 +13,7 @@ module Domstride
     STEP_STATUSES = %w[passed failed skipped pending unknown undefined ambiguous].freeze
     KEY = :domstride_report_case
 
-    attr_reader :path, :status
+    attr_reader :path, :status, :videos
     attr_accessor :assertions
 
     def self.current = Thread.current[KEY]
@@ -39,6 +39,7 @@ module Domstride
     def initialize(directory:, name:, html:, framework: nil)
       @framework = framework
       @steps = []
+      @videos = []
       @assertion_events = []
       @active_assertion = nil
       @active_step = nil
@@ -115,7 +116,7 @@ module Domstride
 
     def write(value)
       row = {schema_version: 1, name: @name, status: value,
-        framework: @framework, assertions: @assertions, steps: @steps, assertion_events: @assertion_events,
+        framework: @framework, assertions: @assertions, steps: @steps, assertion_events: @assertion_events, videos: @videos,
         duration_ms: (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @started) * 1000}
       Tempfile.create(["case-", ".json"], path) do |file|
         file.write(JSON.generate(row))
