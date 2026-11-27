@@ -36,4 +36,10 @@ Phase 3/4: 18/19 workflows passed on 832e075, including real browser reference, 
 
 The existing Playwright Test reporter, protocol writer and viewport helper now ship in the Ruby gem under adapters/ without changing their behavior or public source-checkout paths. They produce general case-v1 bundles, not Gherkin specifications. Ruby Cucumber/Turnip, Minitest and RSpec continue to use their existing integrations; no automatic new hooks. npm-only distribution and generic framework adapters remain future work. CI adds independent library-domain adapter tests and installed-gem reporter/adapter smoke outside checkout. Phase 6 will verify consumers end to end.
 
-Status: phase 5 implementation candidate; CI pending.
+Phase 5: 18/19 workflows passed on 765d9ac; Fizzy failed separately.
+
+## Phase 6: independent consumer verification
+
+A separate workflow builds and installs the gem into an isolated temporary directory and copies only the independent library fixture there. Actual Cucumber.js and Chromium run three distinct modes against a loopback HTTP application; the installed recorder and adapter create real media and manifests. The installed CLI exports Markdown/MDX with checksummed media and generates a standalone Ruby report. A fresh Chromium instance loads Replay offline and tests video playback. No Petstore, Rails server, runtime setup, or source-checkout imports. The fixture supplies the trusted synthetic pair explicitly; a generalized pairing API and independent third-party Viewer are not implemented. Unmapped video must not imply synchronized actions. CI uploads synthetic evidence for review.
+
+Status: phase 6 implementation candidate; CI pending. No merge or release. Full security validation, redaction, stable example IDs, npm packaging, generalized focus/clock mapping and broader framework conformance remain separate follow-ups.

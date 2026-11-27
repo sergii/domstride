@@ -1,0 +1,44 @@
+name: Domstride independent installed consumer
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  independent:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build and install gem in isolated consumer directory
+        run: |
+          temp="$RUNNER_TEMP/independent-consumer"
+          mkdir -p "$temp"
+          gem build domstride.gemspec --output "$temp/domstride.gem"
+          export GEM_HOME="$temp/gems" GEM_PATH="$temp/gems"
+          gem install "$temp/domstride.gem" --no-document
+          cp examples/independent_consumer/* "$temp/"
+          cd "$temp"
+          gem_root="$(ruby -e 'print Gem::Specification.find_by_name("domstride").full_gem_path')"
+          case "$gem_root" in "$GEM_HOME"/*) ;; *) exit 1 ;; esac
+          export INSTALLED_DOCS_LIB="$gem_root/lib/domstride/documentation"
+          export INSTALLED_DOMSTRIDE_CLI="$GEM_HOME/bin/domstride"
+          export SOURCE_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}"
+          npm install --no-audit --no-fund
+          npx playwright install chromium
+          node run.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: independent-consumer-evidence
+          path: ${{ runner.temp }}/independent-consumer/artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
