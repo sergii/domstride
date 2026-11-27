@@ -12,3 +12,14 @@ Ordered work, not a commitment to a release date. Keep related changes in one fu
 | 6 | 007.2 | Webpack and legacy frontend asset compatibility, informed by local experiment | Deferred to last |
 
 Replay viewer must support viewport left / steps right and steps left / viewport right, without changing the current event or before/after selection. Default viewport left. On narrow screens stack panels in selected order. Selected operation and exact corresponding target must be clearly outlined in green. The preview is reconstructed from saved state and does not execute application scripts or repeat actions. Full visual browser fidelity is not promised. Existing recording is opt-in; raw snapshots and replay reports are sensitive. No automatic publishing or upload.
+
+## Resume original roadmap after Playwright reporter
+
+- 010.2a: native Playwright Test reporter (implemented; CI pending).
+- 010.2b: automatic Selenium and Cuprite recording, including failure-safe teardown and existing framework reports.
+- 010.3: video / step and assertion synchronization; do not infer timestamps without evidence.
+- 011: performance optimization, local worker reuse experiment, reporting overhead benchmarks.
+- 007.1: finish real-app compatibility; Fizzy blockers remain explicit.
+- 007.2: Webpack/legacy frontend compatibility remains last, as requested.
+
+No separate product or repository. Further cross-platform adapters are backlog, not a prerequisite for resuming the original plan.

@@ -167,3 +167,7 @@ First slice uses Playwright real Chromium WebM recording and explicit case attac
 ## ADR-039: one product, independent artifact contract
 
 Keep one Domstride repository and brand. Runner and Studio communicate through versioned case bundles, not runtime calls. Separate lightweight errors/protocol definitions and lazy CLI loading; report exporter requires no execution engine. Retain legacy manifests and trace format. External producers carry arbitrary bounded provenance; first Node writer and actual Playwright video contract. No standalone gem split yet, no claim of adapters for other languages or platforms.
+
+## ADR-040: external Playwright Test reporter
+
+Use native onTestEnd results and step trees; each retry is a separate attempt, no guessed logical outcome. External producer is Node-only, renderer independent of Runner. Opt-in video and step text, bounded metadata, no failure-message serialization. Preserve Playwright exit status. Standalone synthetic reference workflow verifies interoperability. Return to Selenium/Cuprite automatic recording, video synchronization, performance and deferred Webpack after this adapter.

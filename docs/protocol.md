@@ -19,3 +19,5 @@ examples/protocol/write_case.cjs writes a case using Node standard library, inde
 ## Architectural direction
 
 Runner: execute browserless interactions. Studio: inspect artifacts produced by any runner. Protocol: versioned artifact boundary. Keep a single product and repo for now; separate package distribution, actual Playwright Test reporter, Selenium/Cuprite recording adapters, mobile evidence and richer suite identities are subsequent work, not implemented claims.
+
+The native [Playwright Test reporter](playwright-reporter.md) is a source-checkout adapter using adapters/protocol/write_case.cjs; CI pending.
