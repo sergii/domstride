@@ -32,26 +32,43 @@ function exportDocs(root){
  }
  const pages=[];
  for(const f of model.features)for(const s of f.scenarios){
-  const lines=['# '+plain(s.name),'','Specification: '+s.id+' | Domain: '+plain(f.domains.join(', ')),'','Verified historical run: '+plain(run.end)+' (Web / Chromium). Current freshness is not asserted.','','## Feature context','',...String(f.description||'').trim().split('\n').map(line=>plain(line.trim())),'','## Business rule','',plain(s.rule||'Not specified'),'','## Scenario','',plain(s.description||''),''];
-  const videoLinks=[];
+  const lines=['# '+plain(s.name),'',plain(s.description||''),'','Verified historical behavior (Web / Chromium). Current freshness is not asserted.',''];
+  const sections=[['Overview',f.context.overview],['Business value',f.context.business_value],['Actors',f.context.actors],['Prerequisites',f.context.prerequisites],['Additional context',f.context.other],['Business rule',s.rule]];
+  for(const [label,value] of sections)if(value){lines.push('## '+label,'',...String(value).split('\n').map(line=>line.startsWith('- ')?'- '+plain(line.slice(2)):plain(line)),'');}
+  const videoLinks=[],technical=['<details>','<summary>Technical details and verification</summary>','','Specification: '+s.id,'','Application commit: '+plain(run.applicationCommit),'','Domstride commit: '+plain(run.commit),'','Run ID: '+plain(run.run_id),'','Verified at: '+plain(run.end),'','Source SHA-256: '+plain(run.source_sha256),''];
   for(const a of s.attempts){
-   lines.push('## Execution '+(s.attempts.indexOf(a)+1),'','Actual outcome: '+a.status+' (attempt '+a.attempt_id+').','','### Background / setup','');
-   for(const st of a.steps.filter(st=>st.background))lines.push('- '+plain(st.keyword+' '+st.text)+' ('+st.status+')');
-   lines.push('','### Walkthrough','');
-   let i=0;
+   if(s.attempts.length>1)lines.push('## Example '+(s.attempts.indexOf(a)+1),'');
+   lines.push('Actual outcome: '+a.status+'.','');
+   technical.push('**Attempt '+plain(a.attempt_id)+'** ('+a.status+', '+a.duration_ms.toFixed(1)+' ms)','','Original executed steps (including setup):','',...a.steps.map(st=>'- '+plain(st.keyword+' '+st.text)+' ('+st.status+')'),'');
+   let previous=null,i=0;
    for(const st of a.steps.filter(st=>!st.background)){
-    lines.push('#### '+(++i)+'. '+plain(st.text),'','**'+plain(st.keyword)+'** · '+st.status,'');
-    if(st.source_table.length){lines.push('| Field | Value |','| --- | --- |');for(const row of st.source_table)lines.push('| '+row.cells.map(c=>plain(c.value)).join(' | ')+' |');lines.push('');}
-    for(const img of st.screenshots){assert.match(img.file,/^screenshots\/step-\d{3}\.png$/);const name=s.id+'-'+safe(a.attempt_id)+'-'+path.basename(img.file);const uri=copy(path.join(root,safe(a.folder),img.file),name,{kind:'screenshot',run_id:run.run_id,attempt_id:a.attempt_id,scenario_id:s.id,step_sequence:st.sequence},'89504e470d0a1a0a');lines.push('!['+plain(st.text)+']('+uri+')','','Actual screenshot after this step.','');}
+    if(st.guide_phase!==previous){
+     lines.push('### '+({context:'Initial context',action:'Walkthrough',outcome:'Expected results'}[st.guide_phase]||'Other steps'),'');
+     previous=st.guide_phase;i=0;
+    }
+    lines.push(st.guide_phase==='action'?'#### '+(++i)+'. '+plain(st.text):'**'+plain(st.text)+'**','');
+    if(st.guide_phase==='outcome')lines.push('Verification: '+st.status+'.','');
+    if(st.source_table.length){
+     const width=st.source_table[0].cells.length;
+     lines.push('| '+Array.from({length:width},(_,i)=>width===2?['Field','Value'][i]:'Column '+(i+1)).join(' | ')+' |','| '+Array.from({length:width},()=> '---').join(' | ')+' |');
+     for(const row of st.source_table)lines.push('| '+row.cells.map(c=>plain(c.value)).join(' | ')+' |');lines.push('');
+    }
+    for(const img of st.screenshots){
+     assert.match(img.file,/^screenshots\/step-\d{3}\.png$/);
+     const name=s.id+'-'+safe(a.attempt_id)+'-'+path.basename(img.file);
+     const uri=copy(path.join(root,safe(a.folder),img.file),name,{kind:'screenshot',run_id:run.run_id,attempt_id:a.attempt_id,scenario_id:s.id,step_sequence:st.sequence},'89504e470d0a1a0a');
+     lines.push('!['+plain(st.text)+']('+uri+')','','Actual screenshot after this step.','');
+    }
    }
    for(const v of a.videos){assert.equal(v.file,'video-01.webm');assert.equal(v.role,'guided');const uri=copy(path.join(root,safe(a.folder),v.file),s.id+'-guided.webm',{kind:'video',role:'guided',run_id:run.run_id,attempt_id:a.attempt_id,scenario_id:s.id},'1a45dfa3');videoLinks.push({title:'Guided video (paced)',uri});}
   }
+  technical.push('</details>','');
   if(s.id===ec.scenario_id){const uri=copy(path.join(executionRoot,safe(ref.folder),'video-01.webm'),s.id+'-execution.webm',{kind:'video',role:'execution',run_id:executionRun.run_id,attempt_id:ec.attempt_id,scenario_id:s.id},'1a45dfa3');videoLinks.push({title:'Execution video (unpaced)',uri});}
   if(s.examples.length){lines.push('## Examples','');for(const e of s.examples){if(!e.tableHeader)continue;lines.push('| '+e.tableHeader.cells.map(c=>plain(c.value)).join(' | ')+' |','| '+e.tableHeader.cells.map(()=> '---').join(' | ')+' |');for(const row of e.tableBody)lines.push('| '+row.cells.map(c=>plain(c.value)).join(' | ')+' |');lines.push('');}}
   const related=f.scenarios.filter(x=>x.id!==s.id);
-  if(related.length)lines.push('## Related scenarios','',...related.map(x=>'- '+plain(x.name)+' ('+x.id+')'),'');
-  lines.push('## Video walkthrough','');
-  const md=lines.concat(videoLinks.length?videoLinks.map(v=>'['+v.title+']('+v.uri+')'):['No video recorded.']).join('\n')+'\n';
+  if(related.length)lines.push('## Related scenarios','',...related.map(x=>'- ['+plain(x.name)+']('+x.id+'.mdx)'),'');
+  lines.push(...technical,'## Video walkthrough','');
+  const md=lines.map(line=>line.replace(/\]\(([A-Za-z0-9-]+)\.mdx\)/g,']($1.md)')).concat(videoLinks.length?videoLinks.map(v=>'['+v.title+']('+v.uri+')'):['No video recorded.']).join('\n')+'\n';
   const mdx=lines.concat(videoLinks.length?videoLinks.flatMap(v=>['### '+v.title,'','<video controls playsInline preload="metadata" src="'+v.uri+'" />','']):['No video recorded.']).join('\n')+'\n';
   output(path.join(dir,'markdown',s.id+'.md'),md);output(path.join(dir,'mdx',s.id+'.mdx'),mdx);pages.push({id:s.id,title:s.name,markdown:'markdown/'+s.id+'.md',mdx:'mdx/'+s.id+'.mdx'});
  }

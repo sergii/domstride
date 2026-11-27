@@ -9,7 +9,15 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   const page=await browser.newPage({viewport:{width:1440,height:1000}});
   const response=await page.goto(base+'/generated/lst-001-01/');assert.equal(response.status(),200);
   await expect(page.getByRole('heading',{name:'Publish a valid listing',exact:true})).toBeVisible();
-  await expect(page.locator('main ol li').first()).toBeVisible();
+  for(const name of ['Overview','Actors','Prerequisites','Initial context','Walkthrough','Expected results','Video walkthrough'])await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();
+  await expect(page.locator('main ol li')).toHaveCount(3);
+  const details=page.locator('main details').filter({hasText:'Technical details and verification'});
+  await expect(details).toHaveCount(1);assert.equal(await details.evaluate(el=>el.open),false);
+  await expect(details.getByText('Original executed steps (including setup):')).not.toBeVisible();
+  await details.locator('summary').click();
+  await expect(details.getByText('Original executed steps (including setup):')).toBeVisible();
+  await details.locator('summary').click();
+  await expect(page.locator('main a[href="/generated/lst-001-02/"]')).toBeVisible();
   await expect(page.locator('main img')).toHaveCount(6);
   for(const img of await page.locator('main img').all()){await img.scrollIntoViewIfNeeded();await expect.poll(()=>img.evaluate(el=>el.complete&&el.naturalWidth>0)).toBe(true);}
   await expect(page.locator('main video')).toHaveCount(2);

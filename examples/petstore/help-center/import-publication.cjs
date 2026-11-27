@@ -43,7 +43,7 @@ for(const page of manifest.pages){
   out.push(line);
  }
  if(active)out.push('','</Steps>','');
- body=out.join('\n').replace(/\.\.\/media\/([A-Za-z0-9-]+\.(?:png|webm))/g,(match,name)=>{const entry=media.get('media/'+name);assert.ok(entry,'Unknown media '+name);return entry.url;});
+ body=out.join('\n').replace(/\]\(([A-Za-z0-9-]+)\.mdx\)/g,(_,id)=>{assert.ok(manifest.pages.some(p=>p.id===id),'Unknown related scenario');return '](/generated/'+id.toLowerCase()+'/)';}).replace(/\.\.\/media\/([A-Za-z0-9-]+\.(?:png|webm))/g,(match,name)=>{const entry=media.get('media/'+name);assert.ok(entry,'Unknown media '+name);return entry.url;});
  assert.ok(!body.includes('../media/'));
  // Keep exact source assertions, results and evidence. Only change presentation.
  const frontmatter='---\ntitle: '+JSON.stringify(page.title)+'\ndescription: '+JSON.stringify('Verified historical specification '+page.id)+'\n---\n\n';
