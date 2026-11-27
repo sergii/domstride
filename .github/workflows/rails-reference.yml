@@ -71,3 +71,65 @@ jobs:
         with:
           name: rails-reference-results
           path: benchmark-results/
+  petstore-living-documentation:
+    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    env:
+      RAILS_ENV: test
+      PETSTORE_BASE_URL: http://127.0.0.1:3000
+      PETSTORE_COMMIT: 78b67b411c41011e8cabc2130190c8e3dfeb9a61
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: sergii/petstore
+          ref: 78b67b411c41011e8cabc2130190c8e3dfeb9a61
+          path: petstore-app
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+          working-directory: petstore-app
+      - run: bundle install
+        working-directory: petstore-app
+      - run: bin/rails db:prepare
+        working-directory: petstore-app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+        working-directory: examples/petstore
+      - run: npx playwright install chromium
+        working-directory: examples/petstore
+      - run: npm run typecheck
+        working-directory: examples/petstore
+      - name: Execute Petstore acceptance tests and generate documentation
+        env:
+          PETSTORE_FEATURE: ${{ github.workspace }}/petstore-app/features/marketplace/listings/publish_listing.feature
+        run: |
+          (
+            cd petstore-app
+            bin/rails runner 'User.find_or_create_by!(email_address: "seller@example.test") { |u| u.name = "Alex Demo"; u.password = "synthetic-demo-password" }'
+          )
+          (cd petstore-app && exec bin/rails server -b 127.0.0.1 -p 3000) > "$RUNNER_TEMP/petstore.log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000/up; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3000/up || { cat "$RUNNER_TEMP/petstore.log"; exit 1; }
+          (cd examples/petstore && npm test)
+          (cd petstore-app && bin/rails runner 'User.find_by!(email_address: "seller@example.test").listings.destroy_all')
+          (cd examples/petstore && npm run docs && node verify.cjs)
+      - name: Rails server log
+        if: failure()
+        run: cat "$RUNNER_TEMP/petstore.log" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: petstore-living-documentation
+          path: examples/petstore/artifacts/
+          retention-days: 7

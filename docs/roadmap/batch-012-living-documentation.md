@@ -28,3 +28,5 @@ Positive test publishes a listing with correct price, seller ownership and guest
 - [ ] CI: real Rails application, browser capture, four passed cases and actual HTML; inspect and publish only synthetic artifacts.
 - [ ] Extract reusable generator/specification normalization into Domstride, with configurable paths and domain/actor/platform/journey navigation.
 - [ ] Studio integration and Ruby Cucumber/Rails acceptance adapter, using the same canonical spec; benchmark fast mode.
+
+CI reference runs as an independent job in the existing Rails reference and browser parity workflow on Ubuntu 24.04; Rails stays alive for both execution modes in one shell. No change to existing benchmark job.

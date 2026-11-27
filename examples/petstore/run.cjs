@@ -8,7 +8,7 @@ if (!['fast','documentation'].includes(mode)) throw new Error('Expected fast or 
 const root=join(__dirname,'artifacts',new Date().toISOString().replace(/[:.]/g,'-')+'-'+randomUUID());
 mkdirSync(root,{recursive:true});
 const start=new Date().toISOString();
-const feature=resolve(process.env.PETSTORE_FEATURE||'../../../petstore/features/marketplace/listings/publish_listing.feature');
+const feature=resolve(process.env.PETSTORE_FEATURE||join(__dirname,'../../../petstore/features/marketplace/listings/publish_listing.feature'));
 if(!existsSync(feature)) throw new Error('Set PETSTORE_FEATURE to the canonical Petstore feature file');
 if(!process.env.PETSTORE_BASE_URL)throw new Error('Set PETSTORE_BASE_URL to the isolated local Rails application');
 const result=spawnSync(join(__dirname,'node_modules','.bin','cucumber-js'),[

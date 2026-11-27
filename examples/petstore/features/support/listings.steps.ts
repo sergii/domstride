@@ -36,7 +36,7 @@ Before(async function(this: ListingWorld, {pickle, testCaseStartedId}) {
 });
 
 AfterStep(async function(this: ListingWorld,{pickleStep,testStepId,result}) {
-  if (!this.directory || result.status !== 'PASSED') return;
+  if (!this.directory || result?.status !== 'PASSED') return;
   const selected = [
     'the seller has no listing titled "Travel carrier demo"',
     'the seller creates a listing',
@@ -82,7 +82,10 @@ Given('the seller is signed in',async function(this:ListingWorld){
   await expect(this.page.getByRole('link',{name:'My listings'})).toBeVisible();
   await expect(this.page.locator('.user-name')).toHaveText(this.seller);
   // Start recording after authentication; no login fields appear in the recording.
-  if(this.directory) await this.page.screencast.start({path:join(this.directory,'video-01.webm'),size:{width:1280,height:800}});
+  if(this.directory) {
+    try { await this.page.screencast.start({path:join(this.directory,'video-01.webm'),size:{width:1280,height:800}}); }
+    catch(error) { this.evidenceErrors.push('Video start: '+String(error)); }
+  }
 });
 Given('the seller has no listing titled {string}',async function(this:ListingWorld,title:string){
   await this.page.getByRole('link',{name:'My listings'}).click();
@@ -110,7 +113,7 @@ When('enters a price of {string}',async function(this:ListingWorld,price:string)
 });
 When('attempts to publish the listing',async function(this:ListingWorld){await this.page.getByRole('button',{name:'Publish listing'}).click();});
 Then('a publication confirmation should be displayed',async function(this:ListingWorld){
-  await expect(this.page.getByRole('status')).toHaveText('Listing published.');
+  await expect(this.page.locator('.flash[role=status]')).toHaveText('Listing published.');
   await expect(this.page.getByRole('heading',{name:this.title,exact:true})).toBeVisible();
 });
 Then('the listing price should be {string}',async function(this:ListingWorld,price:string){await expect(this.page.locator('.detail .price')).toHaveText(price);});
@@ -129,7 +132,7 @@ Then('a price validation error should be displayed',async function(this:ListingW
   // Native browser validation is observable through the validity state and message.
   await expect(price).toBeVisible();
   expect(await price.evaluate(el=>({valid:(el as HTMLInputElement).validity.valid,message:(el as HTMLInputElement).validationMessage}))).toEqual({valid:false,message:expect.any(String)});
-  expect(await price.evaluate((el:HTMLInputElement)=>(el as HTMLInputElement).validationMessage)).not.toBe('');
+  expect(await price.evaluate(el=>(el as HTMLInputElement).validationMessage)).not.toBe('');
   await expect(this.page).toHaveURL(/\/listings\/new$/);
 });
 Then('the listing {string} should not be published',async function(this:ListingWorld,title:string){
