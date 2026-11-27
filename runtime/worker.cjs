@@ -8,15 +8,19 @@ const { installStaticMedia } = require("./media.cjs");
 const { installLogicalDOM } = require("./logical_dom.cjs");
 const { installObservers } = require("./observers.cjs");
 let pageState;
+let commandPhases = null;
+let bootMs = null;
+let bootReported = false;
 let confirmScope = null;
 const turn = () => new Promise(resolve => setImmediate(resolve));
 const pause = () => new Promise(resolve => setTimeout(resolve, 1));
 let bundleEntry = null;
 let bundleOutcome = null;
+let importmapOutcome = null;
 const BUNDLE_MARKER = '<script data-domstride-cache="bundle"></script>';
 const MAX_BUNDLE_BYTES = 8 * 1024 * 1024;
 const engine = process.argv[2] || "jsdom";
-let window, closeWindow, createWindow;
+let window, closeWindow, createWindow, assetParser, assetVirtualConsole;
 const javascriptErrors = [];
 const errorListeners = new Set();
 class JavaScriptFailure extends Error {}
@@ -166,6 +170,7 @@ function installBridge(win, state) {
   win.Request = globalThis.Request;
   win.Response = globalThis.Response;
   win.fetch = async (input, init = {}) => {
+    if (state.disposed) throw new Error("Document disposed");
     state.fetches += 1; state.activity += 1;
     let bridgedSignal;
     try {
@@ -189,6 +194,7 @@ function installBridge(win, state) {
       } else body = await req.text();
     }
     req.signal.throwIfAborted();
+    if (state.disposed) throw new Error("Document disposed");
     const reply = await rackRequest(req.url, req.method, Object.fromEntries(req.headers), body, req.redirect, encoding);
     if (state.websocketAuth && typeof reply.websocket_cookie === "string") state.websocketCookie = reply.websocket_cookie;
     // Rack requests already dispatched cannot be rolled back by aborting fetch.
@@ -345,6 +351,8 @@ async function waitVirtual(message) {
 async function boot() {
   if (engine === "jsdom" || engine === "jsdom31") {
     const { JSDOM, VirtualConsole } = require(engine);
+    assetParser = JSDOM;
+    assetVirtualConsole = VirtualConsole;
     createWindow = (html, url, bridge, compiledBundle, state) => {
       const virtualConsole = new VirtualConsole();
       virtualConsole.on("jsdomError", error => reportJavaScript(error.cause || error.detail || error, "jsdom"));
@@ -504,6 +512,33 @@ function scriptCommand(message) {
 }
 
 async function execute(message) {
+  if (message.command === "memory_state") {
+    // Metadata only. No forced GC, snapshots or application data.
+    const memory = process.memoryUsage();
+    return { pid: process.pid, rss: memory.rss, heapTotal: memory.heapTotal,
+      heapUsed: memory.heapUsed, external: memory.external, arrayBuffers: memory.arrayBuffers,
+      handles: handles.size, pending_requests: pending.size,
+      active_fetches: pageState?.fetches || 0, error_listeners: errorListeners.size,
+      has_document: Boolean(window), confirm_armed: Boolean(confirmScope) };
+  }
+  if (message.command === "reset_document") {
+    // Never allow outstanding Rack work or a confirmation to cross test boundaries.
+    if (pending.size || pageState?.fetches || confirmScope) throw new Error("UNSAFE_WORKER_RESET: outstanding work");
+    if (window) {
+      pageState.disposed = true;
+      pageState.closeSockets?.();
+      pageState.observer?.disconnect();
+      pageState.clock?.timers.clear();
+      await closeWindow(window);
+    }
+    window = undefined;
+    pageState = undefined;
+    handles.clear();
+    identities = new WeakMap();
+    bundleEntry = null;
+    bundleOutcome = null;
+    return true;
+  }
   if (message.command === "confirm_arm") {
     if (confirmScope) throw new Error("UNSUPPORTED_NESTED_CONFIRM");
     confirmScope = { accept: message.accept, text: message.text, result: null };
@@ -513,7 +548,13 @@ async function execute(message) {
   if (message.command === "confirm_clear") { confirmScope = null; return true; }
   if (["execute_script", "evaluate_script"].includes(message.command)) return scriptCommand(message);
   if (message.command === "mount") {
+    let phaseStart = performance.now();
+    const mark = name => {
+      if (commandPhases) commandPhases[name] = performance.now() - phaseStart;
+      phaseStart = performance.now();
+    };
     const prepared = prepareBundle(message);
+    mark("mount.bundle_prepare");
     let moduleCode;
     let websocketCookie = message.websocket_cookie;
     if (message.assets === "bundle" && message.bridge) {
@@ -522,23 +563,28 @@ async function execute(message) {
         const reply = await rackRequest(url, "GET");
         if (typeof reply.websocket_cookie === "string") websocketCookie = reply.websocket_cookie;
         return reply;
-      }, message.asset_warnings, engine);
+      }, message.asset_warnings, commandPhases, assetParser, assetVirtualConsole);
       prepared.html = resolved.html;
       moduleCode = resolved.moduleCode;
+      importmapOutcome = resolved.importmapCache;
     }
+    mark("mount.assets_total");
     if (window) {
       pageState?.closeSockets?.();
       pageState?.observer?.disconnect();
       pageState?.clock?.timers.clear();
       await closeWindow(window);
     }
+    mark("mount.close_previous");
     handles.clear(); identities = new WeakMap();
     pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, websocketUrl: message.websocket_url, websocketAuth: message.websocket_auth, websocketPathMode: message.websocket_path_mode, websocketCookie, mediaProfile: message.media_profile, domProfile: message.dom_profile, observerProfile: message.observer_profile, fetches: 0, activity: 0 };
     window = createWindow(prepared.html, message.url || "https://example.test/", message.bridge, prepared.compiled, pageState);
+    mark("mount.create_window");
     if (moduleCode) {
       try { window.eval(moduleCode); }
       catch (error) { reportJavaScript(error, "module.bundle"); }
     }
+    mark("mount.evaluate_modules");
     return true;
   }
   if (message.command === "websocket_state") return { count: pageState?.sockets?.size || 0, open: Array.from(pageState?.sockets || []).filter(socket => socket.readyState === 1).length };
@@ -645,7 +691,9 @@ function finishRecording(message, recording) {
 }
 
 async function main() {
+  const bootStart = performance.now();
   await boot();
+  bootMs = performance.now() - bootStart;
   const lines = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
   let queue = Promise.resolve();
   lines.on("line", line => {
@@ -661,8 +709,17 @@ async function main() {
     }
     queue = queue.then(async () => {
       bundleOutcome = null;
+      importmapOutcome = null;
       const start = message.profile ? performance.now() : null;
-      const timing = () => start === null ? {} : { worker_ms: performance.now() - start };
+      commandPhases = message.profile ? {} : null;
+      const timing = () => {
+        if (start === null) return {};
+        if (!bootReported) {
+          commandPhases["worker.boot_engine"] = bootMs;
+          bootReported = true;
+        }
+        return { worker_ms: performance.now() - start, phases_ms: commandPhases };
+      };
       const recording = startRecording(message);
       try {
         checkJavaScript();
@@ -672,7 +729,7 @@ async function main() {
         if (message.settling === "tracked" && mutating) await settle(pageState);
         else await turn();
         checkJavaScript();
-        send({ id: message.id, ok: true, value, ...(bundleOutcome ? { bundle_cache: bundleOutcome } : {}), ...timing(), ...finishRecording(message, recording) });
+        send({ id: message.id, ok: true, value, ...(bundleOutcome ? { bundle_cache: bundleOutcome } : {}), ...(importmapOutcome ? { importmap_cache: importmapOutcome } : {}), ...timing(), ...finishRecording(message, recording) });
       } catch (error) {
         // Prefer a captured JavaScript exception over a generic action failure.
         if (javascriptErrors.length) {

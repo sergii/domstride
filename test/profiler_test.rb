@@ -11,11 +11,15 @@ class ProfilerTest < Minitest::Test
       assert_equal 1, profile[:commands]["mount"][:count]
       assert_equal 1, profile[:commands]["click"][:count]
       assert_operator profile[:commands]["mount"][:worker_wall_ms], :>, 0
+      assert_operator profile[:phases_ms]["worker.boot_engine"], :>, 0
+      assert_operator profile[:phases_ms]["mount.create_window"], :>, 0
+      assert_operator profile[:phases_ms]["mount.assets_total"], :>=, 0
       assert_operator profile[:bytes_sent], :>, 0
       assert_operator profile[:bytes_received], :>, 0
       refute_includes profile.inspect, "Ready"
       page.reset_profile!
       assert_empty page.profile[:commands]
+      assert_empty page.profile[:phases_ms]
     end
   end
 

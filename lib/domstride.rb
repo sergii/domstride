@@ -233,7 +233,7 @@ module Domstride
     end
 
     def reset_profile!
-      @profile = { commands: {}, rack_requests: 0, rack_ms: 0.0, bytes_sent: 0, bytes_received: 0, bundle_hits: 0, bundle_misses: 0 }
+      @profile = { commands: {}, rack_requests: 0, rack_ms: 0.0, bytes_sent: 0, bytes_received: 0, bundle_hits: 0, bundle_misses: 0, importmap_hits: 0, importmap_misses: 0, phases_ms: {} }
     end
 
     def profile
@@ -263,6 +263,17 @@ module Domstride
       def assert_text(selector, expected)
         @commands << { command: "assert_text", selector: selector, expected: expected }
       end
+    end
+
+    # Retain the process but discard all document and Rack session state.
+    # Callers must not concurrently use this session while resetting it.
+    def reset_document!
+      raise Error, "Persistent reset does not support recording" if @recorder
+      call("reset_document")
+      @bundle_digest = nil
+      @recording_step = nil
+      @rack_session = Rack::Test::Session.new(Rack::MockSession.new(@app, "example.test")) if @app
+      true
     end
 
     def close
@@ -431,6 +442,9 @@ module Domstride
         if @profiling && response["bundle_cache"]
           @profile[response["bundle_cache"] == "hit" ? :bundle_hits : :bundle_misses] += 1
         end
+        if @profiling && response["importmap_cache"]
+          @profile[response["importmap_cache"] == "hit" ? :importmap_hits : :importmap_misses] += 1
+        end
         response["value"]
       ensure
         if recording_started
@@ -444,6 +458,9 @@ module Domstride
           row[:count] += 1
           row[:ruby_wall_ms] += monotonic_ms - started
           row[:worker_wall_ms] += response&.fetch("worker_ms", 0).to_f
+          response&.fetch("phases_ms", {})&.each do |name, ms|
+            @profile[:phases_ms][name] = @profile[:phases_ms].fetch(name, 0.0) + ms
+          end
         end
       end
     rescue IOError, SystemCallError, JSON::ParserError => e

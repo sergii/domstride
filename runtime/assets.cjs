@@ -1,5 +1,16 @@
 // Experimental same-origin Rails asset boot. Only trusted application code.
+const { createHash } = require("node:crypto");
 const MAX_FILES = 128;
+// Bounded, process-local compiled output cache. Never cache HTML or Rack responses.
+const compiledModules = new Map();
+const MAX_CACHE_ENTRIES = 2;
+function digest(source) { return createHash("sha256").update(source).digest("hex"); }
+function remember(key, entry) {
+  if (Buffer.byteLength(entry.code) > MAX_BYTES) return;
+  compiledModules.delete(key);
+  compiledModules.set(key, entry);
+  while (compiledModules.size > MAX_CACHE_ENTRIES) compiledModules.delete(compiledModules.keys().next().value);
+}
 const MAX_BYTES = 8 * 1024 * 1024;
 
 // Resolve computed controller imports against a bounded registry of exact pins.
@@ -31,11 +42,18 @@ function rewriteDynamicImports(source, imports) {
     " default: return Promise.reject(new Error('UNSUPPORTED_DYNAMIC_IMPORT: ' + specifier)); } }\n" + source;
 }
 
-async function prepareAssets(html, url, request, warningPolicy = "strict", engine = "jsdom") {
+async function prepareAssets(html, url, request, warningPolicy = "strict", phases = null, Parser = null, VirtualConsole = null) {
+  let phaseStart = performance.now();
+  const mark = name => {
+    if (phases) phases[name] = performance.now() - phaseStart;
+    phaseStart = performance.now();
+  };
   if (!["strict", "direct-eval"].includes(warningPolicy)) throw new Error("Unknown asset warning policy");
-  const { JSDOM, VirtualConsole } = require(engine);
-  // The inert parser only discovers scripts. Live DOM CSS errors are still reported by the worker.
-  const parsed = new JSDOM(html, { url, virtualConsole: new VirtualConsole() });
+  // Reuse the selected DOM engine; do not load a second jsdom version.
+  if (!Parser || !VirtualConsole) throw new Error("Asset parser constructor required");
+  mark("assets.load_parser");
+  const parsed = new Parser(html, { url, virtualConsole: new VirtualConsole() });
+  mark("assets.parse_html");
   const doc = parsed.window.document;
   const origin = new URL(url).origin;
   const cache = new Map();
@@ -89,9 +107,35 @@ async function prepareAssets(html, url, request, warningPolicy = "strict", engin
         script.textContent = source;
       }
     }
+    mark("assets.discover_scripts");
     let moduleCode = null;
+    let importmapCache = null;
     if (modules.length) {
+      const enabled = process.env.DOMSTRIDE_IMPORTMAP_CACHE === "1" && warningPolicy === "strict";
+      const key = enabled ? digest(JSON.stringify([url, imports, modules, Array.from(inline), warningPolicy])) : null;
+      const previous = enabled ? compiledModules.get(key) : null;
+      const dependencies = new Map();
+      if (previous) {
+        let valid = true;
+        // Re-fetch every previously resolved dependency through the current Rack session.
+        // On a changed graph, let the normal compiler discover the new dependencies.
+        for (const [target, hash] of previous.dependencies) {
+          try {
+            const asset = await load(target);
+            if (asset.url !== target || digest(asset.source) !== hash) { valid = false; break; }
+          } catch (_) { valid = false; break; }
+        }
+        if (valid) {
+          moduleCode = previous.code;
+          importmapCache = "hit";
+          remember(key, previous);
+        } else compiledModules.delete(key);
+        mark("assets.cache_revalidate");
+      }
+      if (moduleCode === null) {
+      if (enabled) importmapCache = "miss";
       const esbuild = require("esbuild");
+      mark("assets.load_esbuild");
       const entry = "domstride:entry";
       const bundled = await esbuild.build({
         entryPoints: [entry], bundle: true, write: false, format: "iife", platform: "browser",
@@ -121,11 +165,13 @@ async function prepareAssets(html, url, request, warningPolicy = "strict", engin
               if (inline.has(args.path)) return { contents: rewriteDynamicImports(inline.get(args.path), imports), loader: "js" };
               const asset = await load(args.path);
               if (asset.url !== args.path) throw new Error("UNSUPPORTED_MODULE_REDIRECT: " + args.path);
+              if (enabled) dependencies.set(args.path, digest(asset.source));
               return { contents: rewriteDynamicImports(asset.source, imports), loader: "js" };
             });
           }
         }]
       });
+      mark("assets.esbuild_with_rack_and_rewrite");
       const fatal = bundled.warnings.filter(warning => warningPolicy !== "direct-eval" || warning.id !== "direct-eval");
       for (const warning of bundled.warnings.filter(w => !fatal.includes(w))) {
         const location = warning.location;
@@ -135,10 +181,16 @@ async function prepareAssets(html, url, request, warningPolicy = "strict", engin
       }
       if (fatal.length) throw new Error("Module bundle warnings: " + fatal.map(w => "[" + w.id + "] " + w.text).join("; "));
       moduleCode = bundled.outputFiles[0].text;
+      if (enabled && !bundled.warnings.length) remember(key, { code: moduleCode, dependencies: Array.from(dependencies) });
+      }
     }
-    return { html: parsed.serialize(), moduleCode };
+    mark("assets.validate_warnings");
+    const serialized = parsed.serialize();
+    mark("assets.serialize_html");
+    return { html: serialized, moduleCode, importmapCache };
   } finally {
     parsed.window.close();
+    mark("assets.close_parser");
   }
 }
 
