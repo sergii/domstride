@@ -73,3 +73,7 @@ Next UX work: separate reader-facing Overview, Actors, Prerequisites and Expecte
 ## Reader-facing guide iteration
 
 Reference static export now separates Overview, Business value, Actors, Prerequisites, initial context, actual action steps and verified outcomes using inherited Gherkin keyword semantics. Preserve exact step wording rather than invent navigation instructions. Only actions enter Starlight native numbered Steps; screenshots remain attached to their original context/action/outcome. Original executed steps, attempt IDs and provenance are collapsed in Technical details; related scenario links resolve to actual routes. Negative examples remain separate attempts. Model classification test and stronger Starlight smoke added. CI verification pending; standalone HTML report retains its existing technical presentation for now.
+
+## Fumadocs reference iteration
+
+Reader-facing Starlight guide passed after distinguishing related-scenario link from pagination in CI 45989250145. Added a shared publication importer and Fumadocs static Next.js reference with native Steps, MDX, sidebar, TOC and local approved media. Search intentionally disabled in the initial static reference. CI build and browser smoke pending. No hosted deployment or released plugin. See [Fumadocs reference](../../examples/petstore/fumadocs/README.md).

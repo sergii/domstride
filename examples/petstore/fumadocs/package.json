@@ -1,0 +1,28 @@
+{
+  "name": "domstride-petstore-fumadocs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "import": "node import-publication.cjs",
+    "smoke": "node smoke.cjs"
+  },
+  "dependencies": {
+    "next": "^16.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "fumadocs-core": "16.15.8",
+    "fumadocs-ui": "16.15.8",
+    "fumadocs-mdx": "15.4.10"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/mdx": "^2",
+    "tailwindcss": "^4.1",
+    "@tailwindcss/postcss": "^4.1",
+    "postcss": "^8"
+  }
+}

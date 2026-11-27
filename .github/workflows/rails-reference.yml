@@ -155,6 +155,34 @@ jobs:
             examples/petstore/help-center/help-center-desktop.png
             examples/petstore/help-center/help-center-mobile.png
           retention-days: 7
+      - name: Build static Fumadocs Help Center
+        working-directory: examples/petstore/fumadocs
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: |
+          export_dir=$(find ../artifacts -type d -name static-export -print -quit)
+          test -n "$export_dir"
+          npm install --no-audit --no-fund
+          npm run import -- "$export_dir"
+          npm run build
+          python3 -m http.server 4322 --bind 127.0.0.1 --directory out > "$RUNNER_TEMP/fumadocs.log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4322/ > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:4322/ > /dev/null
+          npm run smoke
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: petstore-fumadocs
+          path: |
+            examples/petstore/fumadocs/out/
+            examples/petstore/fumadocs/help-center-desktop.png
+            examples/petstore/fumadocs/help-center-mobile.png
+          retention-days: 7
       - name: Rails server log
         if: failure()
         run: cat "$RUNNER_TEMP/petstore.log" || true

@@ -29,3 +29,5 @@ The Petstore Starlight example imports the portable publication only, verifies m
 ## Verified Starlight reference
 
 CI run 45980012782 verified actual static build, both routes, native Steps, screenshots, video playback and mobile layout. Reference adapter remains local and root-path only; production plugin, publishing policy and other frameworks are pending. See the [roadmap](roadmap/batch-012-living-documentation.md).
+
+Fumadocs reference uses the same manifest and shared importer as Starlight; only native component/route conversion differs. Static Next.js build and browser smoke required before claiming verification; search and base-path support remain pending.

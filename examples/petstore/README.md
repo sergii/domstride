@@ -33,3 +33,5 @@ After successful pairing, run `npm run docs:export -- --synthetic-reference <exa
 ## Starlight reference
 
 See [Help Center](help-center/README.md). Imports the approved static export, then builds a separate Astro site with native Steps and ordinary video. No Rails or acceptance test execution is required at site build. CI build and browser smoke pending.
+
+See [Fumadocs reference](fumadocs/README.md) for the second static framework integration.
