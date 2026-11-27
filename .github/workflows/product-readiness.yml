@@ -36,6 +36,8 @@ jobs:
       - run: npm run build:reference
       - name: Independent Cucumber Messages normalization
         run: node test/cucumber_messages_normalizer_test.cjs
+      - name: Independent Playwright recorder lifecycle
+        run: node test/playwright_recorder_test.cjs
       - name: Configuration
         run: bundle exec ruby -Ilib test/configuration_test.rb
       - name: Named native profiles

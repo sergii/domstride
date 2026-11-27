@@ -2,30 +2,28 @@ import { Before, BeforeStep, After, AfterStep, Given, When, Then, World, setWorl
 import type { DataTable } from '@cucumber/cucumber';
 import { chromium, expect } from '@playwright/test';
 import type { Browser, BrowserContext, Page, Locator } from '@playwright/test';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
+import { PlaywrightRecorder } from '../../../../lib/domstride/documentation/playwright-recorder.cjs';
 import { join } from 'node:path';
 
-type Screenshot = { stepId: string; file: string; url: string; phase: 'after' };
 type ElementInfo = {tag:string; id?:string; name?:string; test_id?:string; type?:string; label?:string};
 type FocusObservation = { element?:ElementInfo; transition?: 'navigation'; stepId: string; action: number; observedWallMs: number; observedMonotonicMs: number; bounds: {x:number;y:number;width:number;height:number}; viewport: {width:number;height:number} };
-type FrameObservation = { sequence:number; bytes:number; receivedWallMs:number; receivedMonotonicMs:number };
 class ListingWorld extends World {
   browser?: Browser;
   context?: BrowserContext;
   page!: Page;
   directory?: string;
-  screenshots: Screenshot[] = [];
-  evidenceErrors: string[] = [];
+  recorder?: PlaywrightRecorder;
+  get evidenceErrors(){return this.recorder?.errors??[];}
   title = '';
   seller = '';
   profile: 'execution' | 'guided' | null = null;
-  presentationWaitMs = 0;
   focusCount = 0;
   currentStepId = '';
   focusObservations: FocusObservation[] = [];
   submitSourceUrl?: string;
-  frameObservations: FrameObservation[] = [];
-  recordingWindow: {startWallMs:number;startMonotonicMs:number;endWallMs?:number;endMonotonicMs?:number} | null = null;
+  get frameObservations(){return this.recorder?.frameObservations??[];}
+  get recordingWindow(){return this.recorder?.recordingWindow??null;}
 
   stepMarkers: {step_id:string; boundary:'start'|'end'; code:number}[]=[];
   async markStep(stepId:string,boundary:'start'|'end'){
@@ -100,9 +98,7 @@ class ListingWorld extends World {
     }
   }
   async hold(ms: number) {
-    if (this.profile !== 'guided') return;
-    this.presentationWaitMs += ms;
-    await this.page.waitForTimeout(ms);
+    await this.recorder?.hold(ms);
   }
 }
 setWorldConstructor(ListingWorld);
@@ -118,12 +114,14 @@ Before(async function(this: ListingWorld, {pickle, testCaseStartedId}) {
   if (record) {
     this.profile = process.env.RUN_MODE === 'execution' ? 'execution' : 'guided';
     this.directory = join(root, 'domstride-case-'+testCaseStartedId);
-    await mkdir(this.directory, {recursive:true});
-    if (this.profile === 'guided') await mkdir(join(this.directory,'screenshots'), {recursive:true});
   }
   this.browser = await chromium.launch();
   this.context = await this.browser.newContext({viewport:{width:1280,height:800}});
   this.page = await this.context.newPage();
+  if(this.directory&&this.profile){
+    this.recorder=new PlaywrightRecorder({page:this.page,directory:this.directory,profile:this.profile,size:{width:1280,height:800}});
+    await this.recorder.prepare();
+  }
 });
 
 BeforeStep(async function(this: ListingWorld,{testStepId}) {
@@ -141,33 +139,19 @@ AfterStep(async function(this: ListingWorld,{pickleStep,testStepId,result}) {
     'the listing should be visible to a guest buyer'
   ];
   if (!selected.includes(pickleStep.text)) {if(this.stepMarkers.some(m=>m.step_id===testStepId&&m.boundary==='start'))await this.markStep(testStepId,'end');return;}
-  const file = 'screenshots/step-'+String(this.screenshots.length+1).padStart(3,'0')+'.png';
-  try {
-    await this.page.screenshot({path:join(this.directory,file),animations:'disabled'});
-    this.screenshots.push({stepId:testStepId,file,url:this.page.url(),phase:'after'});
-    await this.hold(pickleStep.text.includes('guest buyer') ? 1800 : pickleStep.text.includes('confirmation') ? 1500 : 1100);
-  } catch(error) { this.evidenceErrors.push('Screenshot: '+String(error)); }
+  await this.recorder?.checkpoint(testStepId,pickleStep.text.includes('guest buyer') ? 1800 : pickleStep.text.includes('confirmation') ? 1500 : 1100);
   if(this.stepMarkers.some(m=>m.step_id===testStepId&&m.boundary==='start'))await this.markStep(testStepId,'end');
 });
 
 After(async function(this: ListingWorld) {
-  let file: string | null = null;
-  try {
-    if (this.directory) {
-      await this.page.screencast.stop();
-      if(this.recordingWindow){this.recordingWindow.endWallMs=Date.now();this.recordingWindow.endMonotonicMs=performance.now();}
-      file = 'video-01.webm';
-    }
-  } catch(error) { this.evidenceErrors.push('Video: '+String(error)); }
+  try { await this.recorder?.stop(); }
   finally { try { await this.context?.close(); } finally { await this.browser?.close(); } }
   if (this.directory) {
     if(this.profile==='guided') await writeFile(join(this.directory,'focus-observations.json'),JSON.stringify({
       format:'domstride.reference-focus-observations',schema_version:1,timing_quality:'unmapped',outline_color:'#2563eb',
       recording_window:this.recordingWindow,targets:this.focusObservations,frames:this.frameObservations,step_markers:this.stepMarkers
     },null,2));
-    await writeFile(join(this.directory,'capture.json'),JSON.stringify({
-      screenshots:this.screenshots,video:file,errors:this.evidenceErrors,profile:this.profile,presentation_wait_ms:this.presentationWaitMs,focus_count:this.focusCount
-    },null,2));
+    await this.recorder?.writeCapture({focusCount:this.focusCount});
   }
 });
 
@@ -183,18 +167,7 @@ Given('the seller is signed in',async function(this:ListingWorld){
   await expect(this.page.getByRole('link',{name:'My listings'})).toBeVisible();
   await expect(this.page.locator('.user-name')).toHaveText(this.seller);
   // Start recording after authentication; no login fields appear in the recording.
-  if(this.directory) {
-    try {
-      if(this.profile==='guided'){
-        this.recordingWindow={startWallMs:Date.now(),startMonotonicMs:performance.now()};
-        await this.page.screencast.start({path:join(this.directory,'video-01.webm'),size:{width:1280,height:800},
-          onFrame:({data})=>{
-            this.frameObservations.push({sequence:this.frameObservations.length+1,bytes:data.length,receivedWallMs:Date.now(),receivedMonotonicMs:performance.now()});
-          }});
-      }else await this.page.screencast.start({path:join(this.directory,'video-01.webm'),size:{width:1280,height:800}});
-    }
-    catch(error) { this.evidenceErrors.push('Video start: '+String(error)); }
-  }
+  await this.recorder?.start();
 });
 Given('the seller has no listing titled {string}',async function(this:ListingWorld,title:string){
   await this.page.getByRole('link',{name:'My listings'}).click();
