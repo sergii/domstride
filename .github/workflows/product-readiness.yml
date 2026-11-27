@@ -38,6 +38,8 @@ jobs:
         run: node test/cucumber_messages_normalizer_test.cjs
       - name: Independent Playwright recorder lifecycle
         run: node test/playwright_recorder_test.cjs
+      - name: Documentation protocol validation
+        run: node test/documentation_protocol_test.cjs
       - name: Configuration
         run: bundle exec ruby -Ilib test/configuration_test.rb
       - name: Named native profiles

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "Domstride specification v1 (documentation profile)",
+  "required": [
+    "format",
+    "schema_version",
+    "documents",
+    "scenarios"
+  ],
+  "properties": {
+    "format": {
+      "const": "domstride.specification"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "documents": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "required": [
+          "feature"
+        ],
+        "properties": {
+          "feature": {
+            "type": "object",
+            "required": [
+              "tags"
+            ],
+            "properties": {
+              "tags": {
+                "type": "array",
+                "maxItems": 100,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "name"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "required": [
+          "scenario_id",
+          "feature_id",
+          "scenario"
+        ],
+        "properties": {
+          "scenario_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9-]{1,128}$"
+          },
+          "feature_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9-]{1,128}$"
+          },
+          "scenario": {
+            "type": "object",
+            "required": [
+              "name",
+              "steps"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              },
+              "steps": {
+                "type": "array",
+                "maxItems": 100
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
