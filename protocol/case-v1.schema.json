@@ -276,9 +276,23 @@
                   "type": "number",
                   "minimum": 0,
                   "maximum": 1
+                },
+                "step_sequence": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
                 }
               }
             }
+          },
+          "timing_quality": {
+            "enum": [
+              "visual_candidates_unvalidated"
+            ]
           }
         }
       }

@@ -18,6 +18,20 @@ const cues=obs.targets.filter(t=>t.match==='candidate').map(t=>{
  assert.ok(crop.zoom>=1&&crop.zoom<=2.5&&crop.x>=0&&crop.y>=0&&crop.x+crop.width<=1280+1e-8&&crop.y+crop.height<=800+1e-8);
  return {...t,crop,label:labels[t.action-1]||'Action '+t.action};
 });
+// Attach observed intervals to the original guided manifest only; never invent point cues.
+const observations=read(path.join(dir,'focus-observations.json'));
+const focus=cues.map(t=>{
+ const target=observations.targets.find(g=>g.stepId===t.step_id&&g.action===t.action);
+ const step=c.steps.find(s=>s.runtime_id===t.step_id);
+ assert.ok(target&&step);
+ const {bounds:b,viewport:v}=target;
+ const x=Math.max(0,b.x),y=Math.max(0,b.y),right=Math.min(v.width,b.x+b.width),bottom=Math.min(v.height,b.y+b.height);
+ assert.ok(right>x&&bottom>y);
+ return {kind:t.action===6?'click':[3,4].includes(t.action)?'select':'fill',status:step.status==='passed'?'passed':'unknown',start_ms:t.first_visible_pts_ms,end_ms:t.last_visible_pts_ms,x:x/v.width,y:y/v.height,width:(right-x)/v.width,height:(bottom-y)/v.height,step_sequence:step.sequence,label:t.label};
+});
+assert.equal(c.videos.length,1);assert.equal(c.videos[0].role,'guided');
+c.videos[0].timing_quality='visual_candidates_unvalidated';c.videos[0].focus=focus;
+fs.writeFileSync(path.join(dir,'case.json'),JSON.stringify(c,null,2)+'\n');
 const captions=focusVtt(cues);
 fs.writeFileSync(path.join(dir,'focus-captions.vtt'),captions);
 fs.writeFileSync(path.join(dir,'focus-chapters.vtt'),captions);

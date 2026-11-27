@@ -85,12 +85,21 @@ module Domstride
           }
             raise Error, "Invalid video focus segments"
           end
+          quality = attachment["timing_quality"]
+          if quality
+            unless quality == "visual_candidates_unvalidated" && cues.empty? && focus.all? { |segment|
+              segment["step_sequence"].is_a?(Integer) && steps.any? { |step| step["sequence"] == segment["step_sequence"] } &&
+                segment["label"].is_a?(String) && segment["label"].bytesize.between?(1,128)
+            }
+              raise Error, "Invalid observed video focus"
+            end
+          end
           content = Video.read_webm(File.join(path, name))
           encoded = Base64.strict_encode64(content)
           bytes += encoded.bytesize
           raise Error, "Report payload limit exceeded" if bytes > MAX_PAYLOAD_BYTES
           {label: attachment["label"], base64: encoded, cues: cues.map { |cue| cue.slice("kind","sequence","time_ms") },
-            focus: focus.map { |segment| segment.slice("kind","status","start_ms","end_ms","x","y","width","height") }}
+            timing_quality: quality, focus: focus.map { |segment| segment.slice("kind","status","start_ms","end_ms","x","y","width","height", *(quality ? %w[step_sequence label] : [])) }}
         end
         {name: item["name"], status: item["status"], duration_ms: item["duration_ms"],
           **metadata,
