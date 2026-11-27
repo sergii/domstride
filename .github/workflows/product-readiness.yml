@@ -40,6 +40,8 @@ jobs:
         run: node test/playwright_recorder_test.cjs
       - name: Documentation protocol validation
         run: node test/documentation_protocol_test.cjs
+      - name: Independent framework adapter
+        run: node test/framework_integration_test.cjs
       - name: Configuration
         run: bundle exec ruby -Ilib test/configuration_test.rb
       - name: Named native profiles
@@ -81,6 +83,8 @@ jobs:
           "$temp/gems/bin/domstride" doctor --json | ruby -rjson -e 'abort unless JSON.parse(STDIN.read).fetch("status") == "ok"'
           "$temp/gems/bin/domstride" setup
           node "$GITHUB_WORKSPACE/test/documentation_package_test.cjs" "$temp/gems/bin/domstride"
+          gem_root="$(ruby -rdomstride -e 'print Gem.loaded_specs.fetch("domstride").full_gem_path')"
+          node "$GITHUB_WORKSPACE/test/framework_integration_test.cjs" "$gem_root/lib/domstride/documentation" "$gem_root/adapters"
           for profile in compatible fast deterministic; do
             DOMSTRIDE_PERFORMANCE_PROFILE="$profile" ruby -rdomstride -e 'Domstride::Session.open { |p| p.mount_html(%q{<p id="status">Ready</p>}); p.assert_text("#status", "Ready") }; puts "Installed profile OK"'
           done

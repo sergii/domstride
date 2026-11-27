@@ -28,4 +28,12 @@ Phase 3: 17/19 workflows passed on d3e015e. Petstore typecheck failed because sc
 
 Add version-1 specification/run JSON Schemas and a dependency-free structural/cross-reference validator for the trusted local documentation profile. The existing general case-v1 schema and Ruby report reader remain unchanged. Both guided and paired execution bundles are checked before the exporter creates output: unique feature/scenario/attempt/folder identities, run entry and specification links, contiguous step sequences, local evidence names, step references, video provenance and mode constraints. The normalizer may retain incomplete attempts with null duration, but they cannot be published as valid v1 cases; no invented timings. This is not a comprehensive JSON Schema engine, an untrusted artifact parser, a file size/security audit or redaction layer. Existing exporter approval and file checks are still required. Independent negative tests and updated installed-gem fixture added. Schema/validator consistency beyond the documented subset, stable example identity, raw envelope limits and external consumer conformance remain open.
 
-Status: phase 4 implementation candidate; CI pending.
+Phase 3/4: 18/19 workflows passed on 832e075, including real browser reference, typecheck and product readiness; Fizzy failed separately.
+
+## Phase 5: reusable framework integrations
+
+`lib/domstride/documentation/cucumber-run-adapter.cjs` exposes `writeCucumberRun(root, run, metadata)`. It materializes existing Cucumber Messages and explicit per-attempt capture metadata into specification/case/run manifests. Caller supplies actual producer, framework, runner, platform, language, browser, viewport and video label. No test execution or rendering; Petstore delegates and retains presentation only. Use a fresh caller-controlled run directory; failed writes can leave a partial run. Missing or mismatched capture is reported rather than interpreted as a test failure. Incomplete attempts with unknown duration remain diagnostic, not publication-ready v1 cases. No untrusted ingestion or redaction.
+
+The existing Playwright Test reporter, protocol writer and viewport helper now ship in the Ruby gem under adapters/ without changing their behavior or public source-checkout paths. They produce general case-v1 bundles, not Gherkin specifications. Ruby Cucumber/Turnip, Minitest and RSpec continue to use their existing integrations; no automatic new hooks. npm-only distribution and generic framework adapters remain future work. CI adds independent library-domain adapter tests and installed-gem reporter/adapter smoke outside checkout. Phase 6 will verify consumers end to end.
+
+Status: phase 5 implementation candidate; CI pending.
