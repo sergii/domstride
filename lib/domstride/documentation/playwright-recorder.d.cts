@@ -1,6 +1,6 @@
 type Size={width:number;height:number};
 type RecorderPage={
- screencast:{start(options:{path:string;size:Size;onFrame?:(frame:{data:{length:number}})=>void}):Promise<void>;stop():Promise<void>};
+ screencast:{start(options:{path:string;size:Size;onFrame?:(frame:{data:{length:number}})=>void}):Promise<unknown>;stop():Promise<unknown>};
  screenshot(options:{path:string;animations:'disabled'}):Promise<unknown>;
  url():string;
  waitForTimeout(ms:number):Promise<void>;
