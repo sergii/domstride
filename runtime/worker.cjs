@@ -128,7 +128,9 @@ function nodeAction(message) {
       }
       if (!["INPUT", "TEXTAREA"].includes(node.tagName) || ["checkbox", "radio", "file", "button", "submit"].includes(node.type)) throw new Error("UNSUPPORTED_SET");
       if (node.disabled || node.readOnly) throw new Error("Element is disabled or readonly");
+      if (pageState?.domProfile === "logical") node.focus();
       node.value = String(message.value);
+      if (pageState?.domProfile === "logical" && typeof node.selectionStart === "number") node.setSelectionRange(node.value.length, node.value.length);
       node.dispatchEvent(new window.Event("input", { bubbles: true }));
       node.dispatchEvent(new window.Event("change", { bubbles: true }));
       return true;
@@ -188,7 +190,7 @@ function installBridge(win, state) {
 function prepareWindow(win, bridge, state) {
   installErrorCapture(win);
   if (state.mediaProfile === "static-desktop") installStaticMedia(win);
-  if (state.domProfile === "logical") installLogicalDOM(win);
+  if (state.domProfile === "logical") installLogicalDOM(win, state);
   if (bridge) {
     installBridge(win, state);
     if (state.websocketUrl && typeof win.WebSocket !== "function") throw new Error("UNSUPPORTED_WEBSOCKET_ENGINE");
@@ -319,6 +321,8 @@ function element(selector) {
 
 function action(message) {
   switch (message.command) {
+    case "send_keys": return forms.sendPageKeys(window, message.keys);
+    case "logical_scroll_state": return pageState?.logicalScroll?.() ?? null;
     case "check_javascript": checkJavaScript(); return true;
     case "find_handles": return findHandles(message);
     case "node_action": return nodeAction(message);
@@ -443,7 +447,7 @@ async function execute(message) {
         const reply = await rackRequest(url, "GET");
         if (typeof reply.websocket_cookie === "string") websocketCookie = reply.websocket_cookie;
         return reply;
-      }, message.asset_warnings);
+      }, message.asset_warnings, engine);
       prepared.html = resolved.html;
       moduleCode = resolved.moduleCode;
     }
@@ -510,6 +514,7 @@ function recordingPath(node) {
 function recordingTarget(message) {
   try {
     if (message.command === "node_action") return resolveHandle(message.handle);
+    if (message.command === "send_keys") return window?.document.activeElement;
     if (message.selector) return window?.document.querySelector(message.selector);
   } catch (_) {}
   return null;
@@ -582,7 +587,7 @@ async function main() {
         checkJavaScript();
         const value = await execute(message);
         // One event-loop checkpoint, not a deterministic timer/network drain.
-        const mutating = ["mount", "click", "fill", "execute_script", "evaluate_script"].includes(message.command) || (message.command === "node_action" && ["click", "set", "select_option", "unselect_option", "send_keys", "attach_files"].includes(message.operation));
+        const mutating = ["mount", "click", "fill", "send_keys", "execute_script", "evaluate_script"].includes(message.command) || (message.command === "node_action" && ["click", "set", "select_option", "unselect_option", "send_keys", "attach_files"].includes(message.operation));
         if (message.settling === "tracked" && mutating) await settle(pageState);
         else await turn();
         checkJavaScript();

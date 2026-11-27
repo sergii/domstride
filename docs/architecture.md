@@ -135,3 +135,7 @@ jsdom 26 and 31 have different native WebSocket cookie behavior. Keep existing n
 ## ADR-031: bounded numeric tenant cable routing
 
 Opt-in numeric-account mode requires authenticated exact /cable loopback configuration; map only logical same-origin numeric /<id>/cable paths, no query/fragment/external URLs, root-path eligible cookies only. Run actual Fizzy Rails stack in the candidate process on ephemeral loopback Puma with async cable adapter and explicit test origin. Preserve real account extraction and authentication. No application code or original assertions changed. Reference verifies route acceptance and rejection independently of app.
+
+## ADR-032: focused page keyboard and scroll intent
+
+Share key encoding across Capybara node and driver. In logical profile field set focuses the input; page-level Enter dispatches cancelable keyboard event and ordinary implicit form submission through real DOM click/requestSubmit. No physical keyboard, chords or focus traversal parity. Store scrollIntoView target path and requested alignment without fabricating coordinates; reject smooth scrolling. Preliminary asset discovery uses selected jsdom and isolated console, not live CSS suppression. ResizeObserver and layout-dependent activity pagination remain unresolved.

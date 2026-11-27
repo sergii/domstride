@@ -31,10 +31,11 @@ function rewriteDynamicImports(source, imports) {
     " default: return Promise.reject(new Error('UNSUPPORTED_DYNAMIC_IMPORT: ' + specifier)); } }\n" + source;
 }
 
-async function prepareAssets(html, url, request, warningPolicy = "strict") {
+async function prepareAssets(html, url, request, warningPolicy = "strict", engine = "jsdom") {
   if (!["strict", "direct-eval"].includes(warningPolicy)) throw new Error("Unknown asset warning policy");
-  const { JSDOM } = require("jsdom");
-  const parsed = new JSDOM(html, { url });
+  const { JSDOM, VirtualConsole } = require(engine);
+  // The inert parser only discovers scripts. Live DOM CSS errors are still reported by the worker.
+  const parsed = new JSDOM(html, { url, virtualConsole: new VirtualConsole() });
   const doc = parsed.window.document;
   const origin = new URL(url).origin;
   const cache = new Map();

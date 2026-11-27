@@ -15,7 +15,23 @@ function selectOption(win, node, selected) {
   return true;
 }
 
-function sendKeys(win, node, keys) {
+// Implicit submission is restricted to ordinary single-line form controls.
+function submitOnEnter(node) {
+  if (node.tagName !== "INPUT" || !node.form) return;
+  const form = node.form;
+  const submitter = Array.from(form.elements).find(el =>
+    (el.tagName === "BUTTON" && el.type === "submit") ||
+    (el.tagName === "INPUT" && ["submit", "image"].includes(el.type)));
+  if (submitter) {
+    if (!submitter.matches(":disabled")) submitter.click();
+    return;
+  }
+  const blocking = Array.from(form.elements).filter(el => el.tagName === "INPUT" &&
+    ["text","search","url","tel","email","password","date","month","week","time","datetime-local","number"].includes(el.type));
+  if (blocking.length <= 1) form.requestSubmit();
+}
+
+function sendKeys(win, node, keys, implicitSubmit = false) {
   const text = node.tagName === "TEXTAREA" || (node.tagName === "INPUT" && ["text", "search", "tel", "url", "password"].includes(node.type));
   if (!text) throw new Error("UNSUPPORTED_KEY_TARGET");
   if (node.matches(":disabled") || node.readOnly) throw new Error("Element is disabled or readonly");
@@ -29,6 +45,7 @@ function sendKeys(win, node, keys) {
         let start = node.selectionStart ?? node.value.length, end = node.selectionEnd ?? start;
         let insert = item.kind === "text" ? key : null;
         if (key === "Enter" && item.kind === "special" && node.tagName === "TEXTAREA") insert = "\n";
+        else if (key === "Enter" && item.kind === "special" && implicitSubmit) submitOnEnter(node);
         if (item.kind === "special" && key === "Backspace") {
           if (start === end) start = Math.max(0, start - (Array.from(node.value.slice(0, start)).pop()?.length || 0));
           insert = "";
@@ -52,6 +69,22 @@ function sendKeys(win, node, keys) {
       }
       node.dispatchEvent(new win.KeyboardEvent("keyup", { key, bubbles: true }));
     }
+  }
+  return true;
+}
+
+function sendPageKeys(win, keys) {
+  const node = win.document.activeElement;
+  if (!node) throw new Error("UNSUPPORTED_KEY_TARGET");
+  if (node.tagName === "TEXTAREA" || (node.tagName === "INPUT" && ["text","search","tel","url","password"].includes(node.type))) {
+    return sendKeys(win, node, keys, true);
+  }
+  // Non-editable targets receive only explicitly supported named events.
+  if (keys.some(key => key.kind !== "special" || !["Enter","Escape","ArrowLeft","ArrowRight"].includes(key.value))) throw new Error("UNSUPPORTED_KEY_TARGET");
+  for (const { value: key } of keys) {
+    const down = new win.KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+    if (node.dispatchEvent(down) && key === "Enter" && node.matches("button, a[href], input[type=submit]") && !node.matches(":disabled")) node.click();
+    node.dispatchEvent(new win.KeyboardEvent("keyup", { key, bubbles: true }));
   }
   return true;
 }
@@ -118,4 +151,4 @@ async function nodeFormData(win, form) {
   return output;
 }
 
-module.exports = { selectOption, sendKeys, attachFiles, installFormData, nodeFormData, MAX_UPLOAD };
+module.exports = { selectOption, sendKeys, sendPageKeys, attachFiles, installFormData, nodeFormData, MAX_UPLOAD };

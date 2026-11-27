@@ -7,7 +7,7 @@ module Domstride
   class Recording
     MAX_EVENTS = 1000
     MAX_HTML_BYTES = 16 * 1024 * 1024
-    KINDS = %w[mount click fill assert_text wait_for_text execute_script evaluate_script batch settle advance_time
+    KINDS = %w[mount click fill send_keys assert_text wait_for_text execute_script evaluate_script batch settle advance_time
       node_action.click node_action.set node_action.select_option node_action.unselect_option
       node_action.send_keys node_action.attach_files].freeze
 

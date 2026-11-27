@@ -90,9 +90,32 @@ function installScroll(win) {
   win.scrollBy = (first, second) => move(true, first, second);
 }
 
-function installLogicalDOM(win) {
+// Scroll intent is observable, not a fabricated physical position.
+function installScrollIntent(win, state) {
+  let latest = null;
+  state.logicalScroll = () => latest;
+  if (typeof win.Element.prototype.scrollIntoView === "function") return;
+  Object.defineProperty(win.Element.prototype, "scrollIntoView", {
+    configurable: true, writable: true,
+    value(options = {}) {
+      if (!this.isConnected) return;
+      if (typeof options === "boolean") options = { block: options ? "start" : "end" };
+      const block = options.block ?? "start", inline = options.inline ?? "nearest", behavior = options.behavior ?? "auto";
+      if (![block, inline].every(value => ["start","center","end","nearest"].includes(value))) throw new TypeError("Invalid scroll alignment");
+      if (!["auto","instant","smooth"].includes(behavior)) throw new TypeError("Invalid scroll behavior");
+      if (behavior === "smooth") throw new Error("UNSUPPORTED_SMOOTH_SCROLL");
+      const path = [];
+      for (let node = this; node.parentElement; node = node.parentElement)
+        path.unshift(Array.prototype.indexOf.call(node.parentElement.children, node));
+      latest = { target_path: path, block, inline, behavior };
+    }
+  });
+}
+
+function installLogicalDOM(win, state) {
   installVisibility(win);
   installDialogs(win);
   installScroll(win);
+  installScrollIntent(win, state);
 }
 module.exports = { installLogicalDOM };

@@ -76,6 +76,10 @@ module Domstride
         raise
       end
 
+      def send_keys(*keys)
+        command("send_keys", keys: Node.encode_keys(keys))
+      end
+
       def execute_script(script, *args)
         command("execute_script", script: script, arguments: script_arguments(args))
         nil
@@ -180,8 +184,8 @@ module Domstride
         home: "Home", end: "End", enter: "Enter", return: "Enter", escape: "Escape", tab: "Tab"
       }.freeze
 
-      def send_keys(*keys)
-        encoded = keys.map do |key|
+      def self.encode_keys(keys)
+        keys.map do |key|
           if key.is_a?(String)
             { kind: "text", value: key }
           elsif KEY_NAMES.key?(key)
@@ -190,7 +194,10 @@ module Domstride
             raise ::Capybara::NotSupportedByDriverError, "Unsupported key or chord"
           end
         end
-        operation("send_keys", keys: encoded)
+      end
+
+      def send_keys(*keys)
+        operation("send_keys", keys: self.class.encode_keys(keys))
       end
 
       def attach_files(value)
