@@ -51,3 +51,7 @@ Use a public/synthetic Rails Petstore fixture with a form, a conditional control
 ## Consolidation before core extraction
 
 See [MVP consolidation review](mvp-consolidation.md) and [Petstore performance evidence and native/WASM research](petstore-performance-native-wasm.md). Keep experimental optimizations opt-in. Core Extraction & Packaging follows a reviewed consolidated baseline.
+
+## Core Extraction & Packaging
+
+[Phase 1: packaged documentation export](core-extraction-packaging.md). CI pending; normalizer, recorder and general publication remain separate phases.

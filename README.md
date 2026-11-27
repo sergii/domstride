@@ -184,3 +184,7 @@ Domstride Studio is the runner-independent reporting direction within the same p
 Native [Playwright Test reporter](docs/playwright-reporter.md): source-checkout adapter for existing tests, optional WebM and Gherkin-like test.step/expect evidence, independent of Domstride Runner.
 
 Optional headed browser capture for Selenium/Cuprite: [Linux Xvfb video backend](docs/browser-video.md). Explicit opt-in; use an isolated display and one worker per display.
+
+### Experimental local documentation export
+
+`domstride docs export --synthetic-reference RUN_DIRECTORY` exports explicitly approved trusted synthetic paired-run evidence to Markdown/MDX and local media. Node.js required; no browser or test rerun. See [scope and limitations](docs/core-extraction-packaging.md).
