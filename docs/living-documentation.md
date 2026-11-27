@@ -37,3 +37,7 @@ Future outputs include business rule catalog, use-case catalog, acceptance crite
 See [specification standard](specification-standard.md), [artifact structure](artifact-structure.md), [screenshot policy](screenshot-policy.md), [execution modes](execution-modes.md) and [reference example](../examples/petstore/README.md).
 
 Public examples use only public reference applications and synthetic data. No private product names, code, business fixtures or recordings may be copied into the public gem. Keep project structure agnostic; acceptance tests remain in their native location. See [specification organization](specification-organization.md).
+
+## Delivery surfaces
+
+Execution Replay is a technical view of actual unpaced recorded execution, action/step timeline and diagnostics. Guided Walkthrough is a human-paced demonstration of the same specification with semantic holds and optional focus. Static Documentation is a readable illustrated guide with prerequisites, actors, numbered sections, step-specific real screenshots, expected results, and an ordinary optional video at the end. Static docs require no Domstride runtime or interactive player. The Domstride player is optional progressive enhancement. A single normalized documentation model feeds Studio, HTML, Markdown/MDX and external documentation adapters. See [documentation publishing](documentation-publishing.md).

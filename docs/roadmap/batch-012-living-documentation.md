@@ -38,5 +38,15 @@ CI reference runs as an independent job in the existing Rails reference and brow
 ## Presentation iteration
 
 - [x] Implement offline responsive reference Docs UI with sidebar, search, domain/capability, actor, declared platform and journey groupings, feature context, numbered steps, actual outcome pills, screenshots and video at the bottom. Unspecified journey metadata stays unclassified.
-- [x] Increase checkpoint holds to 1100 ms and form-field presentation holds to 650 ms only for selected recorded scenarios. Fast mode unchanged. CI validation of this iteration pending; not a calibrated media timeline.
+- [x] Increase checkpoint holds to 1100 ms and form-field presentation holds to 650 ms only for selected recorded scenarios. Fast mode unchanged. CI passed in run 45974971779; not a calibrated media timeline.
 - [ ] Inspect actual new video duration and browser UI; follow with measured cues, focus and subtitles.
+
+## Dual video and external documentation roadmap
+
+- [ ] Explicit unpaced execution capture and guided capture of the same canonical scenario, isolated data/reset, independent attempt IDs and per-profile media timing. Keep Fast zero capture; verify duration and no intentional execution holds.
+- [ ] Action-aware pacing, target focus, calibrated per-video cues, captions and chapters; preserve unmodified evidence.
+- [ ] Normalize portable documentation model and export Markdown/MDX with numbered sections, prerequisites, actors, screenshots, expected outcomes and optional native video at bottom. Generate from approved verified artifacts offline, without running tests at site build.
+- [ ] Starlight adapter first (actual site build + browser smoke), Fumadocs second, Docusaurus third; plain Markdown fallback. No duplicate feature source. Optional player integration later.
+- [ ] Media publication manifest and local/S3-compatible adapters; safe allowlist, private by default, immutable versioned assets, auth-aware delivery and stale evidence handling. See [documentation publishing](../documentation-publishing.md).
+
+UI v2 CI: [45974971779](https://github.com/sergii/domstride/actions/runs/45974971779), Petstore job passed; artifact 15185619987 available. New design output inspection remains pending.
