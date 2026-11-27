@@ -607,7 +607,7 @@ function findCue(kind, sequence) {
   const selected = Number($("video-select").value);
   const candidates = (activeCase?.videos || []).flatMap((video,i)=>{
     if(video.timing_quality==="visual_candidates_unvalidated"){
-      const segment=kind==="step" && video.focus.find(s=>s.step_sequence===sequence);
+      const segment=kind==="step" && (video.step_intervals?.find(s=>s.step_sequence===sequence)||video.focus.find(s=>s.step_sequence===sequence));
       return segment?[{kind,sequence,time_ms:segment.start_ms,i}]:[];
     }
     return (video.cues || []).filter(c=>c.kind===kind && c.sequence===sequence).map(c=>({...c,i}));
@@ -699,7 +699,8 @@ function syncVideoHighlight() {
     $("observed-caption").textContent=segment&&$("observed-cc").checked?"Focus: "+segment.label:"";
     for(const b of $("observed-actions").querySelectorAll("button")) b.setAttribute("aria-current",String(Number(b.dataset.action)===focusIndex));
   }
-  const step=observed?(segment?{sequence:segment.step_sequence,time_ms:segment.start_ms}:null):latest("step");
+  const stepInterval=item.step_intervals?.find(s=>ms>=s.start_ms&&ms<s.end_ms);
+  const step=observed?(stepInterval?{sequence:stepInterval.step_sequence,time_ms:stepInterval.start_ms}:segment?{sequence:segment.step_sequence,time_ms:segment.start_ms}:null):latest("step");
   let assertion=observed?null:latest("assertion");
   if (assertion && step && assertion.time_ms<step.time_ms) assertion=null;
   if (assertion && step) {
@@ -799,7 +800,7 @@ function renderGherkin(event) {
     const recorded=activeCase.recordings.flatMap(trace=>trace.events).find(e=>e.step_sequence===step.sequence);
     const kind=children.length>1?"form":children.length?(children[0].transition==="navigation"?"submit":actionKind(children[0].kind)):recorded?actionKind(recorded.kind):semantic;
     b.dataset.replay=cue?"video":matching.length?"dom":"none";
-    stepContent(b,kind,[step.keyword.trim(),step.text||"Step "+step.sequence].join(" "),step.status,step.duration_ms,cue?"Video "+(cue.time_ms/1000).toFixed(2)+" s":matching.length?"DOM replay":activeCase.videos?.length?"No video cue":"Results only",children);
+    stepContent(b,kind,[step.keyword.trim(),step.text||"Step "+step.sequence].join(" "),step.status,step.duration_ms,cue?"Video "+(cue.time_ms/1000).toFixed(2)+" s":matching.length?"DOM replay":video?.step_timing_quality==="visual_landmarks"&&step.sequence<video.step_intervals[0]?.step_sequence?"Before recording":activeCase.videos?.length?"No video cue":"Results only",children);
     b.disabled = !matching.length && !cue;
     b.onclick = () => {
       if (cue && (videoMode || !matching.length)) {seekCue(cue);return;}

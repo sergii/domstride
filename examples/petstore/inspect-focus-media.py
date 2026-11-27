@@ -13,6 +13,40 @@ def matches_outline(r, g, b, color):
         return r < 100 and 45 < g < 155 and b > 175 and b-g > 65 and b-r > 100
     raise ValueError("Unsupported outline color")
 
+
+def read_landmark(frame,width,height):
+    # Marker is anchored to bottom-right, with fixed sync rows and eight binary cells.
+    if width!=1280 or height!=800:
+        return None
+    def cell(i):
+        x=width-40+(i%4)*8+4
+        y=height-40+(i//4)*8+4
+        offset=(y*width+x)*3
+        r,g,b=frame[offset:offset+3]
+        if r>160 and g<100 and b>160:return "M"
+        if r<100 and g>160 and b>160:return "C"
+        if min(r,g,b)>180:return "1"
+        if max(r,g,b)<70:return "0"
+        return "?"
+    cells=[cell(i) for i in range(16)]
+    if cells[:4]!=list("MCMC") or cells[12:]!=list("CMCM") or any(c not in "01" for c in cells[4:12]):
+        return None
+    return int("".join(cells[4:12]),2)
+
+def step_intervals(markers,hits,pts):
+    result=[]
+    for start,end in zip(markers[::2],markers[1::2]):
+        if start["step_id"]!=end["step_id"] or start["boundary"]!="start" or end["boundary"]!="end":
+            raise ValueError("Invalid step landmark sequence")
+        a,b=hits.get(start["code"],[]),hits.get(end["code"],[])
+        if len(a)<2 or len(b)<2 or a[-1]>=b[0]:continue
+        if any(y!=x+1 for seq in [a,b] for x,y in zip(seq,seq[1:])):continue
+        start_ms=round((pts[a[0]]-pts[0])*1000,3)
+        end_ms=round((pts[b[-1]]-pts[0])*1000,3)
+        if result and start_ms<=result[-1]["end_ms"]:raise ValueError("Overlapping step landmarks")
+        result.append({"step_id":start["step_id"],"start_ms":start_ms,"end_ms":end_ms})
+    return result
+
 def inspect_video(video, observations):
     probe = json.loads(subprocess.check_output([
         "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_frames", "-show_streams",
@@ -54,6 +88,9 @@ def inspect_video(video, observations):
             matches.append(sum(any(outline_pixel(frame,px+dx*d,py+dy*d) for d in range(-3,4)) for px,py,dx,dy in side)/len(side))
         return len(matches)>=3 and sum(m>=0.75 for m in matches)>=3
     hit = [[] for _ in targets]
+    markers=observations.get('step_markers',[])
+    if len(markers)%2 or len({m['code'] for m in markers})!=len(markers):raise ValueError('Invalid landmark list')
+    marker_hits={m['code']:[] for m in markers}
     proc = subprocess.Popen(["ffmpeg","-v","error","-i",str(video),"-map","0:v:0","-f","rawvideo","-pix_fmt","rgb24","-fps_mode","passthrough","-"],stdout=subprocess.PIPE)
     size=width*height*3
     try:
@@ -61,6 +98,9 @@ def inspect_video(video, observations):
             frame=proc.stdout.read(size)
             if len(frame)!=size:
                 raise ValueError("Decoded frame count mismatch")
+            if markers:
+                code=read_landmark(frame,width,height)
+                if code in marker_hits:marker_hits[code].append(index)
             for i,target in enumerate(targets):
                 if score(frame,target):
                     hit[i].append(index)
@@ -85,7 +125,8 @@ def inspect_video(video, observations):
             e["match"]="ambiguous"
     return {"format":"domstride.reference-focus-media-observations","schema_version":1,
             "timing_quality":"visual_candidates_unvalidated","method":"decoded_outline_match","outline_color":outline_color,
-            "frame_count":len(pts),"media_origin_pts_ms":pts[0]*1000,"targets":results}
+            "frame_count":len(pts),"media_origin_pts_ms":pts[0]*1000,"targets":results,
+            "step_intervals":step_intervals(markers,marker_hits,pts)}
 
 if __name__=="__main__":
     root=pathlib.Path(sys.argv[1])

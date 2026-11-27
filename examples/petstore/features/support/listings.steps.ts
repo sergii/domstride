@@ -26,6 +26,30 @@ class ListingWorld extends World {
   submitSourceUrl?: string;
   frameObservations: FrameObservation[] = [];
   recordingWindow: {startWallMs:number;startMonotonicMs:number;endWallMs?:number;endMonotonicMs?:number} | null = null;
+
+  stepMarkers: {step_id:string; boundary:'start'|'end'; code:number}[]=[];
+  async markStep(stepId:string,boundary:'start'|'end'){
+    if(this.profile!=='guided'||!this.recordingWindow)return;
+    const code=this.stepMarkers.length+1;
+    if(code>255)throw Error('Reference step marker limit exceeded');
+    // Brief visible calibration landmark, separate from application behavior.
+    try{
+      await this.page.evaluate(code=>{
+        const marker=document.createElement('div');
+        marker.id='domstride-step-landmark';
+        marker.style.cssText='position:fixed;right:8px;bottom:8px;width:32px;height:32px;display:grid;grid-template-columns:repeat(4,8px);grid-template-rows:repeat(4,8px);z-index:2147483647;pointer-events:none;background:white;margin:0;padding:0;border:0';
+        const magic=['#ff00ff','#00ffff','#ff00ff','#00ffff'];
+        const bits=Array.from({length:8},(_,i)=>(code&(1<<(7-i)))?'#ffffff':'#000000');
+        for(const color of [...magic,...bits,...magic.slice().reverse()]){
+          const cell=document.createElement('span');cell.style.cssText='display:block;width:8px;height:8px;background:'+color+';margin:0;padding:0;border:0';marker.append(cell);
+        }
+        document.body.append(marker);
+      },code);
+      this.stepMarkers.push({step_id:stepId,boundary,code});
+      await this.hold(160);
+    }catch(error){this.evidenceErrors.push('Step landmark: '+String(error));}
+    finally{await this.page.evaluate(()=>document.getElementById('domstride-step-landmark')?.remove());}
+  }
   async withFocus(target: Locator, action: () => Promise<void>, beforeMs=0, afterMs=0) {
     if (this.profile !== 'guided') { await action(); return; }
     // Reference presentation only: no geometry reads or DOM writes in unpaced execution.
@@ -101,8 +125,8 @@ Before(async function(this: ListingWorld, {pickle, testCaseStartedId}) {
   this.page = await this.context.newPage();
 });
 
-BeforeStep(function(this: ListingWorld,{testStepId}) {
-  if(this.profile==='guided') this.currentStepId=testStepId;
+BeforeStep(async function(this: ListingWorld,{testStepId}) {
+  if(this.profile==='guided'){this.currentStepId=testStepId;await this.markStep(testStepId,'start');}
 });
 
 AfterStep(async function(this: ListingWorld,{pickleStep,testStepId,result}) {
@@ -115,13 +139,14 @@ AfterStep(async function(this: ListingWorld,{pickleStep,testStepId,result}) {
     'the listing should appear in the seller\'s listings',
     'the listing should be visible to a guest buyer'
   ];
-  if (!selected.includes(pickleStep.text)) return;
+  if (!selected.includes(pickleStep.text)) {if(this.stepMarkers.some(m=>m.step_id===testStepId&&m.boundary==='start'))await this.markStep(testStepId,'end');return;}
   const file = 'screenshots/step-'+String(this.screenshots.length+1).padStart(3,'0')+'.png';
   try {
     await this.page.screenshot({path:join(this.directory,file),animations:'disabled'});
     this.screenshots.push({stepId:testStepId,file,url:this.page.url(),phase:'after'});
     await this.hold(pickleStep.text.includes('guest buyer') ? 1800 : pickleStep.text.includes('confirmation') ? 1500 : 1100);
   } catch(error) { this.evidenceErrors.push('Screenshot: '+String(error)); }
+  if(this.stepMarkers.some(m=>m.step_id===testStepId&&m.boundary==='start'))await this.markStep(testStepId,'end');
 });
 
 After(async function(this: ListingWorld) {
@@ -137,7 +162,7 @@ After(async function(this: ListingWorld) {
   if (this.directory) {
     if(this.profile==='guided') await writeFile(join(this.directory,'focus-observations.json'),JSON.stringify({
       format:'domstride.reference-focus-observations',schema_version:1,timing_quality:'unmapped',outline_color:'#2563eb',
-      recording_window:this.recordingWindow,targets:this.focusObservations,frames:this.frameObservations
+      recording_window:this.recordingWindow,targets:this.focusObservations,frames:this.frameObservations,step_markers:this.stepMarkers
     },null,2));
     await writeFile(join(this.directory,'capture.json'),JSON.stringify({
       screenshots:this.screenshots,video:file,errors:this.evidenceErrors,profile:this.profile,presentation_wait_ms:this.presentationWaitMs,focus_count:this.focusCount

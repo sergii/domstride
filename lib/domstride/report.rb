@@ -98,12 +98,26 @@ module Domstride
               raise Error, "Invalid observed video focus"
             end
           end
+          step_intervals = attachment.fetch("step_intervals", [])
+          step_quality = attachment["step_timing_quality"]
+          if attachment.key?("step_intervals") || attachment.key?("step_timing_quality")
+            unless quality == "visual_candidates_unvalidated" && step_quality == "visual_landmarks" &&
+              step_intervals.is_a?(Array) && step_intervals.size.between?(1, Protocol::MAX_STEPS) &&
+              step_intervals.each_with_index.all? { |interval, i|
+                interval.is_a?(Hash) && interval["step_sequence"].is_a?(Integer) && steps.any? { |s| s["sequence"] == interval["step_sequence"] } &&
+                %w[start_ms end_ms].all? { |key| interval[key].is_a?(Numeric) && interval[key].finite? && interval[key].between?(0,86_400_000) } &&
+                interval["start_ms"] < interval["end_ms"] &&
+                (i.zero? || (step_intervals[i-1]["end_ms"] <= interval["start_ms"] && step_intervals[i-1]["step_sequence"] < interval["step_sequence"]))
+              } && focus.all? { |segment| step_intervals.any? { |interval| interval["step_sequence"] == segment["step_sequence"] && interval["start_ms"] <= segment["start_ms"] && interval["end_ms"] >= segment["end_ms"] } }
+              raise Error, "Invalid recorded step intervals"
+            end
+          end
           content = Video.read_webm(File.join(path, name))
           encoded = Base64.strict_encode64(content)
           bytes += encoded.bytesize
           raise Error, "Report payload limit exceeded" if bytes > MAX_PAYLOAD_BYTES
           {label: attachment["label"], base64: encoded, cues: cues.map { |cue| cue.slice("kind","sequence","time_ms") },
-            timing_quality: quality, focus: focus.map { |segment| segment.slice("kind","status","start_ms","end_ms","x","y","width","height", *(quality ? %w[step_sequence label transition element] : [])) }}
+            timing_quality: quality, step_timing_quality: step_quality, step_intervals: step_intervals.map { |interval| interval.slice("step_sequence","start_ms","end_ms") }, focus: focus.map { |segment| segment.slice("kind","status","start_ms","end_ms","x","y","width","height", *(quality ? %w[step_sequence label transition element] : [])) }}
         end
         {name: item["name"], status: item["status"], duration_ms: item["duration_ms"],
           **metadata,

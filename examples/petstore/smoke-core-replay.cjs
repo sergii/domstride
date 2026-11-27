@@ -15,6 +15,8 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await expect(page.locator('#video-evidence')).toBeVisible();
  await expect(page.locator('#no-evidence')).toBeHidden();
  const video=page.locator('#browser-video'),segments=data.cases[idx].videos[0].focus;assert.equal(segments.length,6);
+ const intervals=data.cases[idx].videos[0].step_intervals;assert.equal(intervals.length,data.cases[idx].steps.length-2);
+ assert.equal(data.cases[idx].videos[0].step_timing_quality,'visual_landmarks');
  await expect.poll(()=>video.evaluate(v=>v.readyState>=1&&Number.isFinite(v.duration))).toBe(true);
  await page.locator('#focus-speed').selectOption('0');
  await expect(page.locator('#suite-summary .summary-pill')).toHaveCount(6);
@@ -44,6 +46,14 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  assert.equal(await page.locator('#gherkin-steps .step-status[data-status=passed]').first().evaluate(el=>getComputedStyle(el).color),'rgb(51, 115, 78)');
  await expect(page.locator('#gherkin-steps .action-icon')).not.toHaveCount(0);
  await expect(page.locator('#gherkin-steps .step-action-chip')).toHaveCount(6);
+ for(const interval of intervals){
+  await video.evaluate((v,t)=>v.currentTime=t,(interval.start_ms+interval.end_ms)/2000);
+  await expect(page.locator('#gherkin-steps button[aria-current=true]')).toHaveAttribute('data-sequence',String(interval.step_sequence));
+ }
+ const noFocus=intervals.find(s=>!segments.some(f=>f.step_sequence===s.step_sequence));assert.ok(noFocus);
+ await page.locator('#gherkin-steps button[data-sequence="'+noFocus.step_sequence+'"]').click();
+ await expect.poll(()=>video.evaluate((v,t)=>Math.abs(v.currentTime-t),noFocus.start_ms/1000)).toBeLessThan(0.06);
+ await expect(page.locator('#observed-caption')).toHaveText('');
  await expect(page.locator('#gherkin-steps .step-status').first()).toHaveText('passed');
  await expect(page.locator('#observed-actions [data-kind=fill]')).toHaveCount(3);
  await expect(page.locator('#observed-actions [data-kind=select]')).toHaveCount(2);
@@ -75,7 +85,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await expect(page.locator('#observed-caption')).toHaveText('');
  await page.locator('#video-play').click();await expect.poll(()=>video.evaluate(v=>v.currentTime)).toBeGreaterThan(0.1);await page.locator('#video-play').click();
  const first=segments[0];await page.locator('#gherkin-steps button[data-sequence="'+first.step_sequence+'"]').click();
- await expect.poll(()=>video.evaluate((v,t)=>Math.abs(v.currentTime-t),first.start_ms/1000)).toBeLessThan(0.06);
+ await expect.poll(()=>video.evaluate((v,t)=>Math.abs(v.currentTime-t),intervals.find(s=>s.step_sequence===first.step_sequence).start_ms/1000)).toBeLessThan(0.06);
  await video.evaluate((v,t)=>v.currentTime=t,(first.start_ms+first.end_ms)/2000);
  await expect(page.locator('#observed-caption')).toHaveText('Focus: '+first.label);
  await page.screenshot({path:path.join(path.dirname(file),'core-replay-desktop.png')});

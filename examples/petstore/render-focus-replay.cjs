@@ -31,6 +31,18 @@ const focus=cues.map(t=>{
 });
 assert.equal(c.videos.length,1);assert.equal(c.videos[0].role,'guided');
 c.videos[0].timing_quality='visual_candidates_unvalidated';c.videos[0].focus=focus;
+const stepIntervals=(obs.step_intervals||[]).map(interval=>{
+ const step=c.steps.find(s=>s.runtime_id===interval.step_id);assert.ok(step);
+ return {step_sequence:step.sequence,start_ms:interval.start_ms,end_ms:interval.end_ms};
+});
+if(observations.step_markers?.length){
+ assert.equal(stepIntervals.length,observations.step_markers.length/2,'All reference step landmarks must resolve');
+ assert.equal(stepIntervals.length,c.steps.length-2,'Authentication steps are intentionally outside recording');
+ for(const segment of focus){const interval=stepIntervals.find(s=>s.step_sequence===segment.step_sequence);assert.ok(interval&&interval.start_ms<=segment.start_ms&&interval.end_ms>=segment.end_ms,'Focus must be inside observed step');}
+ c.videos[0].step_intervals=stepIntervals;
+ c.videos[0].step_timing_quality='visual_landmarks';
+ console.log('Matched '+stepIntervals.length+' complete recorded step intervals');
+}
 fs.writeFileSync(path.join(dir,'case.json'),JSON.stringify(c,null,2)+'\n');
 const captions=focusVtt(cues);
 fs.writeFileSync(path.join(dir,'focus-captions.vtt'),captions);

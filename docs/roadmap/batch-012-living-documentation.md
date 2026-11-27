@@ -137,3 +137,7 @@ User chose Rounded only; remove shape preference and Pill. Native checkbox seman
 ## Inspector CI follow-up
 
 CI 46062414711 passed DOM inspector and legacy recording tests. CI 46062414761 passed until the video hover assertion: tooltip stayed hidden. Raw mouse coordinates may be outside the scrolled playback panel. Stabilize paused media time and zoom before locator-relative hover; re-evaluate tooltip on scroll rather than losing the pointer and reject hits outside the visible preview. Root cause not yet confirmed by a passing rerun. New CI pending; Fizzy remains separate.
+
+## Experimental full-step timeline
+
+Verified inspector CI 46063078874 (18/19 overall; Fizzy unrelated compatibility still failing). Reference Guided capture now emits brief 32x32 visual landmarks in bottom-right at each complete step boundary (160 ms holds). Authentication stays outside recording. Landmarks are intentionally visible diagnostic annotations in the raw guided recording, not application UI or server latency; no new landmarks in Fast or Execution. Decoder matches actual frame PTS using sync rows and binary code, requires contiguous detections and rejects overlap. Core protocol separates step_intervals from focus geometry; step highlight/seek uses matched full intervals, action chips and zoom remain tied to actual focus. CI requires every complete recorded reference step to resolve; missing boundaries must not become invented cues. Legacy media unaffected. Experimental approach requires CI and visual review; production clean-media clock mapping remains open.
