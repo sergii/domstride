@@ -308,12 +308,22 @@ module Domstride
       end
       response = @rack_session.last_response
       response_headers = response.headers.reject { |key, _| key.downcase == "set-cookie" }
-      { status: response.status, headers: response_headers.transform_values { |v| Array(v).join(", ") }, body: response.body, url: uri.to_s }
+      { status: response.status, headers: response_headers.transform_values { |v| Array(v).join(", ") }, body: response_text(response.body), url: uri.to_s }
     ensure
       if @profiling
         @profile[:rack_requests] += 1
         @profile[:rack_ms] += monotonic_ms - started
       end
+    end
+
+    # The JSON bridge transports text, not arbitrary binary response bodies.
+    # Rack/Propshaft may return UTF-8 text tagged as ASCII-8BIT.
+    def response_text(body)
+      text = body.encoding == Encoding::BINARY ? body.dup.force_encoding(Encoding::UTF_8) : body.encode(Encoding::UTF_8)
+      raise Error, "Rack response body is not valid UTF-8" unless text.valid_encoding?
+      text
+    rescue EncodingError
+      raise Error, "Rack response body is not valid UTF-8"
     end
 
     def monotonic_ms
