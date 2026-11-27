@@ -31,10 +31,17 @@ function rewriteDynamicImports(source, imports) {
     " default: return Promise.reject(new Error('UNSUPPORTED_DYNAMIC_IMPORT: ' + specifier)); } }\n" + source;
 }
 
-async function prepareAssets(html, url, request, warningPolicy = "strict") {
+async function prepareAssets(html, url, request, warningPolicy = "strict", phases = null) {
+  let phaseStart = performance.now();
+  const mark = name => {
+    if (phases) phases[name] = performance.now() - phaseStart;
+    phaseStart = performance.now();
+  };
   if (!["strict", "direct-eval"].includes(warningPolicy)) throw new Error("Unknown asset warning policy");
   const { JSDOM } = require("jsdom");
+  mark("assets.load_parser");
   const parsed = new JSDOM(html, { url });
+  mark("assets.parse_html");
   const doc = parsed.window.document;
   const origin = new URL(url).origin;
   const cache = new Map();
@@ -88,9 +95,11 @@ async function prepareAssets(html, url, request, warningPolicy = "strict") {
         script.textContent = source;
       }
     }
+    mark("assets.discover_scripts");
     let moduleCode = null;
     if (modules.length) {
       const esbuild = require("esbuild");
+      mark("assets.load_esbuild");
       const entry = "domstride:entry";
       const bundled = await esbuild.build({
         entryPoints: [entry], bundle: true, write: false, format: "iife", platform: "browser",
@@ -125,6 +134,7 @@ async function prepareAssets(html, url, request, warningPolicy = "strict") {
           }
         }]
       });
+      mark("assets.esbuild_with_rack_and_rewrite");
       const fatal = bundled.warnings.filter(warning => warningPolicy !== "direct-eval" || warning.id !== "direct-eval");
       for (const warning of bundled.warnings.filter(w => !fatal.includes(w))) {
         const location = warning.location;
@@ -135,9 +145,13 @@ async function prepareAssets(html, url, request, warningPolicy = "strict") {
       if (fatal.length) throw new Error("Module bundle warnings: " + fatal.map(w => "[" + w.id + "] " + w.text).join("; "));
       moduleCode = bundled.outputFiles[0].text;
     }
-    return { html: parsed.serialize(), moduleCode };
+    mark("assets.validate_warnings");
+    const serialized = parsed.serialize();
+    mark("assets.serialize_html");
+    return { html: serialized, moduleCode };
   } finally {
     parsed.window.close();
+    mark("assets.close_parser");
   }
 }
 

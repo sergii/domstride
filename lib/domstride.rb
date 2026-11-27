@@ -191,7 +191,7 @@ module Domstride
     end
 
     def reset_profile!
-      @profile = { commands: {}, rack_requests: 0, rack_ms: 0.0, bytes_sent: 0, bytes_received: 0, bundle_hits: 0, bundle_misses: 0 }
+      @profile = { commands: {}, rack_requests: 0, rack_ms: 0.0, bytes_sent: 0, bytes_received: 0, bundle_hits: 0, bundle_misses: 0, phases_ms: {} }
     end
 
     def profile
@@ -380,6 +380,9 @@ module Domstride
           row[:count] += 1
           row[:ruby_wall_ms] += monotonic_ms - started
           row[:worker_wall_ms] += response&.fetch("worker_ms", 0).to_f
+          response&.fetch("phases_ms", {})&.each do |name, ms|
+            @profile[:phases_ms][name] = @profile[:phases_ms].fetch(name, 0.0) + ms
+          end
         end
       end
     rescue IOError, SystemCallError, JSON::ParserError => e

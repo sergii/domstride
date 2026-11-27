@@ -1,0 +1,5 @@
+# Mount phase diagnostics
+
+Opt-in DOMSTRIDE_PROFILE=1 exposes aggregate phases_ms counters. worker.boot_engine is the time spent in boot() once per worker, reported on its first profiled command; it excludes OS process creation, Node executable startup and earlier top-level requires. mount.* phases measure the mount command. assets.* are nested within mount.assets_total, not additional independent time. assets.esbuild_with_rack_and_rewrite includes plugin callbacks, Rack waits, Acorn and esbuild work, not isolated compiler CPU. These are wall timers, not CPU times. A partial failure may omit later phases. No source or payload is included. The original classic-script bundle cache counters remain unchanged.
+
+Pet Store measurements (pinned 0f7efe9, 2026-11-27): mount 3 calls, 2296.86 ms Ruby round trip, 1149.51 ms worker wall; repeated V8 run 2228.26 / 1213.14 ms. 43 Rack requests, 220.50 / 195.63 ms across entire run. Main question: distinguish engine startup, secondary parser load, asset bundling, document creation, module evaluation. Actual V8 CPU files not yet received. No optimization or dependency change is made here.

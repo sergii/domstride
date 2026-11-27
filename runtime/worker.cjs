@@ -6,6 +6,9 @@ const forms = require("./forms.cjs");
 const { installWebSocket } = require("./websocket.cjs");
 const { installStaticMedia } = require("./media.cjs");
 let pageState;
+let commandPhases = null;
+let bootMs = null;
+let bootReported = false;
 let confirmScope = null;
 const turn = () => new Promise(resolve => setImmediate(resolve));
 const pause = () => new Promise(resolve => setTimeout(resolve, 1));
@@ -498,27 +501,37 @@ async function execute(message) {
   if (message.command === "confirm_clear") { confirmScope = null; return true; }
   if (["execute_script", "evaluate_script"].includes(message.command)) return scriptCommand(message);
   if (message.command === "mount") {
+    let phaseStart = performance.now();
+    const mark = name => {
+      if (commandPhases) commandPhases[name] = performance.now() - phaseStart;
+      phaseStart = performance.now();
+    };
     const prepared = prepareBundle(message);
+    mark("mount.bundle_prepare");
     let moduleCode;
     if (message.assets === "bundle" && message.bridge) {
       const { prepareAssets } = require("./assets.cjs");
-      const resolved = await prepareAssets(prepared.html, message.url, url => rackRequest(url, "GET"), message.asset_warnings);
+      const resolved = await prepareAssets(prepared.html, message.url, url => rackRequest(url, "GET"), message.asset_warnings, commandPhases);
       prepared.html = resolved.html;
       moduleCode = resolved.moduleCode;
     }
+    mark("mount.assets_total");
     if (window) {
       pageState?.closeSockets?.();
       pageState?.observer?.disconnect();
       pageState?.clock?.timers.clear();
       await closeWindow(window);
     }
+    mark("mount.close_previous");
     handles.clear(); identities = new WeakMap();
     pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, websocketUrl: message.websocket_url, mediaProfile: message.media_profile, fetches: 0, activity: 0 };
     window = createWindow(prepared.html, message.url || "https://example.test/", message.bridge, prepared.compiled, pageState);
+    mark("mount.create_window");
     if (moduleCode) {
       try { window.eval(moduleCode); }
       catch (error) { reportJavaScript(error, "module.bundle"); }
     }
+    mark("mount.evaluate_modules");
     return true;
   }
   if (message.command === "websocket_state") return { count: pageState?.sockets?.size || 0, open: Array.from(pageState?.sockets || []).filter(socket => socket.readyState === 1).length };
@@ -618,7 +631,9 @@ function finishRecording(message, recording) {
 }
 
 async function main() {
+  const bootStart = performance.now();
   await boot();
+  bootMs = performance.now() - bootStart;
   const lines = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
   let queue = Promise.resolve();
   lines.on("line", line => {
@@ -635,7 +650,15 @@ async function main() {
     queue = queue.then(async () => {
       bundleOutcome = null;
       const start = message.profile ? performance.now() : null;
-      const timing = () => start === null ? {} : { worker_ms: performance.now() - start };
+      commandPhases = message.profile ? {} : null;
+      const timing = () => {
+        if (start === null) return {};
+        if (!bootReported) {
+          commandPhases["worker.boot_engine"] = bootMs;
+          bootReported = true;
+        }
+        return { worker_ms: performance.now() - start, phases_ms: commandPhases };
+      };
       const recording = startRecording(message);
       try {
         checkJavaScript();
