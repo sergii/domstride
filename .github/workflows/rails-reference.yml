@@ -105,6 +105,8 @@ jobs:
         working-directory: examples/petstore
       - run: npm run typecheck
         working-directory: examples/petstore
+      - run: node test-focus-geometry.cjs
+        working-directory: examples/petstore
       - run: node test-documentation-model.cjs
         working-directory: examples/petstore
       - name: Execute Petstore acceptance tests and generate documentation

@@ -1,4 +1,4 @@
-import { Before, After, AfterStep, Given, When, Then, World, setWorldConstructor, setDefaultTimeout } from '@cucumber/cucumber';
+import { Before, BeforeStep, After, AfterStep, Given, When, Then, World, setWorldConstructor, setDefaultTimeout } from '@cucumber/cucumber';
 import type { DataTable } from '@cucumber/cucumber';
 import { chromium, expect } from '@playwright/test';
 import type { Browser, BrowserContext, Page, Locator } from '@playwright/test';
@@ -6,6 +6,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 type Screenshot = { stepId: string; file: string; url: string; phase: 'after' };
+type FocusObservation = { stepId: string; action: number; observedWallMs: number; observedMonotonicMs: number; bounds: {x:number;y:number;width:number;height:number}; viewport: {width:number;height:number} };
+type FrameObservation = { timestamp:number; viewportWidth:number; viewportHeight:number; receivedWallMs:number; receivedMonotonicMs:number };
 class ListingWorld extends World {
   browser?: Browser;
   context?: BrowserContext;
@@ -18,6 +20,10 @@ class ListingWorld extends World {
   profile: 'execution' | 'guided' | null = null;
   presentationWaitMs = 0;
   focusCount = 0;
+  currentStepId = '';
+  focusObservations: FocusObservation[] = [];
+  frameObservations: FrameObservation[] = [];
+  recordingWindow: {startWallMs:number;startMonotonicMs:number;endWallMs?:number;endMonotonicMs?:number} | null = null;
   async withFocus(target: Locator, action: () => Promise<void>, beforeMs=0, afterMs=0) {
     if (this.profile !== 'guided') { await action(); return; }
     // Reference presentation only: no geometry reads or DOM writes in unpaced execution.
@@ -36,6 +42,11 @@ class ListingWorld extends World {
       });
       if (!highlighted) throw new Error('Focus outline was not applied');
       this.focusCount++;
+      const geometry=await target.evaluate(el=>{
+        const rect=el.getBoundingClientRect();
+        return {bounds:{x:rect.x,y:rect.y,width:rect.width,height:rect.height},viewport:{width:window.innerWidth,height:window.innerHeight}};
+      });
+      this.focusObservations.push({stepId:this.currentStepId,action:this.focusCount,observedWallMs:Date.now(),observedMonotonicMs:performance.now(),...geometry});
       await this.hold(beforeMs);
     } catch(error) { this.evidenceErrors.push('Target focus: '+String(error)); }
     try {
@@ -82,6 +93,10 @@ Before(async function(this: ListingWorld, {pickle, testCaseStartedId}) {
   this.page = await this.context.newPage();
 });
 
+BeforeStep(function(this: ListingWorld,{testStepId}) {
+  if(this.profile==='guided') this.currentStepId=testStepId;
+});
+
 AfterStep(async function(this: ListingWorld,{pickleStep,testStepId,result}) {
   if (!this.directory || this.profile !== 'guided' || result?.status !== 'PASSED') return;
   const selected = [
@@ -106,11 +121,16 @@ After(async function(this: ListingWorld) {
   try {
     if (this.directory) {
       await this.page.screencast.stop();
+      if(this.recordingWindow){this.recordingWindow.endWallMs=Date.now();this.recordingWindow.endMonotonicMs=performance.now();}
       file = 'video-01.webm';
     }
   } catch(error) { this.evidenceErrors.push('Video: '+String(error)); }
   finally { try { await this.context?.close(); } finally { await this.browser?.close(); } }
   if (this.directory) {
+    if(this.profile==='guided') await writeFile(join(this.directory,'focus-observations.json'),JSON.stringify({
+      format:'domstride.reference-focus-observations',schema_version:1,timing_quality:'unmapped',
+      recording_window:this.recordingWindow,targets:this.focusObservations,frames:this.frameObservations
+    },null,2));
     await writeFile(join(this.directory,'capture.json'),JSON.stringify({
       screenshots:this.screenshots,video:file,errors:this.evidenceErrors,profile:this.profile,presentation_wait_ms:this.presentationWaitMs,focus_count:this.focusCount
     },null,2));
@@ -130,7 +150,15 @@ Given('the seller is signed in',async function(this:ListingWorld){
   await expect(this.page.locator('.user-name')).toHaveText(this.seller);
   // Start recording after authentication; no login fields appear in the recording.
   if(this.directory) {
-    try { await this.page.screencast.start({path:join(this.directory,'video-01.webm'),size:{width:1280,height:800}}); }
+    try {
+      if(this.profile==='guided'){
+        this.recordingWindow={startWallMs:Date.now(),startMonotonicMs:performance.now()};
+        await this.page.screencast.start({path:join(this.directory,'video-01.webm'),size:{width:1280,height:800},
+          onFrame:({timestamp,viewportWidth,viewportHeight})=>{
+            this.frameObservations.push({timestamp,viewportWidth,viewportHeight,receivedWallMs:Date.now(),receivedMonotonicMs:performance.now()});
+          }});
+      }else await this.page.screencast.start({path:join(this.directory,'video-01.webm'),size:{width:1280,height:800}});
+    }
     catch(error) { this.evidenceErrors.push('Video start: '+String(error)); }
   }
 });

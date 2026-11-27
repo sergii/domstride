@@ -81,3 +81,7 @@ Reader-facing Starlight guide passed after distinguishing related-scenario link 
 ## Guided focus reference
 
 Fumadocs dependencies and static build passed in CI 45992816860; browser smoke failed on exact accessible heading name (investigating anchor-copy label). Updated heading assertion and failure artifacts for diagnosis. Guided reference now applies a temporary 3 px emerald outline to the five form fields and publish button, holds before/after meaningful actions, and removes the annotation before normal screenshots. Fast/Execution bypass all focus DOM operations and presentation waits. Internal focus-proof PNG and six-focus count verified by CI assertions; actual recorded visibility still needs media inspection. No calibrated offsets, Smart Zoom, or production focus protocol yet.
+
+## Smart Zoom geometry groundwork
+
+Guided-only capture records six observed target rectangles with actual runtime step IDs, viewport dimensions, Node wall/monotonic observation times and raw Screencast frame timestamps/receive times. No additional capture in Fast/Execution. Offline crop candidates preserve aspect ratio and target visibility, clamp to viewport, and cap magnification at 2.5x. Unit tests cover center, edges, full viewport and invalid bounds. These are geometry observations, not calibrated video cues: no playback-time mapping or zoomed media is claimed. Raw focus metadata stays outside the approved static publication. CI and media inspection pending.

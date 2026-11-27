@@ -1,5 +1,6 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const base=path.join(__dirname,'artifacts');
+const {cropForTarget}=require('./focus-geometry.cjs');
 for(const mode of ['fast','execution','documentation']){
  const runs=fs.readdirSync(base).map(dir=>path.join(base,dir)).filter(dir=>fs.existsSync(path.join(dir,'run.json'))).map(dir=>({dir,run:JSON.parse(fs.readFileSync(path.join(dir,'run.json'),'utf8'))})).filter(x=>x.run.mode===mode).sort((a,b)=>a.run.start.localeCompare(b.run.start));
  const {dir,run}=runs.at(-1)||{};
@@ -21,6 +22,18 @@ for(const mode of ['fast','execution','documentation']){
   else {assert.ok(positive.data.screenshots.length>=4);assert.ok(positive.data.presentation_wait_ms>0);}
   const capture=JSON.parse(fs.readFileSync(path.join(positive.dir,'capture.json'),'utf8'));
   assert.equal(capture.focus_count,mode==='documentation'?6:0);
+  const observations=path.join(positive.dir,'focus-observations.json');
+  if(mode==='documentation'){
+   const evidence=JSON.parse(fs.readFileSync(observations,'utf8'));
+   assert.equal(evidence.timing_quality,'unmapped');
+   assert.equal(evidence.targets.length,6);assert.ok(evidence.frames.length>0);
+   assert.ok(evidence.recording_window.endMonotonicMs>=evidence.recording_window.startMonotonicMs);
+   const stepIds=new Set(positive.data.steps.map(s=>s.runtime_id));
+   for(const t of evidence.targets)assert.ok(stepIds.has(t.stepId),'Focus target must map to the actual runtime step');
+   for(const f of evidence.frames)assert.ok(Number.isFinite(f.timestamp)&&f.viewportWidth>0&&f.viewportHeight>0);
+   const candidates=evidence.targets.map(t=>({step_id:t.stepId,action:t.action,observed_monotonic_ms:t.observedMonotonicMs,crop:cropForTarget(t.bounds,t.viewport)}));
+   fs.writeFileSync(path.join(positive.dir,'zoom-candidates.json'),JSON.stringify({format:'domstride.reference-zoom-candidates',schema_version:1,timing_quality:'unmapped',candidates},null,2));
+  }else assert.ok(!fs.existsSync(observations));
   if(mode==='documentation')assert.equal(fs.readFileSync(path.join(positive.dir,'focus-proof.png')).subarray(0,8).toString('hex'),'89504e470d0a1a0a');
   else assert.ok(!fs.existsSync(path.join(positive.dir,'focus-proof.png')));
   assert.equal(positive.data.videos.length,1);
