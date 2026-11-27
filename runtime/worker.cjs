@@ -165,6 +165,7 @@ function installBridge(win, state) {
   win.Request = globalThis.Request;
   win.Response = globalThis.Response;
   win.fetch = async (input, init = {}) => {
+    if (state.disposed) throw new Error("Document disposed");
     state.fetches += 1; state.activity += 1;
     let bridgedSignal;
     try {
@@ -188,6 +189,7 @@ function installBridge(win, state) {
       } else body = await req.text();
     }
     req.signal.throwIfAborted();
+    if (state.disposed) throw new Error("Document disposed");
     const reply = await rackRequest(req.url, req.method, Object.fromEntries(req.headers), body, req.redirect, encoding);
     // Rack requests already dispatched cannot be rolled back by aborting fetch.
     // Do not expose their response to an aborted caller.
@@ -493,6 +495,24 @@ function scriptCommand(message) {
 }
 
 async function execute(message) {
+  if (message.command === "reset_document") {
+    // Never allow outstanding Rack work or a confirmation to cross test boundaries.
+    if (pending.size || pageState?.fetches || confirmScope) throw new Error("UNSAFE_WORKER_RESET: outstanding work");
+    if (window) {
+      pageState.disposed = true;
+      pageState.closeSockets?.();
+      pageState.observer?.disconnect();
+      pageState.clock?.timers.clear();
+      await closeWindow(window);
+    }
+    window = undefined;
+    pageState = undefined;
+    handles.clear();
+    identities = new WeakMap();
+    bundleEntry = null;
+    bundleOutcome = null;
+    return true;
+  }
   if (message.command === "confirm_arm") {
     if (confirmScope) throw new Error("UNSUPPORTED_NESTED_CONFIRM");
     confirmScope = { accept: message.accept, text: message.text, result: null };

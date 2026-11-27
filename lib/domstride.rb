@@ -223,6 +223,17 @@ module Domstride
       end
     end
 
+    # Retain the process but discard all document and Rack session state.
+    # Callers must not concurrently use this session while resetting it.
+    def reset_document!
+      raise Error, "Persistent reset does not support recording" if @recorder
+      call("reset_document")
+      @bundle_digest = nil
+      @recording_step = nil
+      @rack_session = Rack::Test::Session.new(Rack::MockSession.new(@app, "example.test")) if @app
+      true
+    end
+
     def close
       @mutex.synchronize do
         @input.close unless @input.closed?

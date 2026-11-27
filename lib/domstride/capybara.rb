@@ -17,11 +17,22 @@ module Domstride
           raise ArgumentError, "Deterministic profile requires the native DSL; Capybara virtual retries are not supported"
         end
         @query_prefetch = @settings[:query_prefetch]
+        @reuse_worker = ENV["DOMSTRIDE_REUSE_WORKER"] == "1"
+        if @reuse_worker && (@settings[:runtime] != "node" || !%w[jsdom jsdom31].include?(@settings[:engine]) ||
+            @settings[:clock] != "real" || @settings[:websocket_url] || ENV["DOMSTRIDE_RECORD_DIR"].to_s != "")
+          raise ArgumentError, "Persistent worker requires Node/jsdom, real clock, no websocket and no recording"
+        end
+        @mounted = false
+        @owner_pid = Process.pid
       end
 
       attr_reader :generation
 
       def worker
+        if @reuse_worker && !@exit_cleanup_registered
+          @exit_cleanup_registered = true
+          at_exit { quit if Process.pid == @owner_pid }
+        end
         @worker ||= Domstride::Session.new(app: @app, **@settings).tap { |session| session.recording_step = @recording_step }
       end
 
@@ -31,15 +42,15 @@ module Domstride
       end
 
       def visit(path)
-        worker.visit(path)
+        worker.visit(path).tap { @mounted = true }
       end
 
       def current_url
-        @worker ? command("current_url") : "about:blank"
+        @worker && (!@reuse_worker || @mounted) ? command("current_url") : "about:blank"
       end
 
       def html
-        @worker ? command("html") : ""
+        @worker && (!@reuse_worker || @mounted) ? command("html") : ""
       end
 
       def refresh
@@ -165,11 +176,26 @@ module Domstride
       def invalid_element_errors = [StaleElement]
 
       def reset!
+        return quit unless @reuse_worker
+        begin
+          @worker&.reset_document!
+        rescue StandardError
+          quit
+          raise
+        ensure
+          @mounted = false
+          @recording_step = nil
+          @generation += 1
+        end
+      end
+
+      def quit
         @worker&.close
+      ensure
         @worker = nil
+        @mounted = false
         @generation += 1
       end
-      alias quit reset!
     end
 
     class Node < ::Capybara::Driver::Node
