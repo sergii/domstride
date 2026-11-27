@@ -54,3 +54,7 @@ UI v2 CI: [45974971779](https://github.com/sergii/domstride/actions/runs/4597497
 ## Dual recording reference implementation
 
 Implemented three reference CLI runs (fast, execution, documentation/guided), independent attempt/run IDs and feature source digest, no capture in Fast, no screenshots or intentional waits in Execution, selected screenshots and action-aware holds in Guided. Paired HTML links both videos from separate passed attempts after matching provenance. CI resets synthetic state between all three runs and verifies twelve scenario executions. CI and actual duration inspection pending; calibration, focus, static framework export and core extraction remain follow-up.
+
+## Portable documentation model and export
+
+Dual-profile CI verified in [45977292382](https://github.com/sergii/domstride/actions/runs/45977292382): 12 scenarios / 111 steps passed across Fast, Execution and Guided. Downloaded original videos measured 1.44 s (Execution) and 12.36 s (Guided); 11650 ms intentional guided holds, zero execution holds. New reference model shared by HTML and offline Markdown/MDX export; local publication manifest with checksums and allowlisted screenshot/video media, no raw logs copied. CI verification pending for this change. Generic MDX is not yet a native Starlight/Fumadocs integration.

@@ -1,4 +1,5 @@
 const fs=require('node:fs'),path=require('node:path');
+const {buildDocumentationModel}=require('./documentation-model.cjs');
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const values=(tags,prefix)=>(tags||[]).filter(t=>t.name.startsWith(prefix)).map(t=>t.name.slice(prefix.length));
 const id=value=>{if(!/^[a-zA-Z0-9-]+$/.test(value||''))throw Error('Invalid documentation ID');return value;};
@@ -10,7 +11,8 @@ const navScript=`(()=>{const data=JSON.parse(document.getElementById('navigation
 function render(root,docs,spec,cases,run,paired=null){
  const dir=path.join(root,'documentation');fs.mkdirSync(dir,{recursive:true});
  const css=fs.readFileSync(path.join(__dirname,'docs.css'),'utf8');
- const features=docs.map(d=>{const f=d.feature,featureId=id(values(f.tags,'@feature:')[0]);return {id:featureId,name:f.name,domains:values(f.tags,'@domain:'),capability:values(f.tags,'@capability:')[0]||'',actors:values(f.tags,'@actor:'),platforms:(f.tags||[]).map(t=>t.name.slice(1)).filter(t=>['web','ios','android'].includes(t)),journeys:values(f.tags,'@journey:'),scenarios:spec.scenarios.filter(s=>s.feature_id===featureId).map(s=>({id:id(s.scenario_id),name:s.scenario.name}))};});
+ const model=buildDocumentationModel(spec,cases,run,paired);
+ const features=model.features.map(f=>({id:f.id,name:f.name,domains:f.domains,capability:f.capability,actors:f.actors,platforms:f.platforms,journeys:f.journeys,scenarios:f.scenarios.map(s=>({id:s.id,name:s.name}))}));
  const navData=JSON.stringify(features).replace(/</g,'\\u003c');
  const fallback=features.map(f=>'<div class="nav-group">'+esc(f.domains.map(title).join(', ')||'Unclassified')+'</div><a class="nav-entry nav-feature" href="'+f.id+'.html">'+esc(f.name)+'</a>'+f.scenarios.map(s=>'<a class="nav-entry nav-scenario" href="'+s.id+'.html">'+esc(s.name)+'</a>').join('')).join('');
  const page=(pageId,name,body)=>'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>'+esc(name)+' · Domstride Docs</title><style>'+css+'</style></head><body data-page="'+esc(pageId)+'"><header class="topbar"><a class="brand" href="index.html"><span class="brand-mark">D</span>domstride docs</a><span class="top-context">Verified behavior / Reference application</span></header><div class="layout"><aside class="sidebar"><a class="nav-entry" href="index.html">All features</a><label for="search">Search specifications</label><input id="search" type="search" placeholder="Find a feature or scenario"><label for="group-by">Group by</label><select id="group-by"><option value="domain">Domain</option><option value="actor">Actor</option><option value="platform">Platform (declared)</option><option value="journey">Journey</option></select><nav id="navigation" aria-label="Specifications">'+fallback+'</nav><p class="sidebar-note">Navigation uses specification metadata, not inferred roles or platform verification. Missing metadata is unclassified.</p></aside><main>'+body+'<footer>Generated from Gherkin and actual reference run evidence. Synthetic test data only.</footer></main></div><script type="application/json" id="navigation-data">'+navData+'</script><script>'+navScript+'</script></body></html>';
@@ -20,11 +22,11 @@ function render(root,docs,spec,cases,run,paired=null){
   const links=items.map(s=>'<li><a href="'+id(s.scenario_id)+'.html">'+esc(s.scenario.name)+'</a> <span class="meta">'+esc(s.rule||'')+'</span></li>').join('');
   fs.writeFileSync(path.join(dir,featureId+'.html'),page(featureId,f.name,'<div class="crumbs"><a href="index.html">All features</a> / '+esc(values(f.tags,'@domain:').join(', '))+'</div><header class="hero"><div class="eyebrow">'+featureId+'</div><h1>'+esc(f.name)+'</h1>'+description(f.description)+'<p class="meta">Declared applicability: '+esc(f.tags.map(t=>t.name).join(' '))+'</p>'+sourceMeta+'</header><section><h2>Scenarios</h2><ul>'+links+'</ul></section>'));
   for(const item of items){
-   const s=item.scenario,scenarioId=id(item.scenario_id),matched=cases.filter(c=>c.scenario_id===scenarioId);
+   const s=item.scenario,scenarioId=id(item.scenario_id),matched=model.features.find(f=>f.id===featureId).scenarios.find(s=>s.id===scenarioId).attempts;
    const stepBlock=(step,c)=>{
     const source=s.steps.find(x=>x.id===step.source_step_id);
-    const images=c.screenshots.filter(x=>x.step_sequence===step.sequence).map(img=>'<figure><a class="screen-link" href="../'+esc(c.folder)+'/'+esc(img.file)+'"><img loading="lazy" src="../'+esc(c.folder)+'/'+esc(img.file)+'" alt="'+esc(step.text)+'"></a><figcaption>Actual screenshot · '+esc(img.url)+'</figcaption></figure>').join('');
-    return '<li><div class="step-title"><div><span class="keyword">'+esc(step.keyword)+'</span> <strong>'+esc(step.text)+'</strong></div>'+badge(step.status)+'</div>'+table(source?.dataTable?.rows)+images+'</li>';
+    const images=step.screenshots.map(img=>'<figure><a class="screen-link" href="../'+esc(c.folder)+'/'+esc(img.file)+'"><img loading="lazy" src="../'+esc(c.folder)+'/'+esc(img.file)+'" alt="'+esc(step.text)+'"></a><figcaption>Actual screenshot · '+esc(img.url)+'</figcaption></figure>').join('');
+    return '<li><div class="step-title"><div><span class="keyword">'+esc(step.keyword)+'</span> <strong>'+esc(step.text)+'</strong></div>'+badge(step.status)+'</div>'+table(step.source_table)+images+'</li>';
    };
    const execution=matched.map((c,i)=>{
     const setup=c.steps.filter(x=>x.background),body=c.steps.filter(x=>!x.background),firstThen=body.findIndex(x=>x.keyword==='Then'),walkthrough=firstThen<0?body:body.slice(0,firstThen),expected=firstThen<0?[]:body.slice(firstThen);
