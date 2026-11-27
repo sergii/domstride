@@ -10,6 +10,7 @@ module Domstride
     KEY = :domstride_report_case
 
     attr_reader :path, :status
+    attr_accessor :assertions
 
     def self.current = Thread.current[KEY]
 
@@ -31,7 +32,8 @@ module Domstride
       end
     end
 
-    def initialize(directory:, name:, html:)
+    def initialize(directory:, name:, html:, framework: nil)
+      @framework = framework
       @name = String(name)
       raise ArgumentError, "Invalid case name" if @name.empty? || @name.bytesize > 1024 || !@name.valid_encoding?
       FileUtils.mkdir_p(directory, mode: 0o700)
@@ -59,6 +61,7 @@ module Domstride
 
     def write(value)
       row = {schema_version: 1, name: @name, status: value,
+        framework: @framework, assertions: @assertions,
         duration_ms: (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @started) * 1000}
       Tempfile.create(["case-", ".json"], path) do |file|
         file.write(JSON.generate(row))

@@ -116,7 +116,7 @@ if (Array.isArray(data.cases)) {
     for (const [i,item] of data.cases.entries()) {
       if (!item.name.toLowerCase().includes(query) || (status && item.status !== status)) continue;
       const option = document.createElement("option"); option.value = String(i);
-      option.textContent = item.name+" · "+item.status+" · "+(item.duration_ms/1000).toFixed(2)+" s";
+      option.textContent = [item.name,item.status,(item.duration_ms/1000).toFixed(2)+" s",item.framework,Number.isInteger(item.assertions)?item.assertions+" assertions":""].filter(Boolean).join(" · ");
       select.append(option);
     }
     if (Array.from(select.options).some(option=>option.value===prior)) select.value=prior;

@@ -174,3 +174,5 @@ Page-level Capybara `send_keys` dispatches to the active element and supports or
 `DOMSTRIDE_OBSERVER_PROFILE=manual` enables explicit `notify_intersection` / `notify_resize` inputs to native Session. `logical-visible` delivers initial synthetic binary intersections from DOM visibility, without physical viewport geometry or automatic resize. Both are bounded test policies, default off; browser required for layout-sensitive tests.
 
 See [suite reports](docs/reporting.md) for explicit case capture and `bundle exec domstride report CASE_DIRECTORY`. Case results are separate from interaction results; automatic framework integration is follow-up.
+
+Optional automatic reporting adapters: `require "domstride/reporting/rspec"` or `require "domstride/reporting/minitest"`, then `Domstride::Reporting::RSpec.install!(directory: "tmp/domstride-suite")` or corresponding `Minitest.install!`. Actual final framework status; Minitest assertion count. HTML opt-in.

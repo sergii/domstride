@@ -35,7 +35,10 @@ module Domstride
           raise Error, "Report payload limit exceeded" if bytes > MAX_PAYLOAD_BYTES
           trace
         end
-        {name: item["name"], status: item["status"], duration_ms: item["duration_ms"], recordings: traces}
+        {name: item["name"], status: item["status"], duration_ms: item["duration_ms"],
+          framework: %w[rspec minitest].include?(item["framework"]) ? item["framework"] : nil,
+          assertions: item["assertions"].is_a?(Integer) && item["assertions"] >= 0 ? item["assertions"] : nil,
+          recordings: traces}
       end
       Replay.render({cases: cases}, output || File.join(root, "report.html"))
     rescue JSON::ParserError => error

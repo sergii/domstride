@@ -147,3 +147,7 @@ Keep legacy behavior off by default. Node/jsdom manual profile exposes synthetic
 ## ADR-034: explicit case-level suite reporting
 
 Fiber-local case scope groups newly created workers in private case directories. Final case status is independent of operation outcomes; no exception messages or test data automatically stored. Reuse inert replay renderer for bounded suite export, filter tests by name/status and select each worker recording. Explicit names and HTML opt-in; no auto framework status inference. Preserve reversible layout and single recording export.
+
+## ADR-035: framework-owned final test status
+
+Use RSpec example_started/example_finished reporter notifications and Minitest Test#run result wrapper. No guessed pass from individual DOM operations or exception strings. Capture skipped/pending/fixed-pending and setup/teardown outcomes; record Minitest assertion totals only, RSpec counts unknown. Scope is fiber-local and does not reassign existing workers. Preserve original result and exit code; explicit opt-in, optional dependencies, private case artifacts. No automatic step-level assertion mapping or outside-example suite failures yet.
