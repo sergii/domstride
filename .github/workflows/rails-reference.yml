@@ -141,7 +141,9 @@ jobs:
           ffmpeg -version | head -1
           ffprobe -version | head -1
           python3 inspect-focus-media.py artifacts
+          node test-focus-vtt.cjs
           node render-focus-replay.cjs artifacts
+          node smoke-focus-replay.cjs artifacts
       - name: Build static Starlight Help Center
         working-directory: examples/petstore/help-center
         run: |
