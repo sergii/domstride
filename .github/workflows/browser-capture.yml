@@ -1,0 +1,52 @@
+name: Domstride Selenium and Cuprite video
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'examples/browser_capture/**'
+      - '.github/workflows/browser-capture.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        driver: [selenium, cuprite]
+    env:
+      BUNDLE_GEMFILE: examples/browser_capture/Gemfile
+      BROWSER_DRIVER: ${{ matrix.driver }}
+      DOMSTRIDE_BROWSER_VIDEO: '1'
+      DOMSTRIDE_VIDEO_SIZE: 800x600
+      REPORT_TEST_DIRECTORY: ${{ runner.temp }}/browser-cases
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.13'
+          bundler-cache: true
+      - name: Check runner tools
+        run: |
+          command -v ffmpeg
+          command -v ffprobe
+          command -v xvfb-run
+          echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - name: Capture real headed browser on a dedicated display
+        run: |
+          xvfb-run -a -s '-screen 0 800x600x24 -nolisten tcp' bash -c '
+            export DOMSTRIDE_VIDEO_DISPLAY="$DISPLAY"
+            status=0
+            bundle exec rspec -Ilib examples/browser_capture/browser_spec.rb || status=$?
+            test "$status" -eq 1
+          '
+      - name: Verify video frames and final test statuses
+        run: ruby -Ilib examples/browser_capture/verify.rb "$REPORT_TEST_DIRECTORY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-video-${{ matrix.driver }}-synthetic
+          path: ${{ runner.temp }}/browser-cases/report.html

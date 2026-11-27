@@ -37,3 +37,5 @@ Explicit local WebM attachment to active Report.capture or framework report case
 ## Independent Studio
 
 See [Domstride Protocol v1](protocol.md). Report/replay entrypoints no longer load the execution engine. External producers can write case manifests directly and retain their own framework/runner/platform/language provenance. The reference Chromium test now produces a case with Node standard library and imports it without loading Domstride Runner. 010.1 and assertion viewer verified in 45924024922. Protocol changes pending CI.
+
+Automatic headed Selenium/Cuprite recording is available via the opt-in Linux X11 backend; see [browser-video.md](browser-video.md). CI pending. No headless or cross-platform guarantee.

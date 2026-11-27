@@ -182,3 +182,5 @@ Experimental browser video evidence: attach finalized local WebM to an active re
 Domstride Studio is the runner-independent reporting direction within the same product. See [Protocol v1](docs/protocol.md) for external producers and standalone source-checkout report export without loading the execution runtime.
 
 Native [Playwright Test reporter](docs/playwright-reporter.md): source-checkout adapter for existing tests, optional WebM and Gherkin-like test.step/expect evidence, independent of Domstride Runner.
+
+Optional headed browser capture for Selenium/Cuprite: [Linux Xvfb video backend](docs/browser-video.md). Explicit opt-in; use an isolated display and one worker per display.

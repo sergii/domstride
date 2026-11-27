@@ -15,7 +15,7 @@ module Domstride
     KEY = :domstride_report_case
 
     attr_reader :path, :status, :videos
-    attr_accessor :assertions
+    attr_accessor :assertions, :browser_video
 
     def self.current = Thread.current[KEY]
 

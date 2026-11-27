@@ -171,3 +171,7 @@ Keep one Domstride repository and brand. Runner and Studio communicate through v
 ## ADR-040: external Playwright Test reporter
 
 Use native onTestEnd results and step trees; each retry is a separate attempt, no guessed logical outcome. External producer is Node-only, renderer independent of Runner. Opt-in video and step text, bounded metadata, no failure-message serialization. Preserve Playwright exit status. Standalone synthetic reference workflow verifies interoperability. Return to Selenium/Cuprite automatic recording, video synchronization, performance and deferred Webpack after this adapter.
+
+## ADR-041: isolated display recording backend
+
+Optional FFmpeg x11grab per framework case on dedicated Linux Xvfb display; same backend for headed Selenium/Cuprite, no driver mutation. Bounded output, nonblocking suite-local display lock, graceful signal/forced reap, private temporary files, attach before final manifest. Failures cannot change framework status. Entire display is sensitive; independent worker displays required. No claim of headless recording or exact synchronization.

@@ -1,4 +1,5 @@
 require_relative "../report"
+require_relative "../browser_video"
 
 module Domstride
   module Reporting
@@ -8,6 +9,11 @@ module Domstride
         return if ReportCase.current
         item = ReportCase.new(directory: directory, name: name, html: html, framework: framework)
         Thread.current[ReportCase::KEY] = item
+        begin
+          item.browser_video = BrowserVideo.start(item)
+        rescue StandardError => error
+          warn "Domstride browser video unavailable: #{error.class}"
+        end
         item
       rescue StandardError => error
         warn "Domstride report case unavailable: #{error.class}"
@@ -30,6 +36,11 @@ module Domstride
         return unless item
         item.status = status
         item.assertions = assertions
+        begin
+          item.browser_video&.finish(status: status)
+        rescue StandardError => error
+          warn "Domstride browser video unavailable: #{error.class}"
+        end
         item.finish
       rescue StandardError => error
         warn "Domstride report case unavailable: #{error.class}"

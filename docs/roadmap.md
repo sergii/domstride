@@ -16,7 +16,7 @@ Replay viewer must support viewport left / steps right and steps left / viewport
 ## Resume original roadmap after Playwright reporter
 
 - 010.2a: native Playwright Test reporter (implemented; CI pending).
-- 010.2b: automatic Selenium and Cuprite recording, including failure-safe teardown and existing framework reports.
+- 010.2b: isolated Xvfb/FFmpeg automatic Selenium and Cuprite recording implemented; CI pending. Headless capture remains future.
 - 010.3: video / step and assertion synchronization; do not infer timestamps without evidence.
 - 011: performance optimization, local worker reuse experiment, reporting overhead benchmarks.
 - 007.1: finish real-app compatibility; Fizzy blockers remain explicit.
