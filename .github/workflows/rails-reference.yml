@@ -147,6 +147,7 @@ jobs:
           guided=$(find artifacts -name video-pair.json -printf '%h\n' -quit)
           test -n "$guided"
           ruby -I ../../lib -r domstride/report -e 'Domstride::Report.export(ARGV[0], output: File.join(ARGV[0], "core-replay.html"))' "$guided"
+          ruby test-observed-protocol.rb "$guided"
           node smoke-core-replay.cjs artifacts
       - name: Build static Starlight Help Center
         working-directory: examples/petstore/help-center

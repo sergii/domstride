@@ -31,6 +31,7 @@ let activeCase = null;
 let videoUrl = null;
 let selectedCue = null;
 let pendingSeek = null;
+let observedTracks = null;
 const safeTags = new Set("div span p section article main header footer nav aside h1 h2 h3 h4 h5 h6 ul ol li dl dt dd table thead tbody tfoot tr th td caption label input textarea select option button output strong em b i small pre code blockquote br hr details summary dialog fieldset legend time".split(" "));
 const blocked = new Set("head script style link meta base iframe frame object embed template svg math noscript canvas video audio source picture img".split(" "));
 function renderSnapshot(frame) {
@@ -94,10 +95,36 @@ function show() {
   $("next").disabled = index >= events.length-1;
   $("notice").textContent = $("evidence-mode").value==="video" && activeCase?.videos?.length ? "Recorded browser video · offline playback" : active.complete ? "Inert DOM preview · no application execution" : "Incomplete or unavailable DOM recording · inert preview";
 }
+// Reuse tracks: addTextTrack has no matching removeTextTrack API.
+function clearObservedTracks() {
+  if (!observedTracks) return;
+  for (const track of Object.values(observedTracks)) {
+    track.mode="hidden";
+    for (const cue of Array.from(track.cues || [])) track.removeCue(cue);
+    track.mode="disabled";
+  }
+}
+function loadObservedTracks(video,segments) {
+  if (typeof VTTCue!=="function" || typeof video.addTextTrack!=="function") return;
+  if (!observedTracks) observedTracks={
+    captions: video.addTextTrack("captions","Observed focus","en"),
+    chapters: video.addTextTrack("chapters","Observed actions","en")
+  };
+  for (const track of Object.values(observedTracks)) {
+    track.mode="hidden";
+    for (const segment of segments) {
+      const label=segment.label.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+      track.addCue(new VTTCue(segment.start_ms/1000,segment.end_ms/1000,"Focus: "+label));
+    }
+  }
+  observedTracks.captions.mode=$("observed-cc").checked?"hidden":"disabled";
+}
 function releaseVideo() {
   const video = $("browser-video");
   pendingSeek = null;
   resetFocus();
+  clearObservedTracks();
+  $("focus-highlight").disabled=false;
   $("observed-actions").replaceChildren(); $("observed-actions").hidden=true;
   $("observed-controls").hidden=true; $("observed-caption").hidden=true; $("observed-caption").textContent="";
   video.pause(); video.removeAttribute("src"); video.load();
@@ -115,6 +142,8 @@ function loadVideo() {
   $("browser-video").src = videoUrl;
   $("focus-settings").hidden = !item.focus?.length;
   const observed=item.timing_quality==="visual_candidates_unvalidated";
+  $("focus-highlight").disabled=observed;
+  if(observed) loadObservedTracks($("browser-video"),item.focus);
   $("observed-controls").hidden=!observed; $("observed-caption").hidden=!observed; $("observed-actions").hidden=!observed;
   if(observed) for(const [i,target] of item.focus.entries()){
     const b=document.createElement("button"); b.type="button"; b.dataset.action=String(i);
@@ -208,6 +237,7 @@ function syncVideoHighlight() {
   const focusIndex=observed?item.focus.findIndex(s=>ms>=s.start_ms&&ms<s.end_ms):-1;
   const segment=focusIndex>=0?item.focus[focusIndex]:null;
   if(observed){
+    if(observedTracks) observedTracks.captions.mode=$("observed-cc").checked?"hidden":"disabled";
     $("observed-caption").textContent=segment&&$("observed-cc").checked?"Focus: "+segment.label:"";
     for(const b of $("observed-actions").querySelectorAll("button")) b.setAttribute("aria-current",String(Number(b.dataset.action)===focusIndex));
   }

@@ -294,7 +294,34 @@
               "visual_candidates_unvalidated"
             ]
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "timing_quality"
+              ]
+            },
+            "then": {
+              "required": [
+                "focus"
+              ],
+              "properties": {
+                "cues": {
+                  "maxItems": 0
+                },
+                "focus": {
+                  "items": {
+                    "required": [
+                      "step_sequence",
+                      "label"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
       }
     }
   }

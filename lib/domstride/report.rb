@@ -86,7 +86,7 @@ module Domstride
             raise Error, "Invalid video focus segments"
           end
           quality = attachment["timing_quality"]
-          if quality
+          if attachment.key?("timing_quality")
             unless quality == "visual_candidates_unvalidated" && cues.empty? && focus.all? { |segment|
               segment["step_sequence"].is_a?(Integer) && steps.any? { |step| step["sequence"] == segment["step_sequence"] } &&
                 segment["label"].is_a?(String) && segment["label"].bytesize.between?(1,128)
