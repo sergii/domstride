@@ -8,6 +8,8 @@ module Domstride
   class ReportCase
     STATUSES = %w[passed failed skipped pending unknown].freeze
     MAX_STEPS = 100
+    MAX_ASSERTIONS = 200
+    ASSERTION_STATUSES = %w[passed failed error unknown].freeze
     STEP_STATUSES = %w[passed failed skipped pending unknown undefined ambiguous].freeze
     KEY = :domstride_report_case
 
@@ -37,6 +39,8 @@ module Domstride
     def initialize(directory:, name:, html:, framework: nil)
       @framework = framework
       @steps = []
+      @assertion_events = []
+      @active_assertion = nil
       @active_step = nil
       @name = String(name)
       raise ArgumentError, "Invalid case name" if @name.empty? || @name.bytesize > 1024 || !@name.valid_encoding?
@@ -49,7 +53,30 @@ module Domstride
     end
 
     def html? = @html
-    attr_reader :active_step
+    attr_reader :active_step, :active_assertion
+
+    def begin_assertion(kind)
+      return if active_assertion || @assertion_events.size >= MAX_ASSERTIONS
+      @active_assertion = {sequence: @assertion_events.size + 1, kind: bounded(kind, 96),
+        step_sequence: active_step, status: "unknown", duration_ms: 0}
+      @assertion_started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      @assertion_reads = 0
+      @assertion_events << active_assertion
+      active_assertion
+    end
+
+    def assertion_read_allowed?
+      return false unless active_assertion && @assertion_reads < 4
+      @assertion_reads += 1
+      true
+    end
+
+    def end_assertion(item, status)
+      return unless item && active_assertion.equal?(item)
+      item[:status] = ASSERTION_STATUSES.include?(status) ? status : "unknown"
+      item[:duration_ms] = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @assertion_started) * 1000
+      @active_assertion = nil
+    end
 
     def start_step(keyword:, text: nil)
       finish_step("unknown") if active_step
@@ -74,6 +101,7 @@ module Domstride
 
     def finish
       finish_step("unknown") if active_step
+      end_assertion(active_assertion, "unknown") if active_assertion
       write(status || "unknown")
     rescue StandardError => error
       warn "Domstride case report unavailable: #{error.class}"
@@ -87,7 +115,7 @@ module Domstride
 
     def write(value)
       row = {schema_version: 1, name: @name, status: value,
-        framework: @framework, assertions: @assertions, steps: @steps,
+        framework: @framework, assertions: @assertions, steps: @steps, assertion_events: @assertion_events,
         duration_ms: (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @started) * 1000}
       Tempfile.create(["case-", ".json"], path) do |file|
         file.write(JSON.generate(row))

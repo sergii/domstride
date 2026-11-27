@@ -11,6 +11,8 @@ module Domstride
       node_action.click node_action.set node_action.select_option node_action.unselect_option
       node_action.send_keys node_action.attach_files].freeze
 
+    ASSERTION_READS = %w[find_handles text count current_url node_action.visible_text node_action.all_text node_action.attribute node_action.value node_action.visible node_action.checked node_action.selected node_action.disabled].freeze
+
     attr_reader :path
 
     def initialize(directory:, html:, engine:, runtime:)
@@ -27,15 +29,15 @@ module Domstride
 
     def html? = @html
 
-    def accept?(kind)
-      !@io.closed? && @events < MAX_EVENTS && KINDS.include?(kind)
+    def accept?(kind, assertion_read: false)
+      !@io.closed? && @events < MAX_EVENTS && (KINDS.include?(kind) || (assertion_read && ASSERTION_READS.include?(kind)))
     end
 
-    def record(sequence:, kind:, step:, duration_ms:, passed:, evidence:)
-      return unless accept?(kind)
+    def record(sequence:, kind:, step:, duration_ms:, passed:, evidence:, assertion_sequence: nil, assertion_read: false)
+      return unless accept?(kind, assertion_read: assertion_read)
       @events += 1
       row = { type: "interaction", sequence: sequence, step_sequence: step, kind: kind,
-              duration_ms: duration_ms, status: passed ? "passed" : "failed" }
+              duration_ms: duration_ms, status: passed ? "passed" : "failed", assertion_sequence: assertion_sequence }
       if evidence.is_a?(Hash)
         %w[before after].each do |phase|
           frame = evidence[phase]

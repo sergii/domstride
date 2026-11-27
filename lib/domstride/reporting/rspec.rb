@@ -1,5 +1,7 @@
 require "rspec/core"
 require_relative "lifecycle"
+require_relative "rspec_assertions"
+require_relative "capybara_assertions"
 
 module Domstride
   module Reporting
@@ -45,6 +47,8 @@ module Domstride
 
       def self.install!(config = ::RSpec.configuration, directory:, html: false, step_text: false)
         raise ArgumentError, "RSpec report already installed" if config.instance_variable_defined?(:@domstride_reporting_installed)
+        RSpecAssertions.install!
+        CapybaraAssertions.install!
         listener = Listener.new(directory: File.expand_path(directory), html: html, step_text: step_text)
         config.before(:suite) do
           config.reporter.register_listener(listener, :example_started, :example_finished, :step_started, :step_passed, :step_failed, :step_pending)

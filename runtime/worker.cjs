@@ -523,6 +523,12 @@ function recordingTarget(message) {
   try {
     if (message.command === "node_action") return resolveHandle(message.handle);
     if (message.command === "send_keys") return window?.document.activeElement;
+    if (message.command === "find_handles" && message.kind_of_query === "css") {
+      const root = message.root ? resolveHandle(message.root) : window?.document;
+      const matches = root?.querySelectorAll(message.query);
+      if (matches?.length === 1) return matches[0];
+      return null;
+    }
     if (message.selector) return window?.document.querySelector(message.selector);
   } catch (_) {}
   return null;

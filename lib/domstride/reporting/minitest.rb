@@ -1,11 +1,15 @@
 require "minitest/test"
 require_relative "lifecycle"
+require_relative "minitest_assertions"
+require_relative "capybara_assertions"
 
 module Domstride
   module Reporting
     module Minitest
       def self.install!(directory:, html: false)
         raise ArgumentError, "Minitest report already installed" if @installed
+        MinitestAssertions.install!
+        CapybaraAssertions.install!
         root = File.expand_path(directory)
         wrapper = Module.new do
           define_method(:run) do |*args, **kwargs, &block|

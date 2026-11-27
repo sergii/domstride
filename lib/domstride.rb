@@ -9,6 +9,7 @@ require_relative "domstride/configuration"
 require_relative "domstride/runtime"
 require_relative "domstride/recording"
 require_relative "domstride/report_case"
+require_relative "domstride/assertion"
 
 module Domstride
   class Error < StandardError; end
@@ -209,10 +210,15 @@ module Domstride
     end
 
     def assert_text(selector, expected)
-      return call("assert_text", selector: selector, expected: expected) if @recorder
-      actual = text(selector)
-      raise Error, "Expected #{expected.inspect}, got #{actual.inspect}" unless actual == expected
-      true
+      Assertion.capture("domstride.assert_text", failure_classes: [Error]) do
+        if @recorder
+          call("assert_text", selector: selector, expected: expected)
+        else
+          actual = text(selector)
+          raise Error, "Expected #{expected.inspect}, got #{actual.inspect}" unless actual == expected
+          true
+        end
+      end
     end
 
     # Commands execute in order; a failure stops the remaining commands.
@@ -386,7 +392,10 @@ module Domstride
         started = monotonic_ms if @profiling
         label = command == "node_action" ? "node_action.#{arguments[:operation]}" : command
         @sequence += 1
-        recording = @recorder&.accept?(label)
+        assertion_case = @report_case if @report_case.equal?(ReportCase.current) && @report_case&.active_assertion
+        assertion_sequence = assertion_case&.active_assertion&.fetch(:sequence)
+        assertion_read = assertion_case && Recording::ASSERTION_READS.include?(label) && assertion_case.assertion_read_allowed?
+        recording = @recorder&.accept?(label, assertion_read: assertion_read)
         recording_started = monotonic_ms if recording
         record_options = recording ? { record_event: true, record_html: @recorder.html? } : {}
         write_message(id: @sequence, command: command, profile: @profiling, settling: @settling, **record_options, **arguments)
@@ -417,6 +426,7 @@ module Domstride
       ensure
         if recording_started
           @recorder.record(sequence: @sequence, kind: label, step: (@report_case.equal?(ReportCase.current) && @report_case&.active_step) || @recording_step,
+            assertion_sequence: assertion_sequence, assertion_read: assertion_read,
             duration_ms: monotonic_ms - recording_started, passed: response && response["id"] == @sequence && response["ok"] == true,
             evidence: response && response["recording"])
         end

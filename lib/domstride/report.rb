@@ -33,6 +33,14 @@ module Domstride
         }
           raise Error, "Invalid case steps"
         end
+        assertions = item.fetch("assertion_events", [])
+        unless assertions.is_a?(Array) && assertions.size <= ReportCase::MAX_ASSERTIONS && assertions.each_with_index.all? { |assertion, index|
+          assertion.is_a?(Hash) && assertion["sequence"] == index + 1 && assertion["kind"].is_a?(String) && assertion["kind"].bytesize <= 100 &&
+            ReportCase::ASSERTION_STATUSES.include?(assertion["status"]) && assertion["duration_ms"].is_a?(Numeric) && assertion["duration_ms"].finite? && assertion["duration_ms"] >= 0 &&
+            (assertion["step_sequence"].nil? || steps.any? { |step| step["sequence"] == assertion["step_sequence"] })
+        }
+          raise Error, "Invalid assertion events"
+        end
         traces = Dir.children(path).sort.select { |entry| entry.start_with?("domstride-recording-") }.map do |entry|
           recordings += 1
           raise Error, "Report recording limit exceeded" if recordings > MAX_RECORDINGS
@@ -46,7 +54,7 @@ module Domstride
         {name: item["name"], status: item["status"], duration_ms: item["duration_ms"],
           framework: %w[rspec minitest cucumber turnip].include?(item["framework"]) ? item["framework"] : nil,
           assertions: item["assertions"].is_a?(Integer) && item["assertions"] >= 0 ? item["assertions"] : nil,
-          recordings: traces, steps: steps}
+          recordings: traces, steps: steps, assertion_events: assertions}
       end
       Replay.render({cases: cases}, output || File.join(root, "report.html"))
     rescue JSON::ParserError => error

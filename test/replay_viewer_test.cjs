@@ -65,13 +65,13 @@ test("suite report filters cases and selects recordings independently of operati
     for (const [id, name, status] of [["a","Create expense","passed"],["b","Failed assertion","failed"],["c","Skipped","skipped"]]) {
       const root = path.join(directory, "domstride-case-"+id);
       fs.mkdirSync(root);
-      fs.writeFileSync(path.join(root,"case.json"),JSON.stringify({schema_version:1,name,status,duration_ms:120}));
+      fs.writeFileSync(path.join(root,"case.json"),JSON.stringify({schema_version:1,name,status,duration_ms:120,assertion_events:id==="b"?[{sequence:1,kind:"rspec.expect",status:"failed",duration_ms:2,step_sequence:null}]:[]}));
       if (id === "c") continue;
       const recording = path.join(root,"domstride-recording-a");
       fs.mkdirSync(recording);
       fs.writeFileSync(path.join(recording,"events.jsonl"),[
         {type:"header",schema_version:1,engine:"jsdom31"},
-        {type:"interaction",sequence:1,kind:"click",status:"passed",duration_ms:2,after:{snapshot:"000001-after.html",body_path:[1],target_path:[1,0]}},
+        {type:"interaction",sequence:1,kind:"click",status:"passed",duration_ms:2,assertion_sequence:id==="b"?1:null,after:{snapshot:"000001-after.html",body_path:[1],target_path:[1,0]}},
         {type:"footer",event_count:1}
       ].map(row=>JSON.stringify(row)).join("\n")+"\n");
       fs.writeFileSync(path.join(recording,"000001-after.html"),"<p>"+name+"</p>");
@@ -87,6 +87,10 @@ test("suite report filters cases and selects recordings independently of operati
     await page.locator("#case-status").selectOption("failed");
     assert.equal(await page.locator("#viewport").innerText(),"Failed assertion");
     assert.match(await page.locator("#steps").innerText(),/passed/);
+    assert.match(await page.locator("#assertion-steps").innerText(),/rspec.expect.*failed/s);
+    await page.locator("#assertion-steps button").click();
+    assert.equal(await page.locator("#assertion-steps button").getAttribute("aria-current"),"true");
+    assert.equal(await page.locator("#viewport").innerText(),"Failed assertion");
     await page.locator("#layout").selectOption("left");
     await page.locator("#case-status").selectOption("skipped");
     assert.equal(await page.locator("#viewport").innerText(),"No recorded interactions.");

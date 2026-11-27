@@ -15,6 +15,13 @@ class ReportFrameworkFixture < Minitest::Test
     assert_equal 1, 2
   end
 
+  def test_native_assertion_failure
+    Domstride::Session.open do |page|
+      page.mount_html("<p id=\"result\">Actual</p>")
+      page.assert_text("#result", "Expected")
+    end
+  end
+
   def test_skip
     skip "private skip message"
   end

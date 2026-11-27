@@ -155,3 +155,7 @@ Use RSpec example_started/example_finished reporter notifications and Minitest T
 ## ADR-036: Gherkin step ownership
 
 Cucumber test-case/test-step events and Turnip custom RSpec step events own step sequence and result. Active report case provides authoritative sequence at recording time; explicit manual BDD step sequences remain fallback. Keep step text opt-in, bound steps and metadata, skip hook events, retain missing DOM evidence rather than inventing it. Suite viewer selects first mapped operation across recordings and highlights the current Gherkin step. No inferred assertion outcome or physical browser geometry.
+
+## ADR-037: bounded assertion evidence
+
+Capture outer assertion calls via explicit framework adapter installation and native assert_text. Track assertion outcome independently of operation outcome; handle aggregated RSpec failures through expectation failure helper. Correlate operations only within active assertion scope; bounded additional read evidence and no assumed association to earlier DOM calls. No expected/actual serialization; preserve errors and exit status. RSpec private handlers version-sensitive; test against pinned reference family. No physical snapshot claims.

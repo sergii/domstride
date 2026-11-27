@@ -1,5 +1,6 @@
 require "cucumber/formatter/ast_lookup"
 require_relative "lifecycle"
+require_relative "capybara_assertions"
 
 module Domstride
   module Reporting
@@ -45,6 +46,7 @@ module Domstride
       end
 
       def self.install!(config, directory:, html: false, step_text: false)
+        CapybaraAssertions.install!
         Listener.new(config, directory: File.expand_path(directory), html: html, step_text: step_text)
       end
     end
