@@ -6,7 +6,8 @@
     "test": "node run.cjs fast",
     "docs": "node run.cjs documentation",
     "typecheck": "tsc --noEmit",
-    "execution": "node run.cjs execution"
+    "execution": "node run.cjs execution",
+    "docs:pair": "node pair-videos.cjs"
   },
   "devDependencies": {
     "@cucumber/cucumber": "12.2.0",
