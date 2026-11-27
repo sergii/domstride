@@ -131,3 +131,7 @@ Add opt-in logical visibility, dialog open/returnValue/close lifecycle, and wind
 ## ADR-030: explicit authenticated loopback Action Cable transport
 
 jsdom 26 and 31 have different native WebSocket cookie behavior. Keep existing native bridge for anonymous use. Opt into a separate text-only ws transport with explicit named Rack cookie forwarding to the single loopback endpoint. Use latest Rack HTTP cookie snapshot, validate logical path and secure/expiry eligibility, never expose cookie headers in fetch Response, document.cookie, diagnostics or recording metadata. No redirects, external endpoints or binary messages. Verify Rails signed HttpOnly cookie authentication and two isolated private channels. Existing socket credentials are fixed at handshake; reconnect after login/logout. No account-path or full browser socket parity.
+
+## ADR-031: bounded numeric tenant cable routing
+
+Opt-in numeric-account mode requires authenticated exact /cable loopback configuration; map only logical same-origin numeric /<id>/cable paths, no query/fragment/external URLs, root-path eligible cookies only. Run actual Fizzy Rails stack in the candidate process on ephemeral loopback Puma with async cable adapter and explicit test origin. Preserve real account extraction and authentication. No application code or original assertions changed. Reference verifies route acceptance and rejection independently of app.

@@ -49,3 +49,7 @@ DOMSTRIDE_DOM_PROFILE=logical is a separate opt-in Node/jsdom profile. Visibilit
 ## Authenticated cable groundwork
 
 Fizzy's ApplicationCable::Connection authenticates cookies.signed[:session_token] and resolves the account from request.env["fizzy.external_account_id"]. The new explicit WebSocket cookie bridge is tested in a separate Rails signed-cookie reference, not yet wired into the original Fizzy app. Fizzy needs the actual account-scoped middleware and same database/process test configuration. Do not bypass its authorization or use a fake transport. Prior DOM compatibility workflow was still in progress when this block started.
+
+## Real Fizzy cable candidate
+
+Fizzy's tenanted_action_cable_meta_tag uses request.script_name + mount_path. AccountSlug::Extractor consumes a numeric prefix and sets the real account context. The candidate now runs Rails.application on an ephemeral loopback Puma server in the same test process, selects the in-process async adapter instead of the test broadcast recorder, adds only the logical test origin, and forwards only the signed session_token cookie. No application authentication or tenant middleware is patched. Numeric account mode accepts only /<1-20 decimal digits>/cable on the logical origin and preserves that path to the configured server. Only root-path cookies are forwarded in this mode. WebSocket lifecycle, actual tenant auth, transactional fixture visibility and unchanged functional assertions remain subject to CI. No complete compatibility claim.

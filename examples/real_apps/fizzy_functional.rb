@@ -23,6 +23,7 @@ result = { app: "fizzy", revision: REVISION, group: group, selected: spec,
            test_sha256: test_digest, baseline_mode: "fresh_browser_per_test",
            candidate_mode: "functional_only", candidate_trusted_types_inventory: "not_measured",
            candidate_asset_warnings: "direct-eval", candidate_media_profile: "static-desktop", candidate_dom_profile: "logical",
+           candidate_cable: "real_rails_same_process_async_adapter",
            phases: {} }
 save = -> { File.write(File.join(output, "result.json"), JSON.pretty_generate(result)) }
 
@@ -79,6 +80,8 @@ begin
         patched += <<~RUBY
 
           require "domstride/rails"
+          require #{File.expand_path("fizzy_cable_server.rb", __dir__).inspect}
+          DomstrideFizzyCableServer.start!
           class ApplicationSystemTestCase
             include Domstride::RailsSystemTestSupport
             driven_by :domstride

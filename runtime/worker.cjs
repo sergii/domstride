@@ -454,7 +454,7 @@ async function execute(message) {
       await closeWindow(window);
     }
     handles.clear(); identities = new WeakMap();
-    pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, websocketUrl: message.websocket_url, websocketAuth: message.websocket_auth, websocketCookie, mediaProfile: message.media_profile, domProfile: message.dom_profile, fetches: 0, activity: 0 };
+    pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, websocketUrl: message.websocket_url, websocketAuth: message.websocket_auth, websocketPathMode: message.websocket_path_mode, websocketCookie, mediaProfile: message.media_profile, domProfile: message.dom_profile, fetches: 0, activity: 0 };
     window = createWindow(prepared.html, message.url || "https://example.test/", message.bridge, prepared.compiled, pageState);
     if (moduleCode) {
       try { window.eval(moduleCode); }

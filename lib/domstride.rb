@@ -41,10 +41,15 @@ module Domstride
       end
       raise ArgumentError, "Unknown asset warning policy" unless %w[strict direct-eval].include?(@asset_warnings)
       @websocket_url = settings[:websocket_url]
+      @websocket_path_mode = settings[:websocket_path_mode]
+      raise ArgumentError, "Unknown WebSocket path mode" unless %w[exact numeric-account].include?(@websocket_path_mode)
       names = settings[:websocket_cookie_names]
       @websocket_cookie_names = names.nil? ? [] : names.to_s.split(",", -1)
       unless @websocket_cookie_names.size <= 16 && @websocket_cookie_names.uniq == @websocket_cookie_names && @websocket_cookie_names.all? { |name| /\A[A-Za-z0-9_.-]{1,128}\z/.match?(name) }
         raise ArgumentError, "Invalid WebSocket cookie allowlist"
+      end
+      if @websocket_path_mode == "numeric-account" && (@websocket_cookie_names.empty? || !@websocket_url || URI.parse(@websocket_url).path != "/cable")
+        raise ArgumentError, "Numeric account paths require an authenticated /cable endpoint"
       end
       raise ArgumentError, "WebSocket cookie forwarding requires endpoint" if !@websocket_cookie_names.empty? && !@websocket_url
       if @websocket_url
@@ -90,7 +95,7 @@ module Domstride
 
     def mount_html(html, url: "https://example.test/", bridge: false)
       # Only explicitly marked final classic scripts are eligible.
-      clock_options = { clock: @clock, clock_epoch_ms: @clock_epoch_ms, assets: @assets, asset_warnings: @asset_warnings, media_profile: @media_profile, dom_profile: @dom_profile, websocket_url: @websocket_url, websocket_auth: !@websocket_cookie_names.empty?, websocket_cookie: websocket_cookie_header }
+      clock_options = { clock: @clock, clock_epoch_ms: @clock_epoch_ms, assets: @assets, asset_warnings: @asset_warnings, media_profile: @media_profile, dom_profile: @dom_profile, websocket_url: @websocket_url, websocket_path_mode: @websocket_path_mode, websocket_auth: !@websocket_cookie_names.empty?, websocket_cookie: websocket_cookie_header }
       match = @bundle_cache != "off" && /<script data-domstride-cache="bundle">([^<]*(?:<(?!\/script\b)[^<]*)*)<\/script>\s*<\/body>\s*<\/html>\s*\z/i.match(html)
       return call("mount", html: html, url: url, bridge: bridge, **clock_options) unless match
 
@@ -302,6 +307,7 @@ module Domstride
         cookie = @rack_session.cookie_jar.get_cookie(name)
         next unless cookie && cookie.matches?(uri)
         scope = cookie.path
+        next if @websocket_path_mode == "numeric-account" && scope != "/"
         next unless scope.empty? || scope == "/" || path == scope || path.start_with?(scope.end_with?("/") ? scope : "#{scope}/")
         cookie.raw
       end.join("; ")

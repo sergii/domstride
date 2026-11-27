@@ -130,7 +130,13 @@ class AuthenticatedCableReferenceTest < Minitest::Test
     config.allow_same_origin_as_host = false
     config.connection_class = -> { DomstrideAuthenticatedConnection }
     @cable = ActionCable::Server::Base.new(config: config)
-    @puma = Puma::Server.new(@cable)
+    routed = lambda do |env|
+      if env["PATH_INFO"] == "/123/cable"
+        env = env.merge("PATH_INFO" => "/cable", "SCRIPT_NAME" => "/123")
+      end
+      @cable.call(env)
+    end
+    @puma = Puma::Server.new(routed)
     @puma.add_tcp_listener("127.0.0.1", 0)
     @puma.run
     @endpoint = "ws://127.0.0.1:#{@puma.connected_ports.first}/cable"
@@ -190,6 +196,27 @@ class AuthenticatedCableReferenceTest < Minitest::Test
         assert_includes error.message, "UNSUPPORTED_WEBSOCKET_ENDPOINT"
       end
     end
+  end
+
+  def test_numeric_account_path_is_explicit_and_bounded
+    Domstride::Session.open(app: @app, websocket_url: @endpoint,
+      websocket_cookie_names: "cable_session", websocket_path_mode: "numeric-account") do |page|
+      page.visit("/login?user=alice")
+      assert page.wait_for_text("#connection", "Connected", timeout: 5)
+      page.execute_script(<<~JS)
+        window.accountConsumer = ActionCable.createConsumer("/123/cable");
+        window.accountSubscription = accountConsumer.subscriptions.create("DomstrideAuthenticatedChannel", {
+          connected() { document.getElementById("connection").textContent = "Account connected"; }
+        });
+      JS
+      assert page.wait_for_text("#connection", "Account connected", timeout: 5)
+      ["/other/cable", "/123/not-cable", "/123/cable?unexpected=1", "ws://outside.example/123/cable"].each do |url|
+        assert_match(/UNSUPPORTED_WEBSOCKET_ENDPOINT/, assert_raises(Domstride::JavaScriptError) {
+          page.execute_script("new WebSocket(#{url.to_json})")
+        }.message)
+      end
+    end
+    assert_raises(ArgumentError) { Domstride::Session.new(app: @app, websocket_url: @endpoint, websocket_path_mode: "numeric-account") }
   end
 
   def test_cookie_allowlist_requires_explicit_endpoint

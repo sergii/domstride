@@ -58,10 +58,18 @@ function authenticatedTransport(win, state, endpoint, sockets) {
       if (requested.protocol === "http:") requested.protocol = "ws:";
       const logical = new URL(endpoint.pathname, win.location.href);
       logical.protocol = "ws:";
-      if (requested.href !== logical.href && requested.href !== endpoint.href) throw new Error("UNSUPPORTED_WEBSOCKET_ENDPOINT");
+      let target = endpoint.href;
+      if (requested.href !== logical.href && requested.href !== endpoint.href) {
+        // Only numeric account prefixes of the logical same-origin cable path.
+        // Preserve the prefix so the actual Rails middleware resolves the account.
+        if (state.websocketPathMode !== "numeric-account" || requested.origin !== logical.origin ||
+            requested.username || requested.password || requested.search || requested.hash ||
+            !/^\/[0-9]{1,20}\/cable$/.test(requested.pathname)) throw new Error("UNSUPPORTED_WEBSOCKET_ENDPOINT");
+        target = new URL(requested.pathname, endpoint).href;
+      }
       if (sockets.size >= 8) throw new Error("WebSocket connection limit exceeded");
       this.#url = requested.href;
-      this.#socket = new WS(endpoint.href, protocols, {
+      this.#socket = new WS(target, protocols, {
         headers: { origin: win.location.origin, cookie: state.websocketCookie || "" },
         followRedirects: false, handshakeTimeout: 5000, maxPayload: 8 * 1024 * 1024,
         perMessageDeflate: false
