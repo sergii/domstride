@@ -30,7 +30,7 @@ for(const mode of ['fast','execution','documentation']){
    assert.ok(evidence.recording_window.endMonotonicMs>=evidence.recording_window.startMonotonicMs);
    const stepIds=new Set(positive.data.steps.map(s=>s.runtime_id));
    for(const t of evidence.targets)assert.ok(stepIds.has(t.stepId),'Focus target must map to the actual runtime step');
-   for(const f of evidence.frames)assert.ok(Number.isFinite(f.timestamp)&&f.viewportWidth>0&&f.viewportHeight>0);
+   for(const [i,f] of evidence.frames.entries())assert.ok(f.sequence===i+1&&f.bytes>0&&Number.isFinite(f.receivedMonotonicMs));
    const candidates=evidence.targets.map(t=>({step_id:t.stepId,action:t.action,observed_monotonic_ms:t.observedMonotonicMs,crop:cropForTarget(t.bounds,t.viewport)}));
    fs.writeFileSync(path.join(positive.dir,'zoom-candidates.json'),JSON.stringify({format:'domstride.reference-zoom-candidates',schema_version:1,timing_quality:'unmapped',candidates},null,2));
   }else assert.ok(!fs.existsSync(observations));

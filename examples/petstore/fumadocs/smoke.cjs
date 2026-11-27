@@ -11,7 +11,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   const guide=page.locator('[data-domstride-guide]');
   console.log('Guide headings:',await guide.locator('h2,h3,h4').allTextContents());
   console.log('Guide accessibility:',await guide.ariaSnapshot());
-  for(const name of ['Overview','Actors','Prerequisites','Initial context','Walkthrough','Expected results','Video walkthrough'])await expect(guide.locator('h2,h3').filter({hasText:new RegExp('^'+name+'(?:\\s*Copy Anchor Link)?$','i')})).toBeVisible();
+  for(const name of ['Overview','Actors','Prerequisites','Initial context','Walkthrough','Expected results','Video walkthrough'])await expect(guide.locator('h2,h3').filter({has:page.getByRole('link',{name,exact:true})})).toBeVisible();
   await expect(guide.locator('h4')).toHaveCount(3);
   await expect(guide.locator('img')).toHaveCount(6);
   for(const img of await guide.locator('img').all()){await img.scrollIntoViewIfNeeded();await expect.poll(()=>img.evaluate(el=>el.complete&&el.naturalWidth>0)).toBe(true);}

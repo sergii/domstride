@@ -7,7 +7,7 @@ import { join } from 'node:path';
 
 type Screenshot = { stepId: string; file: string; url: string; phase: 'after' };
 type FocusObservation = { stepId: string; action: number; observedWallMs: number; observedMonotonicMs: number; bounds: {x:number;y:number;width:number;height:number}; viewport: {width:number;height:number} };
-type FrameObservation = { timestamp:number; viewportWidth:number; viewportHeight:number; receivedWallMs:number; receivedMonotonicMs:number };
+type FrameObservation = { sequence:number; bytes:number; receivedWallMs:number; receivedMonotonicMs:number };
 class ListingWorld extends World {
   browser?: Browser;
   context?: BrowserContext;
@@ -154,8 +154,8 @@ Given('the seller is signed in',async function(this:ListingWorld){
       if(this.profile==='guided'){
         this.recordingWindow={startWallMs:Date.now(),startMonotonicMs:performance.now()};
         await this.page.screencast.start({path:join(this.directory,'video-01.webm'),size:{width:1280,height:800},
-          onFrame:({timestamp,viewportWidth,viewportHeight})=>{
-            this.frameObservations.push({timestamp,viewportWidth,viewportHeight,receivedWallMs:Date.now(),receivedMonotonicMs:performance.now()});
+          onFrame:({data})=>{
+            this.frameObservations.push({sequence:this.frameObservations.length+1,bytes:data.length,receivedWallMs:Date.now(),receivedMonotonicMs:performance.now()});
           }});
       }else await this.page.screencast.start({path:join(this.directory,'video-01.webm'),size:{width:1280,height:800}});
     }
