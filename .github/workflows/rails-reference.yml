@@ -130,8 +130,8 @@ jobs:
           (cd petstore-app && bin/rails runner 'User.find_by!(email_address: "seller@example.test").listings.destroy_all')
           (cd examples/petstore && npm run execution)
           (cd petstore-app && bin/rails runner 'User.find_by!(email_address: "seller@example.test").listings.destroy_all')
-          (cd examples/petstore && npm run docs && npm run docs:pair && node verify.cjs )
-          guided=$(find examples/petstore/artifacts -name video-pair.json -printf '%h\\n' -quit)
+          (cd examples/petstore && npm run docs && npm run docs:pair && node verify.cjs)
+          guided=$(find examples/petstore/artifacts -name video-pair.json -printf '%h\n' -quit)
           test -n "$guided"
           ruby -Ilib exe/domstride docs export --synthetic-reference "$guided"
       - name: Inspect recorded focus intervals
