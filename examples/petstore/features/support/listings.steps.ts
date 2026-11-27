@@ -15,6 +15,13 @@ class ListingWorld extends World {
   evidenceErrors: string[] = [];
   title = '';
   seller = '';
+  profile: 'execution' | 'guided' | null = null;
+  presentationWaitMs = 0;
+  async hold(ms: number) {
+    if (this.profile !== 'guided') return;
+    this.presentationWaitMs += ms;
+    await this.page.waitForTimeout(ms);
+  }
 }
 setWorldConstructor(ListingWorld);
 setDefaultTimeout(30_000);
@@ -22,13 +29,15 @@ const base = process.env.PETSTORE_BASE_URL || '';
 const url = (path: string) => new URL(path, base).href;
 
 Before(async function(this: ListingWorld, {pickle, testCaseStartedId}) {
-  const record = process.env.RUN_MODE === 'documentation' && pickle.tags.some(t=>t.name==='@replay');
+  const record = ['documentation','execution'].includes(process.env.RUN_MODE||'') && pickle.tags.some(t=>t.name==='@replay');
   const root = process.env.DOMSTRIDE_ARTIFACTS;
   if (!root || !/^[a-zA-Z0-9-]+$/.test(testCaseStartedId)) throw new Error('Invalid run or attempt');
   if (!['localhost','127.0.0.1','[::1]'].includes(new URL(base).hostname)) throw new Error('Only isolated local Petstore is supported');
   if (record) {
+    this.profile = process.env.RUN_MODE === 'execution' ? 'execution' : 'guided';
     this.directory = join(root, 'domstride-case-'+testCaseStartedId);
-    await mkdir(join(this.directory,'screenshots'), {recursive:true});
+    await mkdir(this.directory, {recursive:true});
+    if (this.profile === 'guided') await mkdir(join(this.directory,'screenshots'), {recursive:true});
   }
   this.browser = await chromium.launch();
   this.context = await this.browser.newContext({viewport:{width:1280,height:800}});
@@ -36,7 +45,7 @@ Before(async function(this: ListingWorld, {pickle, testCaseStartedId}) {
 });
 
 AfterStep(async function(this: ListingWorld,{pickleStep,testStepId,result}) {
-  if (!this.directory || result?.status !== 'PASSED') return;
+  if (!this.directory || this.profile !== 'guided' || result?.status !== 'PASSED') return;
   const selected = [
     'the seller has no listing titled "Travel carrier demo"',
     'the seller creates a listing',
@@ -50,7 +59,7 @@ AfterStep(async function(this: ListingWorld,{pickleStep,testStepId,result}) {
   try {
     await this.page.screenshot({path:join(this.directory,file),animations:'disabled'});
     this.screenshots.push({stepId:testStepId,file,url:this.page.url(),phase:'after'});
-    await this.page.waitForTimeout(1100);
+    await this.hold(pickleStep.text.includes('guest buyer') ? 1800 : pickleStep.text.includes('confirmation') ? 1500 : 1100);
   } catch(error) { this.evidenceErrors.push('Screenshot: '+String(error)); }
 });
 
@@ -65,7 +74,7 @@ After(async function(this: ListingWorld) {
   finally { try { await this.context?.close(); } finally { await this.browser?.close(); } }
   if (this.directory) {
     await writeFile(join(this.directory,'capture.json'),JSON.stringify({
-      screenshots:this.screenshots,video:file,errors:this.evidenceErrors
+      screenshots:this.screenshots,video:file,errors:this.evidenceErrors,profile:this.profile,presentation_wait_ms:this.presentationWaitMs
     },null,2));
   }
 });
@@ -99,14 +108,14 @@ When('the seller creates a listing',async function(this:ListingWorld){
 When('enters the following listing details:',async function(this:ListingWorld,table:DataTable){
   const details=table.rowsHash();this.title=details.title;
   // Presentation pacing applies only to the recorded reference scenario.
-  const pace=async()=>{if(this.directory) await this.page.waitForTimeout(650);};
+  const pace=async()=>{await this.hold(650);};
   await this.page.getByLabel('Title',{exact:true}).fill(details.title); await pace();
   await this.page.getByLabel('Description',{exact:true}).fill(details.description); await pace();
   await this.page.getByLabel('Category',{exact:true}).selectOption({label:details.category}); await pace();
   await this.page.getByLabel('Condition',{exact:true}).selectOption({label:details.condition}); await pace();
   await this.page.getByLabel('Price (USD)',{exact:true}).fill(details.price); await pace();
 });
-When('publishes the listing',async function(this:ListingWorld){await this.page.getByRole('button',{name:'Publish listing'}).click();});
+When('publishes the listing',async function(this:ListingWorld){await this.hold(700);await this.page.getByRole('button',{name:'Publish listing'}).click();});
 When('enters a price of {string}',async function(this:ListingWorld,price:string){
   const input=this.page.getByLabel('Price (USD)',{exact:true});
   await input.fill('');

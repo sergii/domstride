@@ -5,7 +5,8 @@
   "scripts": {
     "test": "node run.cjs fast",
     "docs": "node run.cjs documentation",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "execution": "node run.cjs execution"
   },
   "devDependencies": {
     "@cucumber/cucumber": "12.2.0",

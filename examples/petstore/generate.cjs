@@ -69,11 +69,11 @@ function generate(root,run){
   const record={format:'domstride.case',schema_version:1,name:pickle.name,status:caseFinished.has(attempt)?outcome(runtime):'unknown',
    duration_ms:runtime.reduce((sum,s)=>sum+s.duration_ms,0),producer:'living-documentation-reference',framework:'cucumber-js',runner:'playwright',platform:'web',language:'typescript',
    feature_id:item.feature_id,scenario_id:item.scenario_id,attempt_id:attempt,attempt:start.attempt??0,source_uri:pickle.uri,example_ast_ids:pickle.astNodeIds.filter(id=>!scenarioById.has(id)),
-   steps,screenshots,videos:video?[{file:'video-01.webm',label:'Chromium'}]:[],evidence_errors:capture.errors||[],timing_quality:'unmapped'};
+   steps,screenshots,videos:video?[{file:'video-01.webm',label:'Chromium',role:capture.profile,attempt_id:attempt,run_id:run.run_id}]:[],presentation_wait_ms:capture.presentation_wait_ms??0,evidence_errors:capture.errors||[],timing_quality:'unmapped'};
   write(path.join(dir,'case.json'),record);
   cases.push({...record,folder});
  }
  write(path.join(root,'run.json'),{format:'domstride.run',schema_version:1,...run,platform:'web',browser:'chromium',viewport:{width:1280,height:800},status:run.exitCode===0?'passed':run.exitCode===null?'unknown':'failed',cases:cases.map(c=>({folder:c.folder,scenario_id:c.scenario_id,status:c.status,attempt_id:c.attempt_id}))});
- if(run.mode==='documentation')render(root,docs,spec,cases,run);
+ if(run.mode==='documentation'||run.mode==='execution')render(root,docs,spec,cases,run);
 }
 module.exports={generate};
