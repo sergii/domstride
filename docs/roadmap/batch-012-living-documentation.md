@@ -50,3 +50,7 @@ CI reference runs as an independent job in the existing Rails reference and brow
 - [ ] Media publication manifest and local/S3-compatible adapters; safe allowlist, private by default, immutable versioned assets, auth-aware delivery and stale evidence handling. See [documentation publishing](../documentation-publishing.md).
 
 UI v2 CI: [45974971779](https://github.com/sergii/domstride/actions/runs/45974971779), Petstore job passed; artifact 15185619987 available. New design output inspection remains pending.
+
+## Dual recording reference implementation
+
+Implemented three reference CLI runs (fast, execution, documentation/guided), independent attempt/run IDs and feature source digest, no capture in Fast, no screenshots or intentional waits in Execution, selected screenshots and action-aware holds in Guided. Paired HTML links both videos from separate passed attempts after matching provenance. CI resets synthetic state between all three runs and verifies twelve scenario executions. CI and actual duration inspection pending; calibration, focus, static framework export and core extraction remain follow-up.

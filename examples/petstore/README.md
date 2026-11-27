@@ -11,13 +11,17 @@ npx playwright install chromium
 export PETSTORE_FEATURE=/absolute/path/to/petstore/features/marketplace/listings/publish_listing.feature
 export PETSTORE_BASE_URL=http://127.0.0.1:3000
 export PETSTORE_COMMIT=<checked-out-application-commit>
+export GIT_COMMIT=$(git rev-parse HEAD)
 npm run typecheck
 npm test
 # Reset the isolated test database's demo listings before the next run.
+npm run execution
+# Reset demo listings again before guided capture.
 npm run docs
+npm run docs:pair
 node verify.cjs
 ```
 
-Open artifacts/<documentation-run>/documentation/index.html. The feature intro, numbered steps, inline real screenshots, results and video are generated from Gherkin and runtime evidence. Four cases in each mode; only the selected positive case records media. Screencast starts after sign-in. Fast mode has no recording or pacing. Browser-native invalid price errors are asserted using validity state and non-empty validation message; server-side validation is a separate Rails concern.
+Open artifacts/<documentation-run>/documentation/index.html. The feature intro, numbered steps, inline real screenshots, results and video are generated from Gherkin and runtime evidence. Four cases in each mode; only the selected positive case records media. Screencast starts after sign-in. Fast mode has no recording or pacing. Execution mode records the selected positive scenario without screenshots or intentional holds. Documentation mode records guided video and checkpoints with semantic holds. Pairing checks identical source hash, application and Domstride commits, browser/platform/viewport, and separate run/attempt IDs; the guided report links the unpaced video from its own run. Preserve both run directories. No claim that capture duration equals Fast test time. Browser-native invalid price errors are asserted using validity state and non-empty validation message; server-side validation is a separate Rails concern.
 
 Reference only: no calibrated timestamps, VTT, DOM snapshots, production schema validation, public publication, Studio integration or mobile drivers yet. Do not claim verified until CI passes. Production generator extraction and Ruby acceptance adapter remain planned. Dependencies are pinned directly; lockfile is pending.

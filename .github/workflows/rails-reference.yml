@@ -108,6 +108,7 @@ jobs:
       - name: Execute Petstore acceptance tests and generate documentation
         env:
           PETSTORE_FEATURE: ${{ github.workspace }}/petstore-app/features/marketplace/listings/publish_listing.feature
+          GIT_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           (
             cd petstore-app
@@ -123,7 +124,9 @@ jobs:
           curl -fsS http://127.0.0.1:3000/up || { cat "$RUNNER_TEMP/petstore.log"; exit 1; }
           (cd examples/petstore && npm test)
           (cd petstore-app && bin/rails runner 'User.find_by!(email_address: "seller@example.test").listings.destroy_all')
-          (cd examples/petstore && npm run docs && node verify.cjs)
+          (cd examples/petstore && npm run execution)
+          (cd petstore-app && bin/rails runner 'User.find_by!(email_address: "seller@example.test").listings.destroy_all')
+          (cd examples/petstore && npm run docs && npm run docs:pair && node verify.cjs)
       - name: Rails server log
         if: failure()
         run: cat "$RUNNER_TEMP/petstore.log" || true
