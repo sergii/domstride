@@ -16,6 +16,8 @@ paths.each do |path|
   abort "Invalid captured video" unless result.success?
   stream = JSON.parse(output).fetch("streams").fetch(0)
   abort "Expected multiple real frames" unless stream.fetch("nb_read_frames").to_i >= 3 && stream.values_at("width","height","codec_name") == [800,600,"vp8"]
+  cues = video.fetch("cues")
+  abort "Missing assertion video cue" unless cues.any? { |cue| cue["kind"] == "assertion" && cue["sequence"] == 1 && cue["time_ms"].positive? }
   abort "Expected private attachment" unless File.stat(file).mode & 0o777 == 0o600
 end
 abort "Wrong final statuses" unless statuses.sort == %w[failed passed]

@@ -21,3 +21,7 @@ examples/protocol/write_case.cjs writes a case using Node standard library, inde
 Runner: execute browserless interactions. Studio: inspect artifacts produced by any runner. Protocol: versioned artifact boundary. Keep a single product and repo for now; separate package distribution, actual Playwright Test reporter, Selenium/Cuprite recording adapters, mobile evidence and richer suite identities are subsequent work, not implemented claims.
 
 The native [Playwright Test reporter](playwright-reporter.md) is a source-checkout adapter using adapters/protocol/write_case.cjs; CI pending.
+
+## Video cues (optional v1 extension)
+
+Each video attachment can include cues: [{kind: "step" or "assertion", sequence: existing case step/assertion sequence, time_ms: nonnegative playback offset}]. At most one cue per kind/sequence per video, 300 total. Producer owns timestamp evidence; viewer never estimates offsets from duration. Older videos have no cues. Seek after metadata load, keep video selection and display unavailable cues honestly. X11 adapter derives offsets from actual showinfo first-frame epoch PTS, normalized output PTS, paired wall/monotonic clock sample and ffprobe duration; drop out-of-range cues or clock drift >50 ms. Step cues mark start, assertion cues mark completion. Approximate frame-level correlation, not exact browser event time. Playwright video origin is not exposed in current reporter; no automatic offsets there. Browser contract tests use explicit synthetic offsets to verify seeking separately from X11 producer verification.

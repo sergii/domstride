@@ -63,11 +63,20 @@ module Domstride
           unless attachment.is_a?(Hash) && attachment["file"] == name && attachment["label"].is_a?(String) && attachment["label"].bytesize.between?(1,128)
             raise Error, "Invalid video attachment"
           end
+          cues = attachment.fetch("cues", [])
+          unless cues.is_a?(Array) && cues.size <= Protocol::MAX_STEPS + Protocol::MAX_ASSERTIONS &&
+              cues.all? { |cue| cue.is_a?(Hash) && %w[step assertion].include?(cue["kind"]) &&
+                cue["sequence"].is_a?(Integer) && cue["time_ms"].is_a?(Numeric) && cue["time_ms"].finite? &&
+                cue["time_ms"].between?(0, 86_400_000) &&
+                (cue["kind"] == "step" ? steps : assertions).any? { |row| row["sequence"] == cue["sequence"] } } &&
+              cues.map { |cue| cue.values_at("kind","sequence") }.uniq.size == cues.size
+            raise Error, "Invalid video cues"
+          end
           content = Video.read_webm(File.join(path, name))
           encoded = Base64.strict_encode64(content)
           bytes += encoded.bytesize
           raise Error, "Report payload limit exceeded" if bytes > MAX_PAYLOAD_BYTES
-          {label: attachment["label"], base64: encoded}
+          {label: attachment["label"], base64: encoded, cues: cues.map { |cue| cue.slice("kind","sequence","time_ms") }}
         end
         {name: item["name"], status: item["status"], duration_ms: item["duration_ms"],
           **metadata,

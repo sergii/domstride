@@ -14,7 +14,7 @@ module Domstride
     STEP_STATUSES = Protocol::STEP_STATUSES
     KEY = :domstride_report_case
 
-    attr_reader :path, :status, :videos
+    attr_reader :path, :status, :videos, :video_markers
     attr_accessor :assertions, :browser_video
 
     def self.current = Thread.current[KEY]
@@ -41,6 +41,7 @@ module Domstride
       @framework = framework
       @steps = []
       @videos = []
+      @video_markers = []
       @assertion_events = []
       @active_assertion = nil
       @active_step = nil
@@ -77,6 +78,7 @@ module Domstride
       return unless item && active_assertion.equal?(item)
       item[:status] = ASSERTION_STATUSES.include?(status) ? status : "unknown"
       item[:duration_ms] = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @assertion_started) * 1000
+      @video_markers << {kind: "assertion", sequence: item[:sequence], monotonic: Process.clock_gettime(Process::CLOCK_MONOTONIC)}
       @active_assertion = nil
     end
 
@@ -85,6 +87,7 @@ module Domstride
       return if @steps.size >= MAX_STEPS
       @active_step = @steps.size + 1
       @step_started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      @video_markers << {kind: "step", sequence: active_step, monotonic: @step_started}
       @steps << {sequence: active_step, keyword: bounded(keyword, 48), text: text && bounded(text, 1024), status: "unknown", duration_ms: 0}
     end
 

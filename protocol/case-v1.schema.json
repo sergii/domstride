@@ -186,6 +186,35 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "cues": {
+            "type": "array",
+            "maxItems": 300,
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "sequence",
+                "time_ms"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "step",
+                    "assertion"
+                  ]
+                },
+                "sequence": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "time_ms": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 86400000
+                }
+              }
+            }
           }
         }
       }

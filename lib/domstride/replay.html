@@ -16,7 +16,7 @@
 <body>
 <header><strong>Domstride Replay</strong><span id="notice">Inert DOM preview · no application execution</span><span class="spacer"></span><label>Layout <select id="layout"><option value="right">Viewport left / steps right</option><option value="left">Steps left / viewport right</option></select></label><label>State <select id="phase"><option value="after">After</option><option value="before">Before</option></select></label></header>
 <div id="suite" hidden><div id="suite-summary"></div><span id="case-provenance"></span><label>Search <input id="case-search" type="search" placeholder="Test name"></label><label>Status <select id="case-status"><option value="">All</option><option>passed</option><option>failed</option><option>skipped</option><option>pending</option><option>unknown</option></select></label><label>Test <select id="case-select"></select></label><label>Recording <select id="trace-select"></select></label></div>
-<main id="workspace"><section><div id="evidence-choice" hidden><label>Evidence <select id="evidence-mode"><option value="dom">DOM snapshot</option><option value="video">Browser video</option></select></label></div><div id="dom-evidence"><h2>DOM snapshot</h2><div id="viewport"></div></div><div id="video-evidence" hidden><h2>Browser video</h2><label>Recording <select id="video-select"></select></label><video id="browser-video" controls playsinline preload="metadata"></video><p id="video-note">Recorded browser playback. Not synchronized with assertion or DOM interaction timestamps.</p></div></section><aside><div id="gherkin" hidden><h2>Scenario steps</h2><div id="gherkin-steps"></div></div><div id="assertions-panel" hidden><h2>Assertions</h2><div id="assertion-steps"></div></div><h2>Interaction steps</h2><div id="steps"></div></aside></main>
+<main id="workspace"><section><div id="evidence-choice" hidden><label>Evidence <select id="evidence-mode"><option value="dom">DOM snapshot</option><option value="video">Browser video</option></select></label></div><div id="dom-evidence"><h2>DOM snapshot</h2><div id="viewport"></div></div><div id="video-evidence" hidden><h2>Browser video</h2><label>Recording <select id="video-select"></select></label><video id="browser-video" controls playsinline preload="metadata"></video><p id="video-note">Recorded browser playback. Select an explicitly timestamped step or assertion to seek.</p></div></section><aside><div id="gherkin" hidden><h2>Scenario steps</h2><div id="gherkin-steps"></div></div><div id="assertions-panel" hidden><h2>Assertions</h2><div id="assertion-steps"></div></div><h2>Interaction steps</h2><div id="steps"></div></aside></main>
 <footer><button id="previous">Previous</button><button id="next">Next</button><span id="position"></span></footer>
 <script type="application/json" id="recording-data">__RECORDING_JSON__</script>
 <script nonce="__NONCE__">
@@ -28,6 +28,8 @@ const $ = id => document.getElementById(id);
 let index = 0;
 let activeCase = null;
 let videoUrl = null;
+let selectedCue = null;
+let pendingSeek = null;
 const safeTags = new Set("div span p section article main header footer nav aside h1 h2 h3 h4 h5 h6 ul ol li dl dt dd table thead tbody tfoot tr th td caption label input textarea select option button output strong em b i small pre code blockquote br hr details summary dialog fieldset legend time".split(" "));
 const blocked = new Set("head script style link meta base iframe frame object embed template svg math noscript canvas video audio source picture img".split(" "));
 function renderSnapshot(frame) {
@@ -79,7 +81,7 @@ function show() {
     b.textContent = String(event.kind);
     const meta = document.createElement("small"); meta.textContent = [event.step_sequence ? "Step "+event.step_sequence : "", event.status, Number(event.duration_ms).toFixed(1)+" ms"].filter(Boolean).join(" · ");
     meta.className = event.status === "failed" ? "failed" : "passed";
-    b.append(meta); b.onclick = () => { index = i; show(); }; steps.append(b);
+    b.append(meta); b.onclick = () => { index = i; $("evidence-mode").value="dom"; releaseVideo(); selectedCue=null; show(); }; steps.append(b);
   }
   renderGherkin(e);
   renderAssertions(e);
@@ -92,19 +94,51 @@ function show() {
 }
 function releaseVideo() {
   const video = $("browser-video");
+  pendingSeek = null;
   video.pause(); video.removeAttribute("src"); video.load();
   if (videoUrl) URL.revokeObjectURL(videoUrl);
   videoUrl = null;
 }
 function loadVideo() {
   releaseVideo();
+  selectedCue = null;
   const item = activeCase?.videos?.[Number($("video-select").value)];
   if (!item || $("evidence-mode").value !== "video") return;
   const binary = atob(item.base64);
   const bytes = Uint8Array.from(binary, c=>c.charCodeAt(0));
   videoUrl = URL.createObjectURL(new Blob([bytes],{type:"video/webm"}));
   $("browser-video").src = videoUrl;
+  $("video-note").textContent = item.cues?.length ? "Timestamped evidence · select a step or assertion to seek." : "No verified timestamp mapping for this recording.";
 }
+function findCue(kind, sequence) {
+  const selected = Number($("video-select").value);
+  const candidates = (activeCase?.videos || []).flatMap((video,i)=>(video.cues || []).filter(c=>c.kind===kind && c.sequence===sequence).map(c=>({...c,i})));
+  return candidates.find(c=>c.i===selected) || candidates[0];
+}
+function seekCue(cue) {
+  $("evidence-mode").value = "video";
+  const select = $("video-select");
+  if (Number(select.value)!==cue.i || !videoUrl) {
+    select.value=String(cue.i); loadVideo();
+  }
+  selectedCue=cue;
+  pendingSeek={url:videoUrl,seconds:cue.time_ms/1000};
+  applySeek();
+  show();
+}
+function applySeek() {
+  const video=$("browser-video");
+  if (!pendingSeek || pendingSeek.url!==videoUrl || video.readyState<1) return;
+  const seconds=pendingSeek.seconds;
+  pendingSeek=null;
+  if (Number.isFinite(video.duration) && seconds>=video.duration) {
+    $("video-note").textContent="Mapped timestamp is outside the recorded video.";
+    return;
+  }
+  try { video.currentTime=seconds; }
+  catch (_) { $("video-note").textContent="Video seek unavailable."; }
+}
+$("browser-video").addEventListener("loadedmetadata",applySeek);
 function updateEvidenceVisibility() {
   const available = !!activeCase?.videos?.length;
   $("evidence-choice").hidden = !available;
@@ -113,7 +147,7 @@ function updateEvidenceVisibility() {
   $("video-evidence").hidden = !playing;
 }
 function selectCaseVideo() {
-  releaseVideo();
+  releaseVideo(); selectedCue=null;
   const select = $("video-select"); select.replaceChildren();
   for (const [i, item] of (activeCase?.videos || []).entries()) {
     const option = document.createElement("option"); option.value=String(i); option.textContent=item.label; select.append(option);
@@ -122,8 +156,8 @@ function selectCaseVideo() {
   updateEvidenceVisibility();
   loadVideo();
 }
-$("evidence-mode").onchange = () => {updateEvidenceVisibility();loadVideo();};
-$("video-select").onchange = loadVideo;
+$("evidence-mode").onchange = () => {updateEvidenceVisibility();loadVideo();show();};
+$("video-select").onchange = () => {loadVideo();show();};
 function renderAssertions(event) {
   const assertions = activeCase?.assertion_events || [];
   $("assertions-panel").hidden = !assertions.length;
@@ -131,14 +165,17 @@ function renderAssertions(event) {
   for (const assertion of assertions) {
     const b = document.createElement("button"); b.type = "button";
     b.textContent = assertion.kind;
-    b.setAttribute("aria-current",String(event?.assertion_sequence===assertion.sequence));
+    const cue = findCue("assertion",assertion.sequence);
+    const videoMode = $("evidence-mode").value==="video" && !!activeCase?.videos?.length;
+    b.setAttribute("aria-current",String(videoMode ? selectedCue?.kind==="assertion" && selectedCue.sequence===assertion.sequence : event?.assertion_sequence===assertion.sequence));
     const matching = activeCase.recordings.flatMap((trace,i)=>trace.events.map((e,j)=>({e,i,j})).filter(m=>m.e.assertion_sequence===assertion.sequence));
     const meta = document.createElement("small");
     meta.className = assertion.status === "passed" ? "passed" : assertion.status === "failed" || assertion.status === "error" ? "failed" : "no-evidence";
-    meta.textContent = [assertion.status,Number(assertion.duration_ms).toFixed(1)+" ms",assertion.step_sequence?"Step "+assertion.step_sequence:"",matching.length?"":"No recorded DOM evidence"].filter(Boolean).join(" · ");
+    meta.textContent = [assertion.status,Number(assertion.duration_ms).toFixed(1)+" ms",assertion.step_sequence?"Step "+assertion.step_sequence:"",cue ? "Video "+(cue.time_ms/1000).toFixed(2)+" s" : matching.length?"":"No recorded DOM evidence"].filter(Boolean).join(" · ");
     b.append(meta);
-    b.disabled = !matching.length;
+    b.disabled = !matching.length && !cue;
     b.onclick = () => {
+      if (cue && (videoMode || !matching.length)) {seekCue(cue);return;}
       const candidates = matching.filter(m=>m.i===Number($("trace-select").value));
       const match = (candidates.length?candidates:matching).at(-1);
       $("trace-select").value=String(match.i);
@@ -155,13 +192,16 @@ function renderGherkin(event) {
   for (const step of steps) {
     const b = document.createElement("button"); b.type = "button";
     b.textContent = [step.keyword.trim(),step.text || "Step "+step.sequence].join(" ");
-    b.setAttribute("aria-current",String(event?.step_sequence===step.sequence));
+    const cue = findCue("step",step.sequence);
+    const videoMode = $("evidence-mode").value==="video" && !!activeCase?.videos?.length;
+    b.setAttribute("aria-current",String(videoMode ? selectedCue?.kind==="step" && selectedCue.sequence===step.sequence : event?.step_sequence===step.sequence));
     const matching = activeCase.recordings.map((trace,i)=>({i,j:trace.events.findIndex(e=>e.step_sequence===step.sequence)})).filter(match=>match.j>=0);
     const meta = document.createElement("small");
-    meta.textContent = [step.status,Number(step.duration_ms).toFixed(1)+" ms",matching.length?"":"No recorded DOM interaction"].filter(Boolean).join(" · ");
+    meta.textContent = [step.status,Number(step.duration_ms).toFixed(1)+" ms",cue ? "Video "+(cue.time_ms/1000).toFixed(2)+" s" : matching.length?"":"No recorded DOM interaction"].filter(Boolean).join(" · ");
     b.append(meta);
-    b.disabled = !matching.length;
+    b.disabled = !matching.length && !cue;
     b.onclick = () => {
+      if (cue && (videoMode || !matching.length)) {seekCue(cue);return;}
       const match = matching.find(m=>m.i===Number($("trace-select").value)) || matching[0];
       $("trace-select").value=String(match.i);
       active=activeCase.recordings[match.i]; events=active.events; index=match.j; $("evidence-mode").value="dom"; releaseVideo(); show();

@@ -35,6 +35,7 @@ jobs:
       - run: bundle exec ruby -Ilib test/report_test.rb
       - run: bundle exec ruby -Ilib test/reporting_integration_test.rb
       - run: bundle exec ruby -Ilib test/video_attachment_test.rb
+      - run: bundle exec ruby -Ilib test/video_cue_test.rb
       - name: Replay viewer browser contract
         if: matrix.engine == 'jsdom31'
         run: |

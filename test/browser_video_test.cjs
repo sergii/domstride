@@ -19,15 +19,17 @@ test("actual Chromium video is attached to a failed case and plays offline", asy
       await page.setContent('<h1>Expense</h1><input aria-label="Amount"><button onclick="document.querySelector(\'h1\').textContent=\'Saved\'">Save</button>');
       await page.getByLabel("Amount").fill("25");
       await page.getByRole("button",{name:"Save"}).click();
-      await page.waitForTimeout(400);
+      await page.waitForTimeout(1000);
       throw new Error("Expected approved");
     });
     assert.equal(result.error.message,"Expected approved");
     assert.ok(fs.statSync(result.path).size>100);
     const cases = path.join(root,"cases");
     writeCase(cases,{name:"Browser expense",status:"failed",duration_ms:performance.now()-start,
-      producer:"external-node",framework:"node:test",runner:"playwright",platform:"web",language:"javascript"},
-      [{path:result.path,label:"Chromium"}]);
+      producer:"external-node",framework:"node:test",runner:"playwright",platform:"web",language:"javascript",
+      steps:[{sequence:1,keyword:"Step",text:"Synthetic cue",status:"passed",duration_ms:100}],
+      assertion_events:[{sequence:1,kind:"synthetic.assert",status:"failed",duration_ms:20,step_sequence:1},{sequence:2,kind:"unmapped",status:"failed",duration_ms:20}]},
+      [{path:result.path,label:"Chromium",cues:[{kind:"step",sequence:1,time_ms:100},{kind:"assertion",sequence:1,time_ms:300}]}]);
     execFileSync("ruby",["-Ilib","-rdomstride/report","-e",
       'abort "Runner loaded" if defined?(Domstride::Session) || defined?(Domstride::Runtime); Domstride::Report.export(ARGV[0])',cases],{stdio:"pipe"});
     const viewer = await browser.newPage();
@@ -42,6 +44,13 @@ test("actual Chromium video is attached to a failed case and plays offline", asy
     await viewer.waitForFunction(()=>document.querySelector("#browser-video").readyState>=2);
     await viewer.locator("#browser-video").evaluate(video=>video.play());
     await viewer.waitForFunction(()=>document.querySelector("#browser-video").currentTime>0);
+    await viewer.locator("#browser-video").evaluate(video=>video.pause());
+    await viewer.locator("#gherkin-steps button").click();
+    await viewer.waitForFunction(()=>Math.abs(document.querySelector("#browser-video").currentTime-0.1)<0.08);
+    await viewer.locator("#assertion-steps button").first().click();
+    await viewer.waitForFunction(()=>Math.abs(document.querySelector("#browser-video").currentTime-0.3)<0.08);
+    assert.equal(await viewer.locator("#assertion-steps button").first().getAttribute("aria-current"),"true");
+    assert.equal(await viewer.locator("#assertion-steps button").last().isDisabled(),true);
     assert.deepEqual(errors,[]);
     assert.deepEqual(requests,[]);
     await viewer.locator("#evidence-mode").selectOption("dom");

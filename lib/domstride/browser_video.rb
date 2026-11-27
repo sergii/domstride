@@ -1,5 +1,7 @@
 require "tmpdir"
 require "fileutils"
+require "open3"
+require "json"
 require_relative "errors"
 require_relative "video"
 
@@ -36,12 +38,15 @@ module Domstride
       raise Error, "Display already recording in this suite" unless @lock.flock(File::LOCK_EX | File::LOCK_NB)
       @directory = Dir.mktmpdir("video-", item.path)
       @file = File.join(@directory, "capture.webm")
-      @pid = Process.spawn("ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin",
+      @log = File.join(@directory, "frames.log")
+      @clock_offset = Time.now.to_f - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      @pid = Process.spawn("ffmpeg", "-hide_banner", "-loglevel", "info", "-nostdin", "-copyts",
         "-f", "x11grab", "-video_size", size, "-framerate", "12", "-i", display,
+        "-vf", "showinfo,setpts=PTS-STARTPTS", "-fps_mode", "passthrough",
         "-an", "-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "8",
         "-b:v", "400k", "-pix_fmt", "yuv420p", "-t", MAX_SECONDS.to_s,
         "-fs", MAX_FILE_BYTES.to_s, "-n", @file,
-        in: File::NULL, out: File::NULL, err: File::NULL)
+        in: File::NULL, out: File::NULL, err: [@log, "w", 0o600])
     rescue Exception
       cleanup
       raise
@@ -53,12 +58,37 @@ module Domstride
       return if status == "skipped" || status == "pending"
       return unless File.file?(@file) && File.size(@file) > 100
       raise Error, "Recording case changed" unless ReportCase.current.equal?(@item)
-      Video.attach(@file, label: "X11 browser display")
+      Video.attach(@file, label: "X11 browser display", cues: video_cues)
     ensure
       cleanup
     end
 
     private
+
+    # X11 input PTS are epoch microseconds, verified from showinfo time_base.
+    # setpts normalizes the first frame to zero; monotonic test events are
+    # converted using a paired clock sample, with drift rejection.
+    def video_cues
+      return [] unless File.file?(@log) && File.size(@log) <= 4 * 1024 * 1024
+      return [] if ((Time.now.to_f - Process.clock_gettime(Process::CLOCK_MONOTONIC)) - @clock_offset).abs > 0.050
+      log = File.read(@log)
+      return [] unless log.include?("config in time_base: 1/1000000,")
+      frames = log.scan(/\[Parsed_showinfo_0[^\n]*?\bn:\s*(\d+)\s+pts:\s*(\d+)/)
+      return [] unless frames.first&.first == "0" && frames.size >= 2
+      first, last = frames.first.last.to_i / 1_000_000.0, frames.last.last.to_i / 1_000_000.0
+      return [] if (first - (@clock_offset + Process.clock_gettime(Process::CLOCK_MONOTONIC))).abs > MAX_SECONDS + STOP_TIMEOUT + 30
+      output, result = Open3.capture2e("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "json", @file)
+      return [] unless result.success?
+      duration = Float(JSON.parse(output).fetch("format").fetch("duration"))
+      return [] unless duration.finite? && duration.positive?
+      @item.video_markers.filter_map do |marker|
+        seconds = marker.fetch(:monotonic) + @clock_offset - first
+        next unless seconds >= 0 && seconds <= last - first && seconds < duration
+        {kind: marker.fetch(:kind), sequence: marker.fetch(:sequence), time_ms: (seconds * 1000).round(1)}
+      end
+    rescue StandardError
+      []
+    end
 
     def reap
       return true unless @pid

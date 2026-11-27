@@ -175,3 +175,7 @@ Use native onTestEnd results and step trees; each retry is a separate attempt, n
 ## ADR-041: isolated display recording backend
 
 Optional FFmpeg x11grab per framework case on dedicated Linux Xvfb display; same backend for headed Selenium/Cuprite, no driver mutation. Bounded output, nonblocking suite-local display lock, graceful signal/forced reap, private temporary files, attach before final manifest. Failures cannot change framework status. Entire display is sensitive; independent worker displays required. No claim of headless recording or exact synchronization.
+
+## ADR-042: explicit video-local cues
+
+Optional per-video step/assertion sequence and playback time_ms. No guessing from step duration or case start. X11 actual first-frame input PTS with normalized output timestamps, monotonic-to-wall clock sample and drift guard; omit cues outside recorded range. Step start and assertion completion semantics. Viewer selects video and seeks only on supplied cue; missing cues remain unavailable. No claim of Playwright video alignment without a clock anchor. Explicit fixture offsets test viewer seeking independently.

@@ -26,7 +26,7 @@ function writeCase(root, metadata, videos = []) {
         !bytes.subarray(0,256).includes(Buffer.from([0x42,0x82,0x84,0x77,0x65,0x62,0x6d]))) throw new Error("Expected WebM");
       const file="video-"+String(i+1).padStart(2,"0")+".webm";
       fs.writeFileSync(path.join(directory,file),bytes,{flag:"wx",mode:0o600});
-      return {file,label:video.label};
+      return {file,label:video.label,...(video.cues===undefined?{}:{cues:video.cues})};
     });
     const json=JSON.stringify(item);
     if(Buffer.byteLength(json)>256*1024) throw new Error("Case manifest exceeds limit");
