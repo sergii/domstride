@@ -34,3 +34,9 @@ CI reference runs as an independent job in the existing Rails reference and brow
 ## Verified reference run (2026-11-27)
 
 [CI run 45973830161](https://github.com/sergii/domstride/actions/runs/45973830161), head 7e27991f6f1ea8a87a696f89daba9726dc77dda0. Both Fast and Documentation: four scenarios and 37 steps passed each; typecheck and artifact verification passed. Downloaded artifact 15186356652 contains six PNG screenshots, a 4.12-second VP8 WebM at 1280x800, four generated HTML pages, case/run/spec JSON and raw Messages. No capture errors. Fast mode has no media. No automatic calibrated cues, VTT or DOM snapshots yet; video presentation pacing and production Studio integration remain follow-up. Artifact is synthetic and expires after seven days.
+
+## Presentation iteration
+
+- [x] Implement offline responsive reference Docs UI with sidebar, search, domain/capability, actor, declared platform and journey groupings, feature context, numbered steps, actual outcome pills, screenshots and video at the bottom. Unspecified journey metadata stays unclassified.
+- [x] Increase checkpoint holds to 1100 ms and form-field presentation holds to 650 ms only for selected recorded scenarios. Fast mode unchanged. CI validation of this iteration pending; not a calibrated media timeline.
+- [ ] Inspect actual new video duration and browser UI; follow with measured cues, focus and subtitles.

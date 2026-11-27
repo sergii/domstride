@@ -19,6 +19,7 @@ for(const mode of ['fast','documentation']){
   assert.equal(fs.readFileSync(path.join(positive.dir,'video-01.webm')).subarray(0,4).toString('hex'),'1a45dfa3');
   assert.ok(cases.filter(c=>c!==positive).every(c=>c.data.videos.length===0));
   const html=fs.readFileSync(path.join(dir,'documentation','LST-001-01.html'),'utf8');
+  assert.ok(html.includes('id="group-by"')&&html.includes('id="search"')&&html.includes('navigation-data')&&html.includes('id="video"'));
   assert.ok(html.includes('49.90')&&html.includes('<img')&&html.includes('<video')&&html.indexOf('<img')<html.indexOf('<video'));
  }
 }

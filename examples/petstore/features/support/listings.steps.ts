@@ -50,7 +50,7 @@ AfterStep(async function(this: ListingWorld,{pickleStep,testStepId,result}) {
   try {
     await this.page.screenshot({path:join(this.directory,file),animations:'disabled'});
     this.screenshots.push({stepId:testStepId,file,url:this.page.url(),phase:'after'});
-    await this.page.waitForTimeout(450);
+    await this.page.waitForTimeout(1100);
   } catch(error) { this.evidenceErrors.push('Screenshot: '+String(error)); }
 });
 
@@ -98,11 +98,13 @@ When('the seller creates a listing',async function(this:ListingWorld){
 });
 When('enters the following listing details:',async function(this:ListingWorld,table:DataTable){
   const details=table.rowsHash();this.title=details.title;
-  await this.page.getByLabel('Title',{exact:true}).fill(details.title);
-  await this.page.getByLabel('Description',{exact:true}).fill(details.description);
-  await this.page.getByLabel('Category',{exact:true}).selectOption({label:details.category});
-  await this.page.getByLabel('Condition',{exact:true}).selectOption({label:details.condition});
-  await this.page.getByLabel('Price (USD)',{exact:true}).fill(details.price);
+  // Presentation pacing applies only to the recorded reference scenario.
+  const pace=async()=>{if(this.directory) await this.page.waitForTimeout(650);};
+  await this.page.getByLabel('Title',{exact:true}).fill(details.title); await pace();
+  await this.page.getByLabel('Description',{exact:true}).fill(details.description); await pace();
+  await this.page.getByLabel('Category',{exact:true}).selectOption({label:details.category}); await pace();
+  await this.page.getByLabel('Condition',{exact:true}).selectOption({label:details.condition}); await pace();
+  await this.page.getByLabel('Price (USD)',{exact:true}).fill(details.price); await pace();
 });
 When('publishes the listing',async function(this:ListingWorld){await this.page.getByRole('button',{name:'Publish listing'}).click();});
 When('enters a price of {string}',async function(this:ListingWorld,price:string){
