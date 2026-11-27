@@ -17,6 +17,17 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  const video=page.locator('#browser-video'),segments=data.cases[idx].videos[0].focus;assert.equal(segments.length,6);
  await expect.poll(()=>video.evaluate(v=>v.readyState>=1&&Number.isFinite(v.duration))).toBe(true);
  await page.locator('#focus-speed').selectOption('0');
+ await expect(page.locator('#gherkin-steps .action-icon')).not.toHaveCount(0);
+ await expect(page.locator('#gherkin-steps .step-action-chip')).toHaveCount(6);
+ await expect(page.locator('#gherkin-steps .step-status').first()).toHaveText('passed');
+ await expect(page.locator('#observed-actions [data-kind=fill]')).toHaveCount(3);
+ await expect(page.locator('#observed-actions [data-kind=select]')).toHaveCount(2);
+ const transition=segments.find(s=>s.transition==='navigation');assert.ok(transition);
+ await video.evaluate((v,t)=>v.currentTime=t,(transition.end_ms+200)/1000);
+ await expect(page.locator('#page-transition')).toHaveText('Page transition');
+ await expect(page.locator('#page-transition')).toBeVisible();
+ await video.evaluate(v=>v.currentTime=0);
+ await expect(page.locator('#page-transition')).toBeHidden();
  await expect(page.locator('#focus-highlight')).toBeDisabled();
  assert.deepEqual(await video.evaluate(v=>Array.from(v.textTracks).map(t=>({kind:t.kind,count:t.cues.length}))),[{kind:'captions',count:6},{kind:'chapters',count:6}]);
  for(const [i,s] of segments.entries()){

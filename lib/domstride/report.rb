@@ -89,7 +89,8 @@ module Domstride
           if attachment.key?("timing_quality")
             unless quality == "visual_candidates_unvalidated" && cues.empty? && focus.all? { |segment|
               segment["step_sequence"].is_a?(Integer) && steps.any? { |step| step["sequence"] == segment["step_sequence"] } &&
-                segment["label"].is_a?(String) && segment["label"].bytesize.between?(1,128)
+                segment["label"].is_a?(String) && segment["label"].bytesize.between?(1,128) &&
+                (!segment.key?("transition") || (segment["transition"] == "navigation" && segment["kind"] == "click"))
             }
               raise Error, "Invalid observed video focus"
             end
@@ -99,7 +100,7 @@ module Domstride
           bytes += encoded.bytesize
           raise Error, "Report payload limit exceeded" if bytes > MAX_PAYLOAD_BYTES
           {label: attachment["label"], base64: encoded, cues: cues.map { |cue| cue.slice("kind","sequence","time_ms") },
-            timing_quality: quality, focus: focus.map { |segment| segment.slice("kind","status","start_ms","end_ms","x","y","width","height", *(quality ? %w[step_sequence label] : [])) }}
+            timing_quality: quality, focus: focus.map { |segment| segment.slice("kind","status","start_ms","end_ms","x","y","width","height", *(quality ? %w[step_sequence label transition] : [])) }}
         end
         {name: item["name"], status: item["status"], duration_ms: item["duration_ms"],
           **metadata,

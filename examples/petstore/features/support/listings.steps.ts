@@ -6,7 +6,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 type Screenshot = { stepId: string; file: string; url: string; phase: 'after' };
-type FocusObservation = { stepId: string; action: number; observedWallMs: number; observedMonotonicMs: number; bounds: {x:number;y:number;width:number;height:number}; viewport: {width:number;height:number} };
+type FocusObservation = { transition?: 'navigation'; stepId: string; action: number; observedWallMs: number; observedMonotonicMs: number; bounds: {x:number;y:number;width:number;height:number}; viewport: {width:number;height:number} };
 type FrameObservation = { sequence:number; bytes:number; receivedWallMs:number; receivedMonotonicMs:number };
 class ListingWorld extends World {
   browser?: Browser;
@@ -22,6 +22,7 @@ class ListingWorld extends World {
   focusCount = 0;
   currentStepId = '';
   focusObservations: FocusObservation[] = [];
+  submitSourceUrl?: string;
   frameObservations: FrameObservation[] = [];
   recordingWindow: {startWallMs:number;startMonotonicMs:number;endWallMs?:number;endMonotonicMs?:number} | null = null;
   async withFocus(target: Locator, action: () => Promise<void>, beforeMs=0, afterMs=0) {
@@ -185,7 +186,7 @@ When('enters the following listing details:',async function(this:ListingWorld,ta
   await this.withFocus(condition,()=>condition.selectOption({label:details.condition}).then(()=>{}),200,650);
   await this.withFocus(price,()=>price.fill(details.price),200,650);
 });
-When('publishes the listing',async function(this:ListingWorld){const button=this.page.getByRole('button',{name:'Publish listing'});await this.withFocus(button,()=>button.click(),700);});
+When('publishes the listing',async function(this:ListingWorld){const button=this.page.getByRole('button',{name:'Publish listing'});if(this.profile==='guided')this.submitSourceUrl=this.page.url();await this.withFocus(button,()=>button.click(),700);});
 When('enters a price of {string}',async function(this:ListingWorld,price:string){
   const input=this.page.getByLabel('Price (USD)',{exact:true});
   await input.fill('');
@@ -195,6 +196,7 @@ When('enters a price of {string}',async function(this:ListingWorld,price:string)
 When('attempts to publish the listing',async function(this:ListingWorld){await this.page.getByRole('button',{name:'Publish listing'}).click();});
 Then('a publication confirmation should be displayed',async function(this:ListingWorld){
   await expect(this.page.locator('.flash[role=status]')).toHaveText('Listing published.');
+  if(this.profile==='guided'&&this.submitSourceUrl&&this.page.url()!==this.submitSourceUrl){const focus=this.focusObservations.at(-1);if(focus)focus.transition='navigation';}
   await expect(this.page.getByRole('heading',{name:this.title,exact:true})).toBeVisible();
 });
 Then('the listing price should be {string}',async function(this:ListingWorld,price:string){await expect(this.page.locator('.detail .price')).toHaveText(price);});
