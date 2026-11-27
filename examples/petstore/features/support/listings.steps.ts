@@ -219,7 +219,18 @@ When('enters the following listing details:',async function(this:ListingWorld,ta
   await this.withFocus(condition,()=>condition.selectOption({label:details.condition}).then(()=>{}),200,650);
   await this.withFocus(price,()=>price.fill(details.price),200,650);
 });
-When('publishes the listing',async function(this:ListingWorld){const button=this.page.getByRole('button',{name:'Publish listing'});if(this.profile==='guided')this.submitSourceUrl=this.page.url();await this.withFocus(button,()=>button.click(),700);});
+When('publishes the listing',async function(this:ListingWorld){
+  const button=this.page.getByRole('button',{name:'Publish listing'});
+  if(this.profile==='guided')this.submitSourceUrl=this.page.url();
+  await this.withFocus(button,()=>button.click(),700);
+  if(this.profile==='guided'){
+    // Turbo can replace the body after click resolves; DOMContentLoaded alone does not cover that.
+    // Wait for the actual destination to render before the end landmark is added.
+    await this.page.waitForURL(u=>u.href!==this.submitSourceUrl);
+    await this.page.getByRole('heading',{name:this.title,exact:true}).waitFor({state:'visible'});
+    await this.page.locator('.flash[role=status]').waitFor({state:'visible'});
+  }
+});
 When('enters a price of {string}',async function(this:ListingWorld,price:string){
   const input=this.page.getByLabel('Price (USD)',{exact:true});
   await input.fill('');
