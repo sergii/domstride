@@ -486,6 +486,46 @@ async function execute(message) {
   return action(message);
 }
 
+// Structural paths identify the actual target, never the user-supplied selector or value.
+function recordingPath(node) {
+  if (!node || !node.isConnected || node.ownerDocument !== window?.document) return null;
+  const path = [];
+  while (node !== window.document.documentElement) {
+    if (!node.parentElement) return null;
+    path.unshift(Array.prototype.indexOf.call(node.parentElement.children, node));
+    node = node.parentElement;
+  }
+  return path;
+}
+function recordingTarget(message) {
+  try {
+    if (message.command === "node_action") return resolveHandle(message.handle);
+    if (message.selector) return window?.document.querySelector(message.selector);
+  } catch (_) {}
+  return null;
+}
+function recordingSnapshot(enabled) {
+  if (!enabled || !window?.document.documentElement) return null;
+  // Raw HTML is data, not executable replay. It can contain sensitive application content.
+  const html = window.document.documentElement.outerHTML;
+  return Buffer.byteLength(html, "utf8") <= 256 * 1024 ? { html } : { omitted: "size_limit" };
+}
+function startRecording(message) {
+  if (!message.record_event) return null;
+  try {
+    const target = recordingTarget(message);
+    return { target, before: { target_path: recordingPath(target),
+      snapshot: recordingSnapshot(message.record_html && target !== null) } };
+  } catch (_) { return null; }
+}
+function finishRecording(message, recording) {
+  if (!recording) return {};
+  try {
+    return { recording: { before: recording.before,
+      after: { target_path: recordingPath(recording.target), snapshot: recordingSnapshot(message.record_html) } } };
+  } catch (_) { return { recording: { omitted: "capture_failed" } }; }
+}
+
 async function main() {
   await boot();
   const lines = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
@@ -505,6 +545,7 @@ async function main() {
       bundleOutcome = null;
       const start = message.profile ? performance.now() : null;
       const timing = () => start === null ? {} : { worker_ms: performance.now() - start };
+      const recording = startRecording(message);
       try {
         checkJavaScript();
         const value = await execute(message);
@@ -513,13 +554,13 @@ async function main() {
         if (message.settling === "tracked" && mutating) await settle(pageState);
         else await turn();
         checkJavaScript();
-        send({ id: message.id, ok: true, value, ...(bundleOutcome ? { bundle_cache: bundleOutcome } : {}), ...timing() });
+        send({ id: message.id, ok: true, value, ...(bundleOutcome ? { bundle_cache: bundleOutcome } : {}), ...timing(), ...finishRecording(message, recording) });
       } catch (error) {
         // Prefer a captured JavaScript exception over a generic action failure.
         if (javascriptErrors.length) {
           try { checkJavaScript(); } catch (captured) { error = captured; }
         }
-        send({ id: message.id, ok: false, error: error.message, error_type: error instanceof JavaScriptFailure ? "javascript" : "command", ...timing() });
+        send({ id: message.id, ok: false, error: error.message, error_type: error instanceof JavaScriptFailure ? "javascript" : "command", ...timing(), ...finishRecording(message, recording) });
       }
     });
   });

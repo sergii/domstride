@@ -111,3 +111,7 @@ Use a separate Capybara session per tagged scenario and explicit framework hooks
 ## ADR-025: explicit functional-vs-browser-security separation for Fizzy
 
 Do not fake driver.browser or CDP. Keep Chromium Trusted Types inventory on browser baselines; remove only its report-only include in temporary candidate helper with explicit not_measured metadata. Four isolated original-test groups, exact case/assertion parity, source digest and helper restoration, retained logs, strict per-group gate. Product runtime unchanged; use observed next failures to prioritize genuine fixes.
+
+## ADR-026: bounded opt-in interaction recording
+
+Capture target structural paths before/after selected protocol commands and optional raw HTML snapshots in the same worker reply. No live DOM mutation or replayed application requests. Persist private per-worker JSONL metadata and bounded HTML files; do not retain selectors, arguments, URLs, exceptions or results. Explicit BDD wrapper correlation via step_sequence. No automatic Capybara assertion or Gherkin event capture. Snapshot HTML is sensitive and must be rendered inert by a future viewer. Disabled by default; no claims of screenshot fidelity.

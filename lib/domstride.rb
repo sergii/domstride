@@ -7,6 +7,7 @@ require "base64"
 require_relative "domstride/version"
 require_relative "domstride/configuration"
 require_relative "domstride/runtime"
+require_relative "domstride/recording"
 
 module Domstride
   class Error < StandardError; end
@@ -21,7 +22,7 @@ module Domstride
       session&.close
     end
 
-    def initialize(app: nil, performance_profile: nil, **options)
+    def initialize(app: nil, performance_profile: nil, recording_directory: ENV["DOMSTRIDE_RECORD_DIR"], recording_html: ENV["DOMSTRIDE_RECORD_HTML"] == "1", **options)
       settings = Configuration.resolve(performance_profile: performance_profile, **options)
       runtime, engine, profile, wait_strategy, bundle_cache, settling, clock, clock_epoch_ms =
         settings.values_at(:runtime, :engine, :profile, :wait_strategy, :bundle_cache, :settling, :clock, :clock_epoch_ms)
@@ -59,13 +60,15 @@ module Domstride
       @wait_strategy = wait_strategy
       @profiling = profile
       reset_profile!
+      @recorder = Recording.new(directory: recording_directory, html: recording_html, engine: engine, runtime: runtime) if recording_directory && !recording_directory.empty?
       if app
         require "rack/test"
         @rack_session = Rack::Test::Session.new(Rack::MockSession.new(app, "example.test"))
       end
     end
 
-    attr_reader :settings
+    attr_reader :settings, :recorder
+    attr_accessor :recording_step
 
     def mount_html(html, url: "https://example.test/", bridge: false)
       # Only explicitly marked final classic scripts are eligible.
@@ -217,6 +220,7 @@ module Domstride
         @input.close unless @input.closed?
         @output.close unless @output.closed?
         @wait.join(2) || (Process.kill("KILL", @wait.pid) rescue nil)
+        @recorder&.close
       end
     end
 
@@ -319,7 +323,10 @@ module Domstride
         started = monotonic_ms if @profiling
         label = command == "node_action" ? "node_action.#{arguments[:operation]}" : command
         @sequence += 1
-        write_message(id: @sequence, command: command, profile: @profiling, settling: @settling, **arguments)
+        recording = @recorder&.accept?(label)
+        recording_started = monotonic_ms if recording
+        record_options = recording ? { record_event: true, record_html: @recorder.html? } : {}
+        write_message(id: @sequence, command: command, profile: @profiling, settling: @settling, **record_options, **arguments)
         response = Timeout.timeout(15) do
           loop do
             line = @output.gets
@@ -345,6 +352,11 @@ module Domstride
         end
         response["value"]
       ensure
+        if recording_started
+          @recorder.record(sequence: @sequence, kind: label, step: @recording_step,
+            duration_ms: monotonic_ms - recording_started, passed: response && response["id"] == @sequence && response["ok"] == true,
+            evidence: response && response["recording"])
+        end
         if @profiling && started
           row = (@profile[:commands][label] ||= { count: 0, ruby_wall_ms: 0.0, worker_wall_ms: 0.0 })
           row[:count] += 1

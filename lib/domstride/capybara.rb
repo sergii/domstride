@@ -22,7 +22,12 @@ module Domstride
       attr_reader :generation
 
       def worker
-        @worker ||= Domstride::Session.new(app: @app, **@settings)
+        @worker ||= Domstride::Session.new(app: @app, **@settings).tap { |session| session.recording_step = @recording_step }
+      end
+
+      def recording_step=(sequence)
+        @recording_step = sequence
+        @worker.recording_step = sequence if @worker
       end
 
       def visit(path)

@@ -153,3 +153,7 @@ See [release candidate checklist](docs/release-readiness.md), [compatibility con
 ## Cucumber and Turnip
 
 Use `require "domstride/bdd"` and explicit scenario-scoped Capybara sessions in Cucumber or Turnip/RSpec hooks. Both reference runners execute the same Gherkin feature against the stateful Rails fixture. No Cucumber or Turnip runtime dependency. Optional semantic step metadata provides a foundation for later recording; automatic step capture and replay are not implemented. See [BDD integration](docs/bdd.md) and dedicated CI.
+
+## Interaction recording
+
+Set `DOMSTRIDE_RECORD_DIR=tmp/domstride-recordings` for bounded metadata-only traces. Add `DOMSTRIDE_RECORD_HTML=1` for sensitive raw HTML snapshots with structural target paths. Disabled by default. See [recording contract](docs/recording.md); this is the artifact layer for a future viewer, not executable replay or rendered video.

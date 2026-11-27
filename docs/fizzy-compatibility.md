@@ -25,3 +25,7 @@ Selection is intentional coverage exploration, not a representative random sampl
 Each group receives a separate pinned checkout and test database. The browser baseline uses the documented discovery-only fresh Chrome reset shim. Candidate uses original test selection, compatible profile, experimental asset bundling, logical Rack host and database reset. Restore helper in ensure and verify test file digest. Preserve logs, browser Trusted Types inventory if present and candidate results. No speed comparison: fresh browser sessions and changed instrumentation make timings incomparable.
 
 The dedicated workflow fails unless selected functional cases pass. The broader discovery workflow only collects evidence. Product runtime is unchanged by this batch. No full application certification.
+
+## Observed result at a5a9e7c
+
+[Fizzy functional run 45912190145](https://github.com/sergii/domstride/actions/runs/45912190145): all 8 original Chrome cases passed (24 assertions). All 8 Domstride candidates errored before any assertion with esbuild direct eval warnings promoted to errors by the asset loader. This is the next concrete asset compatibility blocker, not a business assertion failure. Retain the strict gate; investigate warning policy and direct eval semantics separately from recording.

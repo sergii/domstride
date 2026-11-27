@@ -23,12 +23,15 @@ module Domstride
         sequence = @sequence
         started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         passed = false
+        driver = page.driver
+        driver.recording_step = sequence if driver.is_a?(CapybaraAdapter::Driver)
         emit(type: "step_started", sequence: sequence, kind: kind.to_s)
         result = yield page
         passed = true
         result
       ensure
         if started
+          driver.recording_step = nil if driver.is_a?(CapybaraAdapter::Driver)
           emit(type: "step_finished", sequence: sequence, kind: kind.to_s,
                status: passed ? "passed" : "failed",
                duration_ms: (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000)
