@@ -86,11 +86,12 @@ function show() {
   renderGherkin(e);
   renderAssertions(e);
   updateEvidenceVisibility();
+  syncVideoHighlight();
   if (e) renderSnapshot(e[$("phase").value]); else $("viewport").textContent = "No recorded interactions.";
   $("position").textContent = events.length ? (index+1)+" / "+events.length : "0 / 0";
   $("previous").disabled = index === 0;
   $("next").disabled = index >= events.length-1;
-  $("notice").textContent = active.complete ? "Inert DOM preview · no application execution" : "Incomplete or unavailable recording · inert preview";
+  $("notice").textContent = $("evidence-mode").value==="video" && activeCase?.videos?.length ? "Recorded browser video · offline playback" : active.complete ? "Inert DOM preview · no application execution" : "Incomplete or unavailable DOM recording · inert preview";
 }
 function releaseVideo() {
   const video = $("browser-video");
@@ -135,10 +136,39 @@ function applySeek() {
     $("video-note").textContent="Mapped timestamp is outside the recorded video.";
     return;
   }
-  try { video.currentTime=seconds; }
+  try { video.currentTime=seconds; syncVideoHighlight(); }
   catch (_) { $("video-note").textContent="Video seek unavailable."; }
 }
-$("browser-video").addEventListener("loadedmetadata",applySeek);
+function syncVideoHighlight() {
+  if ($("evidence-mode").value!=="video" || !videoUrl) return;
+  const video=$("browser-video"), item=activeCase?.videos?.[Number($("video-select").value)];
+  if (!item) return;
+  const ms=pendingSeek ? pendingSeek.seconds*1000 : video.currentTime*1000;
+  const latest = kind => (item.cues || []).filter(c=>c.kind===kind && c.time_ms<=ms+0.5)
+    .sort((a,b)=>b.time_ms-a.time_ms || b.sequence-a.sequence)[0];
+  const step=latest("step");
+  let assertion=latest("assertion");
+  if (assertion && step && assertion.time_ms<step.time_ms) assertion=null;
+  if (assertion && step) {
+    const row=activeCase.assertion_events?.find(a=>a.sequence===assertion.sequence);
+    if (row?.step_sequence && row.step_sequence!==step.sequence) assertion=null;
+  }
+  for (const [root,cue] of [["gherkin-steps",step],["assertion-steps",assertion]]) {
+    for (const button of $(root).querySelectorAll("button[data-sequence]")) {
+      const current=String(Number(button.dataset.sequence)===cue?.sequence);
+      const changed=button.getAttribute("aria-current")!==current;
+      button.setAttribute("aria-current",current);
+      if (changed && current==="true" && root==="gherkin-steps" && !video.paused) {
+        const sidebar=button.closest("aside"), bounds=button.getBoundingClientRect(), area=sidebar.getBoundingClientRect();
+        if (bounds.top<area.top) sidebar.scrollTop+=bounds.top-area.top;
+        else if(bounds.bottom>area.bottom) sidebar.scrollTop+=bounds.bottom-area.bottom;
+      }
+    }
+  }
+}
+const videoElement=$("browser-video");
+videoElement.addEventListener("loadedmetadata",()=>{applySeek();syncVideoHighlight();});
+for (const event of ["timeupdate","seeking","seeked","play","pause","ended"]) videoElement.addEventListener(event,syncVideoHighlight);
 function updateEvidenceVisibility() {
   const available = !!activeCase?.videos?.length;
   $("evidence-choice").hidden = !available;
@@ -165,6 +195,7 @@ function renderAssertions(event) {
   for (const assertion of assertions) {
     const b = document.createElement("button"); b.type = "button";
     b.textContent = assertion.kind;
+    b.dataset.sequence=String(assertion.sequence);
     const cue = findCue("assertion",assertion.sequence);
     const videoMode = $("evidence-mode").value==="video" && !!activeCase?.videos?.length;
     b.setAttribute("aria-current",String(videoMode ? selectedCue?.kind==="assertion" && selectedCue.sequence===assertion.sequence : event?.assertion_sequence===assertion.sequence));
@@ -192,6 +223,7 @@ function renderGherkin(event) {
   for (const step of steps) {
     const b = document.createElement("button"); b.type = "button";
     b.textContent = [step.keyword.trim(),step.text || "Step "+step.sequence].join(" ");
+    b.dataset.sequence=String(step.sequence);
     const cue = findCue("step",step.sequence);
     const videoMode = $("evidence-mode").value==="video" && !!activeCase?.videos?.length;
     b.setAttribute("aria-current",String(videoMode ? selectedCue?.kind==="step" && selectedCue.sequence===step.sequence : event?.step_sequence===step.sequence));

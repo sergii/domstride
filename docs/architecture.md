@@ -179,3 +179,7 @@ Optional FFmpeg x11grab per framework case on dedicated Linux Xvfb display; same
 ## ADR-042: explicit video-local cues
 
 Optional per-video step/assertion sequence and playback time_ms. No guessing from step duration or case start. X11 actual first-frame input PTS with normalized output timestamps, monotonic-to-wall clock sample and drift guard; omit cues outside recorded range. Step start and assertion completion semantics. Viewer selects video and seeks only on supplied cue; missing cues remain unavailable. No claim of Playwright video alignment without a clock anchor. Explicit fixture offsets test viewer seeking independently.
+
+## ADR-043: bidirectional video timeline
+
+Use selected video currentTime and explicit video-local cues to update existing sidebar button state, without rebuilding the report or seeking during playback. Latest step cue and assertion completion tracked separately; clear before first cue and on rewind, avoid carrying assertions into a later step. Scroll within sidebar only when playing. Use actual local HTTP routes in reference browser tests; do not overlay fictional URLs or rewrite original evidence.

@@ -42,7 +42,7 @@ RSpec.describe "real browser video" do
   end
 
   def save_expense
-    page.visit("/")
+    page.visit("/expenses/new")
     page.fill_in("Amount", with: "25")
     page.click_button("Save")
     sleep 0.7 # Ensure multiple real frames in this synthetic recording fixture.
