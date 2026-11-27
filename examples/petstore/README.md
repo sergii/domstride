@@ -29,3 +29,7 @@ Reference only: no calibrated timestamps, VTT, DOM snapshots, production schema 
 ## Portable static export (reference)
 
 After successful pairing, run `npm run docs:export -- --synthetic-reference <exact-guided-run-directory>` once. The generated static-export directory contains Markdown, generic MDX, approved local media, and a publication manifest. JSON documentation-model stays at the run root. No tests rerun, no storage upload, no raw messages copied into the publication. Generic MDX needs framework-specific asset routing; Starlight/Fumadocs adapters are not implemented yet. Only approved public synthetic reference artifacts are supported.
+
+## Starlight reference
+
+See [Help Center](help-center/README.md). Imports the approved static export, then builds a separate Astro site with native Steps and ordinary video. No Rails or acceptance test execution is required at site build. CI build and browser smoke pending.

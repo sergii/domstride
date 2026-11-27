@@ -58,3 +58,7 @@ Implemented three reference CLI runs (fast, execution, documentation/guided), in
 ## Portable documentation model and export
 
 Dual-profile CI verified in [45977292382](https://github.com/sergii/domstride/actions/runs/45977292382): 12 scenarios / 111 steps passed across Fast, Execution and Guided. Downloaded original videos measured 1.44 s (Execution) and 12.36 s (Guided); 11650 ms intentional guided holds, zero execution holds. New reference model shared by HTML and offline Markdown/MDX export; local publication manifest with checksums and allowlisted screenshot/video media, no raw logs copied. CI verification pending for this change. Generic MDX is not yet a native Starlight/Fumadocs integration.
+
+## Starlight reference iteration
+
+Portable model and static export passed in CI run 45979024431. Implemented standalone Starlight reference site with generated namespace, native Steps, navigation/TOC, integrity-checked local assets, two video profiles, desktop/mobile smoke. Actual site build and browser verification pending. No hosted site or production plugin yet.

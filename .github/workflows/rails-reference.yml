@@ -127,6 +127,32 @@ jobs:
           (cd examples/petstore && npm run execution)
           (cd petstore-app && bin/rails runner 'User.find_by!(email_address: "seller@example.test").listings.destroy_all')
           (cd examples/petstore && npm run docs && npm run docs:pair && node verify.cjs && node -e 'const fs=require("node:fs"),p=require("node:path");const root=p.resolve("artifacts");const d=fs.readdirSync(root).map(n=>p.join(root,n)).find(d=>fs.existsSync(p.join(d,"video-pair.json")));require("./export-docs.cjs").exportDocs(d)')
+      - name: Build static Starlight Help Center
+        working-directory: examples/petstore/help-center
+        run: |
+          export_dir=$(find ../artifacts -type d -name static-export -print -quit)
+          test -n "$export_dir"
+          npm install --no-audit --no-fund
+          npm run import -- "$export_dir"
+          npm run build
+          npm run preview > "$RUNNER_TEMP/help-center.log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4321/ > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:4321/ > /dev/null
+          npm run smoke
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: petstore-help-center
+          path: |
+            examples/petstore/help-center/dist/
+            examples/petstore/help-center/help-center-desktop.png
+            examples/petstore/help-center/help-center-mobile.png
+          retention-days: 7
       - name: Rails server log
         if: failure()
         run: cat "$RUNNER_TEMP/petstore.log" || true

@@ -21,3 +21,7 @@ Local relative assets first, then optional object store (S3-compatible) or CDN. 
 
 ## Acceptance
 Same Petstore scenario can render standalone HTML and a real Starlight site, then Fumadocs and Docusaurus. Verify generated links, responsive layout, native numbered steps, anchors, screenshot loading and video playback. No test run at site build and no external assets needed in local export. Verify missing/failed/stale artifacts and private/public policy. Keep guided and execution video roles distinct, with separate run/attempt identity; do not invent timing or mix results.
+
+## Reference adapter implementation
+
+The Petstore Starlight example imports the portable publication only, verifies media checksums, converts numbered walkthrough blocks to native Steps, and uses local versioned media paths. CI builds the static site and tests images, video playback and mobile viewport. Production plugin, generic base-path support and external publishing remain future work.
