@@ -12,12 +12,13 @@
 #assertion-steps{display:grid;gap:5px;margin-bottom:16px}#assertion-steps button{text-align:left;white-space:normal}#assertion-steps button[aria-current=true]{border:2px solid #059669;background:#ecfdf5}#assertion-steps small{display:block;margin-top:4px}#assertion-steps .no-evidence{color:#596573}
 #evidence-choice{margin-bottom:16px}#video-stage{position:relative;overflow:hidden;width:100%;max-width:var(--video-max-width,100%);aspect-ratio:var(--video-aspect,4/3);margin:12px auto 0;background:#111827;border-radius:6px}#video-layer{position:absolute;inset:0;transform-origin:0 0;transition:transform var(--focus-speed,220ms) ease-in-out}#browser-video{display:block;width:100%;height:100%;object-fit:fill}#focus-outline{position:absolute;pointer-events:none;border:2px solid #16a34a;border-radius:4px;box-shadow:0 0 0 1px white}#focus-outline.failed{border-color:#dc2626}#video-note{color:#596573;font-size:12px}#video-controls,#focus-settings{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}#focus-settings[hidden]{display:none}#video-seek{flex:1;min-width:100px}#video-stage:fullscreen{max-width:none;width:100%;height:100%;aspect-ratio:auto}#video-stage:fullscreen #video-layer{inset:0} @media(prefers-reduced-motion:reduce){#video-layer{transition:none}}
 #observed-actions:not([hidden]){display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}#observed-actions button[aria-current=true]{border-color:#059669;background:#ecfdf5}#observed-caption{margin:8px 0;text-align:center;min-height:1.4em}#observed-controls:not([hidden]){display:flex;gap:10px;align-items:center;margin-top:8px}
+#no-evidence{padding:26px 12px;max-width:540px;color:#596573}#no-evidence h2{font-size:18px;color:#17202a}#no-evidence button{margin-top:14px}#gherkin-steps button:disabled{opacity:1;cursor:default;color:#17202a;background:#f8fafb}#gherkin-steps button:disabled small{color:#596573}
 </style>
 </head>
 <body>
 <header><strong>Domstride Replay</strong><span id="notice">Inert DOM preview · no application execution</span><span class="spacer"></span><label>Layout <select id="layout"><option value="right">Viewport left / steps right</option><option value="left">Steps left / viewport right</option></select></label><label>State <select id="phase"><option value="after">After</option><option value="before">Before</option></select></label></header>
 <div id="suite" hidden><div id="suite-summary"></div><span id="case-provenance"></span><label>Search <input id="case-search" type="search" placeholder="Test name"></label><label>Status <select id="case-status"><option value="">All</option><option>passed</option><option>failed</option><option>skipped</option><option>pending</option><option>unknown</option></select></label><label>Test <select id="case-select"></select></label><label>Recording <select id="trace-select"></select></label></div>
-<main id="workspace"><section><div id="evidence-choice" hidden><label>Evidence <select id="evidence-mode"><option value="dom">DOM snapshot</option><option value="video">Browser video</option></select></label></div><div id="dom-evidence"><h2>DOM snapshot</h2><div id="viewport"></div></div><div id="video-evidence" hidden><h2>Browser video</h2><label>Recording <select id="video-select"></select></label><div id="focus-settings" hidden><label><input type="checkbox" id="smart-zoom" checked> Smart Zoom</label><label><input type="checkbox" id="focus-highlight" checked> Highlight</label><label>Zoom <select id="focus-scale"><option value="1.25">1.25×</option><option value="1.5" selected>1.5×</option><option value="2">2×</option><option value="2.5">2.5×</option></select></label><label>Motion <select id="focus-speed"><option value="0">Off</option><option value="120">Fast</option><option value="220" selected>Normal</option><option value="400">Slow</option></select></label></div><div id="video-stage"><div id="video-layer"><video id="browser-video" playsinline preload="metadata"></video><div id="focus-outline" hidden></div></div></div><div id="video-controls"><button id="video-play" type="button">Play</button><input id="video-seek" type="range" min="0" max="0" value="0" step="0.01" aria-label="Video position"><span id="video-time">0.00 / 0.00 s</span><button id="video-mute" type="button">Mute</button></div><div id="observed-controls" hidden><label><input type="checkbox" id="observed-cc" checked> Focus captions</label></div><div id="observed-actions" hidden aria-label="Observed action chapters"></div><p id="observed-caption" hidden></p><p id="video-note">Recorded browser playback. Select an explicitly timestamped step or assertion to seek.</p></div></section><aside><div id="gherkin" hidden><h2>Scenario steps</h2><div id="gherkin-steps"></div></div><div id="assertions-panel" hidden><h2>Assertions</h2><div id="assertion-steps"></div></div><h2>Interaction steps</h2><div id="steps"></div></aside></main>
+<main id="workspace"><section><div id="evidence-choice" hidden><label>Evidence <select id="evidence-mode"><option value="dom">DOM snapshot</option><option value="video">Browser video</option></select></label></div><div id="no-evidence" hidden><h2 id="no-evidence-title">No replay captured</h2><p id="no-evidence-message"></p><button id="open-recorded-case" type="button" hidden>Open recorded scenario</button></div><div id="dom-evidence"><h2>DOM snapshot</h2><div id="viewport"></div></div><div id="video-evidence" hidden><h2>Browser video</h2><label>Recording <select id="video-select"></select></label><div id="focus-settings" hidden><label><input type="checkbox" id="smart-zoom" checked> Smart Zoom</label><label><input type="checkbox" id="focus-highlight" checked> Highlight</label><label>Zoom <select id="focus-scale"><option value="1.25">1.25×</option><option value="1.5" selected>1.5×</option><option value="2">2×</option><option value="2.5">2.5×</option></select></label><label>Motion <select id="focus-speed"><option value="0">Off</option><option value="120">Fast</option><option value="220" selected>Normal</option><option value="400">Slow</option></select></label></div><div id="video-stage"><div id="video-layer"><video id="browser-video" playsinline preload="metadata"></video><div id="focus-outline" hidden></div></div></div><div id="video-controls"><button id="video-play" type="button">Play</button><input id="video-seek" type="range" min="0" max="0" value="0" step="0.01" aria-label="Video position"><span id="video-time">0.00 / 0.00 s</span><button id="video-mute" type="button">Mute</button></div><div id="observed-controls" hidden><label><input type="checkbox" id="observed-cc" checked> Focus captions</label></div><div id="observed-actions" hidden aria-label="Observed action chapters"></div><p id="observed-caption" hidden></p><p id="video-note">Recorded browser playback. Select an explicitly timestamped step or assertion to seek.</p></div></section><aside><div id="gherkin" hidden><h2>Scenario steps</h2><div id="gherkin-steps"></div></div><div id="assertions-panel" hidden><h2>Assertions</h2><div id="assertion-steps"></div></div><h2>Interaction steps</h2><div id="steps"></div></aside></main>
 <footer><button id="previous">Previous</button><button id="next">Next</button><span id="position"></span></footer>
 <script type="application/json" id="recording-data">__RECORDING_JSON__</script>
 <script nonce="__NONCE__">
@@ -93,7 +94,7 @@ function show() {
   $("position").textContent = events.length ? (index+1)+" / "+events.length : "0 / 0";
   $("previous").disabled = index === 0;
   $("next").disabled = index >= events.length-1;
-  $("notice").textContent = $("evidence-mode").value==="video" && activeCase?.videos?.length ? "Recorded browser video · offline playback" : active.complete ? "Inert DOM preview · no application execution" : "Incomplete or unavailable DOM recording · inert preview";
+  $("notice").textContent = $("evidence-mode").value==="video" && activeCase?.videos?.length ? "Recorded browser video · offline playback" : Array.isArray(data.cases) && !activeCase?.recordings?.length && !activeCase?.videos?.length ? "Test results only · no replay captured" : active.complete ? "Inert DOM preview · no application execution" : "Incomplete or unavailable DOM recording · inert preview";
 }
 // Reuse tracks: addTextTrack has no matching removeTextTrack API.
 function clearObservedTracks() {
@@ -270,10 +271,21 @@ $("video-mute").onclick=()=>{videoElement.muted=!videoElement.muted;updateVideoC
 for (const id of ["smart-zoom","focus-highlight","focus-scale","focus-speed","observed-cc"]) $(id).onchange=syncVideoHighlight;
 function updateEvidenceVisibility() {
   const available = !!activeCase?.videos?.length;
-  $("evidence-choice").hidden = !available;
+  const suite = Array.isArray(data.cases);
+  const hasDom = suite ? !!activeCase?.recordings?.length : true;
+  const empty = suite && !available && !hasDom;
+  $("evidence-choice").hidden = !(available && hasDom);
   const playing = available && $("evidence-mode").value === "video";
-  $("dom-evidence").hidden = playing;
+  $("dom-evidence").hidden = playing || empty;
   $("video-evidence").hidden = !playing;
+  $("no-evidence").hidden = !empty;
+  if (empty) {
+    $("no-evidence-title").textContent = activeCase ? "No replay captured" : "No matching tests";
+    $("no-evidence-message").textContent = activeCase ? "This test has execution results, but no video or DOM recording was captured. Its scenario steps remain available." : "Change the search or status filter to show tests.";
+    const candidate = Array.from($("case-select").options).find(o=>data.cases[Number(o.value)]?.videos?.length || data.cases[Number(o.value)]?.recordings?.length);
+    $("open-recorded-case").hidden = !candidate;
+    $("open-recorded-case").onclick = candidate ? ()=>{$("case-select").value=candidate.value;$("case-select").dispatchEvent(new Event("change"));} : null;
+  }
 }
 function selectCaseVideo() {
   releaseVideo(); selectedCue=null;
@@ -378,10 +390,15 @@ if (Array.isArray(data.cases)) {
     for (const [i,item] of data.cases.entries()) {
       if (!item.name.toLowerCase().includes(query) || (status && item.status !== status)) continue;
       const option = document.createElement("option"); option.value = String(i);
-      option.textContent = [item.name,item.status,(item.duration_ms/1000).toFixed(2)+" s",item.framework,item.runner,item.platform,Number.isInteger(item.assertions)?item.assertions+" assertions":""].filter(Boolean).join(" · ");
+      option.textContent = [item.name,item.status,item.videos?.length?"Video":item.recordings?.length?"DOM":"Results only",(item.duration_ms/1000).toFixed(2)+" s",item.framework,item.runner,item.platform,Number.isInteger(item.assertions)?item.assertions+" assertions":""].filter(Boolean).join(" · ");
       select.append(option);
     }
     if (Array.from(select.options).some(option=>option.value===prior)) select.value=prior;
+    else {
+      const options=Array.from(select.options);
+      const recorded=options.find(o=>data.cases[Number(o.value)]?.videos?.length) || options.find(o=>data.cases[Number(o.value)]?.recordings?.length);
+      if(recorded) select.value=recorded.value;
+    }
     select.disabled = !select.options.length;
     traces();
   }

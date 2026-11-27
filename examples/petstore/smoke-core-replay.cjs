@@ -11,7 +11,9 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.goto(pathToFileURL(file).href);
  const data=JSON.parse(await page.locator('#recording-data').textContent());
  const idx=data.cases.findIndex(c=>c.videos.some(v=>v.timing_quality==='visual_candidates_unvalidated'));assert.ok(idx>=0);
- await page.locator('#case-select').selectOption(String(idx));
+ await expect(page.locator('#case-select')).toHaveValue(String(idx));
+ await expect(page.locator('#video-evidence')).toBeVisible();
+ await expect(page.locator('#no-evidence')).toBeHidden();
  const video=page.locator('#browser-video'),segments=data.cases[idx].videos[0].focus;assert.equal(segments.length,6);
  await expect.poll(()=>video.evaluate(v=>v.readyState>=1&&Number.isFinite(v.duration))).toBe(true);
  await page.locator('#focus-speed').selectOption('0');
@@ -45,8 +47,12 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  const other=data.cases.findIndex(c=>!c.videos.length);assert.ok(other>=0);
  await page.locator('#case-select').selectOption(String(other));
  await expect(page.locator('#observed-actions')).toBeHidden();
+ await expect(page.locator('#no-evidence-title')).toHaveText('No replay captured');
+ await expect(page.locator('#dom-evidence')).toBeHidden();
+ await expect(page.locator('#open-recorded-case')).toBeVisible();
  assert.deepEqual(await video.evaluate(v=>Array.from(v.textTracks).map(t=>t.mode)),['disabled','disabled']);
- await page.locator('#case-select').selectOption(String(idx));
+ await page.locator('#open-recorded-case').click();
+ await expect(page.locator('#case-select')).toHaveValue(String(idx));
  await expect.poll(()=>video.evaluate(v=>v.readyState>=1)).toBe(true);
  assert.deepEqual(await video.evaluate(v=>Array.from(v.textTracks).map(t=>({kind:t.kind,count:t.cues.length}))),[{kind:'captions',count:6},{kind:'chapters',count:6}]);
  assert.deepEqual(errors,[]);
