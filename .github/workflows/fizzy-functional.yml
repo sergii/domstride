@@ -1,0 +1,85 @@
+name: Fizzy functional compatibility
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'runtime/**'
+      - 'examples/real_apps/**'
+      - 'domstride.gemspec'
+      - '.github/workflows/fizzy-functional.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [navigation, create_card, join_account, lightbox]
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      RAILS_ENV: test
+      REDIS_URL: redis://127.0.0.1:6379/0
+      PARALLEL_WORKERS: '1'
+      CI_PROGRESS_BAR: '0'
+      DOMSTRIDE_PERFORMANCE_PROFILE: compatible
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: basecamp/fizzy
+          ref: 071062ca9193c416ec07a3225a7c5bae8da0db64
+          path: upstream
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+          working-directory: upstream
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - name: Prepare discovery environment
+        shell: bash
+        run: |
+          mkdir -p fizzy-results
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libsqlite3-dev sqlite3 libvips libmysqlclient-dev ffmpeg libjemalloc2
+          npm install --no-audit --no-fund
+          google-chrome --version
+          chromedriver --version
+      - name: Install upstream dependencies and local gem
+        working-directory: upstream
+        shell: bash
+        run: |
+          set -o pipefail
+          printf '\n# Domstride discovery only\ngem "domstride", path: "%s"\n' "$GITHUB_WORKSPACE" >> Gemfile
+          bundle config unset frozen
+          bundle install 2>&1 | tee "$GITHUB_WORKSPACE/fizzy-results/bundle.log"
+      - name: Original functional compatibility tests
+        working-directory: upstream
+        shell: bash
+        run: |
+          bundle exec ruby "$GITHUB_WORKSPACE/examples/real_apps/fizzy_functional.rb" "${{ matrix.group }}" "$GITHUB_WORKSPACE/fizzy-results"
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f fizzy-results/result.json ]]; then
+            { echo '### Functional subset (not browser security or full app parity)'; echo '~~~json'; cat fizzy-results/result.json; echo '~~~'; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Discovery infrastructure or bundle setup blocked before tests.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fizzy-${{ matrix.group }}
+          path: fizzy-results/

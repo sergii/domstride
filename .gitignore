@@ -1,0 +1,9 @@
+/node_modules/
+/.bundle/
+/pkg/
+/benchmark-results/
+*.gem
+/examples/rails_reference/application.bundle.js
+/vendor/bundle/
+
+/examples/rails_reference/upstream_app/node_modules/

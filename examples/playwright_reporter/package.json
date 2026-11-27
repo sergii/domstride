@@ -1,0 +1,7 @@
+{
+  "name": "domstride-playwright-reference",
+  "private": true,
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

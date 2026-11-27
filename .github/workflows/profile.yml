@@ -1,0 +1,65 @@
+name: Domstride profiler and engine comparison
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  profile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      RAILS_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:reference
+      - run: mkdir -p benchmark-results
+      - name: Profile and observer regression tests
+        run: |
+          for engine in jsdom happy-dom jsdom31; do
+            DOMSTRIDE_ENGINE="$engine" DOMSTRIDE_WAIT=observer bundle exec rake test
+            DOMSTRIDE_ENGINE="$engine" DOMSTRIDE_WAIT=observer bundle exec ruby examples/rails_reference/test.rb
+          done
+      - name: Profile matrix
+        env:
+          DOMSTRIDE_PROFILE: '1'
+        run: |
+          for engine in jsdom happy-dom jsdom31; do
+            for configuration in native:poll capybara:poll native:observer; do
+              IFS=: read -r dsl strategy <<< "$configuration"
+              DOMSTRIDE_ENGINE="$engine" DOMSTRIDE_DSL="$dsl" DOMSTRIDE_WAIT="$strategy" bundle exec ruby examples/rails_reference/profile_benchmark.rb | tee "benchmark-results/$engine-$dsl-$strategy.json"
+            done
+          done
+      - name: Summary
+        if: always()
+        run: |
+          ruby -rjson -e '
+            puts "| Engine | DSL | Wait | Median s | IPC calls | Rack requests | Rack ms |"
+            puts "|---|---|---|---:|---:|---:|---:|"
+            Dir["benchmark-results/*.json"].each do |f|
+              next if File.zero?(f)
+              d = JSON.parse(File.read(f)); p = d.fetch("profile")
+              calls = p.fetch("commands").values.sum { |c| c.fetch("count") }
+              puts "| #{d["engine"]} | #{d["dsl"]} | #{d["wait"]} | #{d["median_seconds"].round(4)} | #{calls} | #{p["rack_requests"]} | #{p["rack_ms"].round(1)} |"
+            end
+          ' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: profile-results
+          path: benchmark-results/

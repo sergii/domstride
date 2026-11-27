@@ -1,0 +1,10 @@
+{
+  "name": "domstride-upstream-reference",
+  "private": true,
+  "dependencies": {
+    "jsdom": "31.0.0",
+    "esbuild": "0.28.2",
+    "@hotwired/turbo": "8.0.18",
+    "@hotwired/stimulus": "3.2.2"
+  }
+}

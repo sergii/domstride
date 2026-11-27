@@ -1,0 +1,25 @@
+name: Domstride independent Studio protocol
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'protocol/**'
+      - 'exe/**'
+      - 'test/studio_protocol_check.rb'
+      - '.github/workflows/studio-protocol.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  standalone:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.13'
+      - name: Render external evidence without bundle install or npm install
+        run: ruby -Ilib test/studio_protocol_check.rb

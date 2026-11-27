@@ -1,0 +1,72 @@
+name: Domstride bundle cache benchmark
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'runtime/**'
+      - 'test/**'
+      - 'examples/rails_reference/**'
+      - 'package.json'
+      - '.github/workflows/bundle-cache.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      RAILS_ENV: test
+      DOMSTRIDE_WAIT: observer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:reference
+      - run: mkdir -p benchmark-results
+      - name: Cache regression tests
+        run: |
+          for engine in jsdom jsdom31 happy-dom; do
+            DOMSTRIDE_ENGINE="$engine" bundle exec ruby -Ilib test/bundle_cache_test.rb
+            DOMSTRIDE_ENGINE="$engine" DOMSTRIDE_BUNDLE_CACHE=source bundle exec ruby examples/rails_reference/test.rb
+            if [[ "$engine" != happy-dom ]]; then
+              DOMSTRIDE_ENGINE="$engine" DOMSTRIDE_BUNDLE_CACHE=compiled bundle exec ruby examples/rails_reference/test.rb
+            fi
+          done
+      - name: Benchmark matrix
+        run: |
+          for engine in jsdom jsdom31 happy-dom; do
+            modes=(off source)
+            if [[ "$engine" != happy-dom ]]; then modes+=(compiled); fi
+            for mode in "${modes[@]}"; do
+              DOMSTRIDE_ENGINE="$engine" DOMSTRIDE_BUNDLE_CACHE="$mode" bundle exec ruby examples/rails_reference/bundle_benchmark.rb | tee "benchmark-results/$engine-$mode.json"
+            done
+          done
+      - name: Summary
+        if: always()
+        run: |
+          ruby -rjson -e '
+            puts "| Engine | Cache | Warm median s | Cold median s | Bytes sent | Hits | Peak RSS KiB |"
+            puts "|---|---|---:|---:|---:|---:|---:|"
+            Dir["benchmark-results/*.json"].each do |f|
+              next if File.zero?(f)
+              d = JSON.parse(File.read(f)); p = d.fetch("profile")
+              puts "| #{d["engine"]} | #{d["cache"]} | #{d["median_seconds"].round(4)} | #{d["cold_median_seconds"].round(4)} | #{p["bytes_sent"]} | #{p["bundle_hits"]} | #{d["worker_memory_kib"]["VmHWM"]} |"
+            end
+          ' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bundle-cache-results
+          path: benchmark-results/

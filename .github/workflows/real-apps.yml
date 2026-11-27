@@ -1,0 +1,97 @@
+name: Domstride real Rails applications discovery
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'runtime/**'
+      - 'examples/real_apps/**'
+      - 'domstride.gemspec'
+      - '.github/workflows/real-apps.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: campfire
+            repository: basecamp/once-campfire
+            revision: 945c22f141795e910e2822d386a94c5686bf7bdc
+            ruby: '4.0.10'
+          - app: fizzy
+            repository: basecamp/fizzy
+            revision: 071062ca9193c416ec07a3225a7c5bae8da0db64
+            ruby: '4.0.10'
+          - app: writebook
+            repository: basecamp/writebook
+            revision: f14775fc932457050554083be589f5ab89fdeed3
+            ruby: '3.4.13'
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      RAILS_ENV: test
+      REDIS_URL: redis://127.0.0.1:6379/0
+      PARALLEL_WORKERS: '1'
+      CI_PROGRESS_BAR: '0'
+      DOMSTRIDE_PERFORMANCE_PROFILE: compatible
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repository }}
+          ref: ${{ matrix.revision }}
+          path: upstream
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          working-directory: upstream
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - name: Prepare discovery environment
+        shell: bash
+        run: |
+          mkdir -p real-app-results
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libsqlite3-dev sqlite3 libvips libmysqlclient-dev ffmpeg libjemalloc2
+          npm install --no-audit --no-fund
+          google-chrome --version
+          chromedriver --version
+      - name: Install upstream dependencies and local gem
+        working-directory: upstream
+        shell: bash
+        run: |
+          set -o pipefail
+          printf '\n# Domstride discovery only\ngem "domstride", path: "%s"\n' "$GITHUB_WORKSPACE" >> Gemfile
+          bundle config unset frozen
+          bundle install 2>&1 | tee "$GITHUB_WORKSPACE/real-app-results/bundle.log"
+      - name: Original system test discovery
+        working-directory: upstream
+        shell: bash
+        run: |
+          bundle exec ruby "$GITHUB_WORKSPACE/examples/real_apps/probe.rb" "${{ matrix.app }}" "${{ matrix.revision }}" "$GITHUB_WORKSPACE/real-app-results"
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f real-app-results/result.json ]]; then
+            { echo '### Discovery outcome (not a compatibility certification)'; echo '~~~json'; cat real-app-results/result.json; echo '~~~'; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Discovery infrastructure or bundle setup blocked before tests.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-app-${{ matrix.app }}
+          path: real-app-results/

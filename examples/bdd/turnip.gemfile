@@ -1,0 +1,6 @@
+source "https://rubygems.org"
+gem "domstride", path: File.expand_path("../..", __dir__)
+gem "rails", "8.1.4.1"
+gem "sqlite3", "~> 2.0"
+gem "rspec", "~> 3.13"
+gem "turnip", "4.4.1"

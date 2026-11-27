@@ -1,0 +1,402 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Domstride Protocol v1 case manifest",
+  "type": "object",
+  "required": [
+    "format",
+    "schema_version",
+    "name",
+    "status",
+    "duration_ms"
+  ],
+  "properties": {
+    "format": {
+      "const": "domstride.case"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "failed",
+        "skipped",
+        "pending",
+        "unknown"
+      ]
+    },
+    "duration_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "producer": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "framework": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "runner": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "platform": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "language": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "assertions": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "steps": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "required": [
+          "sequence",
+          "keyword",
+          "status",
+          "duration_ms"
+        ],
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "keyword": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1030
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "skipped",
+              "pending",
+              "unknown",
+              "undefined",
+              "ambiguous"
+            ]
+          },
+          "duration_ms": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "assertion_events": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": [
+          "sequence",
+          "kind",
+          "status",
+          "duration_ms"
+        ],
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "kind": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "error",
+              "unknown"
+            ]
+          },
+          "duration_ms": {
+            "type": "number",
+            "minimum": 0
+          },
+          "step_sequence": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "videos": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "file",
+          "label"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "pattern": "^video-0[1-4]\\.webm$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "cues": {
+            "type": "array",
+            "maxItems": 300,
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "sequence",
+                "time_ms"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "step",
+                    "assertion"
+                  ]
+                },
+                "sequence": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "time_ms": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 86400000
+                }
+              }
+            }
+          },
+          "focus": {
+            "type": "array",
+            "maxItems": 300,
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "status",
+                "start_ms",
+                "end_ms",
+                "x",
+                "y",
+                "width",
+                "height"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "fill",
+                    "click",
+                    "select",
+                    "assert"
+                  ]
+                },
+                "status": {
+                  "enum": [
+                    "passed",
+                    "failed",
+                    "unknown"
+                  ]
+                },
+                "start_ms": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 86400000
+                },
+                "end_ms": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 86400000
+                },
+                "x": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "y": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "width": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "height": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "step_sequence": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "transition": {
+                  "const": "navigation"
+                },
+                "element": {
+                  "type": "object",
+                  "required": [
+                    "tag"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "tag": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "test_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "type": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "timing_quality": {
+            "enum": [
+              "visual_candidates_unvalidated"
+            ]
+          },
+          "step_timing_quality": {
+            "const": "visual_landmarks"
+          },
+          "step_intervals": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 300,
+            "items": {
+              "type": "object",
+              "required": [
+                "step_sequence",
+                "start_ms",
+                "end_ms"
+              ],
+              "properties": {
+                "step_sequence": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "start_ms": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 86400000
+                },
+                "end_ms": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 86400000
+                }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "timing_quality"
+              ]
+            },
+            "then": {
+              "required": [
+                "focus"
+              ],
+              "properties": {
+                "cues": {
+                  "maxItems": 0
+                },
+                "focus": {
+                  "items": {
+                    "required": [
+                      "step_sequence",
+                      "label"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

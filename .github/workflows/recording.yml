@@ -1,0 +1,43 @@
+name: Domstride interaction recording
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'runtime/**'
+      - 'test/**'
+      - '.github/workflows/recording.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recording:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [jsdom, jsdom31, happy-dom]
+    env:
+      DOMSTRIDE_ENGINE: ${{ matrix.engine }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - run: npm install --no-audit --no-fund
+      - run: bundle exec ruby -Ilib test/recording_test.rb
+      - run: bundle exec ruby -Ilib test/report_test.rb
+      - run: bundle exec ruby -Ilib test/reporting_integration_test.rb
+      - run: bundle exec ruby -Ilib test/video_attachment_test.rb
+      - run: bundle exec ruby -Ilib test/video_cue_test.rb
+      - name: Replay viewer browser contract
+        if: matrix.engine == 'jsdom31'
+        run: |
+          npx playwright install chromium
+          node --test test/replay_viewer_test.cjs test/browser_video_test.cjs

@@ -1,0 +1,68 @@
+name: Domstride parallel workers and YJIT
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'runtime/**'
+      - 'examples/rails_reference/**'
+      - '.github/workflows/parallel.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  scaling:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [jsdom, jsdom31, happy-dom]
+    env:
+      RAILS_ENV: test
+      DOMSTRIDE_RUNTIME: node
+      DOMSTRIDE_ENGINE: ${{ matrix.engine }}
+      DOMSTRIDE_PROFILE: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:reference
+      - run: mkdir -p benchmark-results
+      - name: Scaling matrix
+        run: |
+          for workers in 1 2 4 8; do
+            modes=(off on)
+            if [[ "$workers" == 2 || "$workers" == 8 ]]; then modes=(on off); fi
+            for yjit in "${modes[@]}"; do
+              WORKERS="$workers" YJIT_MODE="$yjit" bundle exec ruby examples/rails_reference/parallel_benchmark.rb | tee "benchmark-results/$workers-$yjit.json"
+            done
+          done
+      - name: Summary
+        if: always()
+        run: |
+          ruby -rjson -e '
+            rows = Dir["benchmark-results/*.json"].reject { |f| File.zero?(f) }.map { |f| JSON.parse(File.read(f)) }
+            puts "| Workers | YJIT | Median s | Scenarios/s | Speedup | Efficiency | CPU cores | Aggregate RSS MiB |"
+            puts "|---:|---|---:|---:|---:|---:|---:|---:|"
+            rows.sort_by { |d| [d["workers"], d["yjit"]] }.each do |d|
+              base = rows.find { |b| b["workers"] == 1 && b["yjit"] == d["yjit"] }
+              speed = base && base["median_seconds"] / d["median_seconds"]
+              puts "| #{d["workers"]} | #{d["yjit"]} | #{d["median_seconds"].round(3)} | #{d["median_scenarios_per_second"].round(2)} | #{speed&.round(2)} | #{speed && (100 * speed / d["workers"]).round(1)}% | #{d["median_cpu_cores"].round(2)} | #{(d["peak_sampled_aggregate_rss_kib"] / 1024.0).round(1)} |"
+            end
+          ' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parallel-results-${{ matrix.engine }}
+          path: benchmark-results/

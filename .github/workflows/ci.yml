@@ -1,0 +1,64 @@
+name: Domstride CI and benchmark
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  test-and-benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3.14'
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.0'
+      - run: npm install --no-audit --no-fund
+      - name: Environment
+        run: |
+          mkdir -p benchmark-results
+          { lscpu; free -h; ruby -v; node -v; bun -v; npm ls --all; } > benchmark-results/environment.txt
+          cp package-lock.json Gemfile.lock benchmark-results/
+      - name: Required Node jsdom tests and gem build
+        run: |
+          bundle exec rake test
+          bundle exec ruby examples/counter.rb
+          gem build domstride.gemspec
+      - name: Experimental compatibility tests
+        run: |
+          for pair in 'bun jsdom' 'node happy-dom' 'bun happy-dom'; do
+            read -r runtime engine <<< "$pair"
+            if DOMSTRIDE_RUNTIME="$runtime" DOMSTRIDE_ENGINE="$engine" bundle exec rake test > "benchmark-results/test-$runtime-$engine.txt" 2>&1; then
+              echo "$runtime/$engine PASS"
+            else
+              echo "::warning::$runtime/$engine FAILED"
+            fi
+            cat "benchmark-results/test-$runtime-$engine.txt"
+          done
+      - name: Matrix benchmark
+        run: bundle exec ruby benchmarks/matrix.rb | tee benchmark-results/matrix.json
+      - name: Benchmark summary
+        if: always()
+        run: |
+          if test -s benchmark-results/matrix.json; then
+            ruby benchmarks/summary.rb benchmark-results/matrix.json >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-results
+          path: benchmark-results/
