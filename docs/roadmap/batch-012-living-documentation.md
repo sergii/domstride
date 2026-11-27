@@ -149,3 +149,7 @@ User reported that clicking Description then Category did not seek: chips were d
 ## Submit landmark synchronization
 
 CI 46065561540 again resolved all six focus candidates and seven of eight complete steps; submit step had no accepted end landmark, so the core browser smoke was not reached. Increasing the landmark hold alone did not resolve this. In Guided reference only, wait for the actual destination URL, listing heading and confirmation region before the submit step ends and its end landmark is inserted. A Turbo body replacement is not guaranteed to wait for DOMContentLoaded or the click promise. This is a targeted hypothesis, not a verified root cause until CI passes. Existing Then assertions remain unchanged; Fast/Execution behavior unchanged. No fabricated interval for the missing step. New CI pending.
+
+## Full-step reference calibration passes
+
+CI 46066744748 matched all eight complete recorded step intervals and six focus actions after waiting for the rendered Turbo destination. Prototype replay smoke and core report export succeeded. Legacy fixture then failed because it removed timing_quality but retained new step_intervals and step_timing_quality. Remove both in legacy fixture, preserving strict production validation, and add negative tests for missing quality, overlapping intervals and focus without a containing step interval. Core UI smoke not reached in this run. New CI pending; Fizzy remains unrelated unresolved failure.
