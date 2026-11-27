@@ -72,11 +72,25 @@ module Domstride
               cues.map { |cue| cue.values_at("kind","sequence") }.uniq.size == cues.size
             raise Error, "Invalid video cues"
           end
+          focus = attachment.fetch("focus", [])
+          unless focus.is_a?(Array) && focus.size <= 300 && focus.each_with_index.all? { |segment, i|
+            segment.is_a?(Hash) && %w[fill click select assert].include?(segment["kind"]) &&
+              %w[start_ms end_ms].all? { |key| segment[key].is_a?(Numeric) && segment[key].finite? && segment[key].between?(0, 86_400_000) } &&
+              segment["start_ms"] < segment["end_ms"] &&
+              (i.zero? || focus[i-1]["end_ms"] <= segment["start_ms"]) &&
+              %w[x y width height].all? { |key| segment[key].is_a?(Numeric) && segment[key].finite? && segment[key].between?(0,1) } &&
+              segment["width"].positive? && segment["height"].positive? &&
+              segment["x"] + segment["width"] <= 1.000000001 && segment["y"] + segment["height"] <= 1.000000001 &&
+              %w[passed failed unknown].include?(segment["status"])
+          }
+            raise Error, "Invalid video focus segments"
+          end
           content = Video.read_webm(File.join(path, name))
           encoded = Base64.strict_encode64(content)
           bytes += encoded.bytesize
           raise Error, "Report payload limit exceeded" if bytes > MAX_PAYLOAD_BYTES
-          {label: attachment["label"], base64: encoded, cues: cues.map { |cue| cue.slice("kind","sequence","time_ms") }}
+          {label: attachment["label"], base64: encoded, cues: cues.map { |cue| cue.slice("kind","sequence","time_ms") },
+            focus: focus.map { |segment| segment.slice("kind","status","start_ms","end_ms","x","y","width","height") }}
         end
         {name: item["name"], status: item["status"], duration_ms: item["duration_ms"],
           **metadata,

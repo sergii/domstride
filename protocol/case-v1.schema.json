@@ -215,6 +215,70 @@
                 }
               }
             }
+          },
+          "focus": {
+            "type": "array",
+            "maxItems": 300,
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "status",
+                "start_ms",
+                "end_ms",
+                "x",
+                "y",
+                "width",
+                "height"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "fill",
+                    "click",
+                    "select",
+                    "assert"
+                  ]
+                },
+                "status": {
+                  "enum": [
+                    "passed",
+                    "failed",
+                    "unknown"
+                  ]
+                },
+                "start_ms": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 86400000
+                },
+                "end_ms": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 86400000
+                },
+                "x": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "y": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "width": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "height": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
           }
         }
       }

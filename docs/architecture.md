@@ -183,3 +183,7 @@ Optional per-video step/assertion sequence and playback time_ms. No guessing fro
 ## ADR-043: bidirectional video timeline
 
 Use selected video currentTime and explicit video-local cues to update existing sidebar button state, without rebuilding the report or seeking during playback. Latest step cue and assertion completion tracked separately; clear before first cue and on rewind, avoid carrying assertions into a later step. Scroll within sidebar only when playing. Use actual local HTTP routes in reference browser tests; do not overlay fictional URLs or rewrite original evidence.
+
+## ADR-044: non-destructive smart zoom
+
+Optional video-local focus intervals carry normalized encoded-frame rectangles. Studio transforms only playback, never the tested viewport or original media. Fit target with context, clamp camera to frame, independent zoom and outline toggles, smooth transition with reduced-motion option, reset outside interval. Explicit measured producer geometry required; no selector or guessed location in report. Separate controls outside crop. Reference viewport helper intentionally rejects unmatched dimensions; desktop calibration and verified clock mapping are independent tasks.

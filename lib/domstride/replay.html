@@ -10,13 +10,13 @@
 #suite:not([hidden]){display:flex;gap:12px;align-items:center;padding:12px 20px;background:white;flex-wrap:wrap;border-bottom:1px solid #dce1e7}#suite-summary{font-weight:600;width:100%}#case-select{max-width:360px}#case-search{font:inherit;border:1px solid #cdd5de;padding:8px;border-radius:7px}body.suite-mode main{height:calc(100vh - 220px)}@media(max-width:680px){body.suite-mode main{height:auto}#case-select{max-width:100%}}
 #gherkin-steps{display:grid;gap:5px;margin-bottom:16px}#gherkin-steps button{text-align:left;white-space:normal}#gherkin-steps button[aria-current=true]{border:2px solid #059669;background:#ecfdf5}#gherkin-steps small{display:block;color:#596573;margin-top:4px}
 #assertion-steps{display:grid;gap:5px;margin-bottom:16px}#assertion-steps button{text-align:left;white-space:normal}#assertion-steps button[aria-current=true]{border:2px solid #059669;background:#ecfdf5}#assertion-steps small{display:block;margin-top:4px}#assertion-steps .no-evidence{color:#596573}
-#evidence-choice{margin-bottom:16px}#browser-video{display:block;width:100%;max-height:60vh;margin-top:12px;background:#111827;border-radius:6px}#video-note{color:#596573;font-size:12px}
+#evidence-choice{margin-bottom:16px}#video-stage{position:relative;overflow:hidden;width:100%;max-width:var(--video-max-width,100%);aspect-ratio:var(--video-aspect,4/3);margin:12px auto 0;background:#111827;border-radius:6px}#video-layer{position:absolute;inset:0;transform-origin:0 0;transition:transform var(--focus-speed,220ms) ease-in-out}#browser-video{display:block;width:100%;height:100%;object-fit:fill}#focus-outline{position:absolute;pointer-events:none;border:2px solid #16a34a;border-radius:4px;box-shadow:0 0 0 1px white}#focus-outline.failed{border-color:#dc2626}#video-note{color:#596573;font-size:12px}#video-controls,#focus-settings{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}#focus-settings[hidden]{display:none}#video-seek{flex:1;min-width:100px}#video-stage:fullscreen{max-width:none;width:100%;height:100%;aspect-ratio:auto}#video-stage:fullscreen #video-layer{inset:0} @media(prefers-reduced-motion:reduce){#video-layer{transition:none}}
 </style>
 </head>
 <body>
 <header><strong>Domstride Replay</strong><span id="notice">Inert DOM preview · no application execution</span><span class="spacer"></span><label>Layout <select id="layout"><option value="right">Viewport left / steps right</option><option value="left">Steps left / viewport right</option></select></label><label>State <select id="phase"><option value="after">After</option><option value="before">Before</option></select></label></header>
 <div id="suite" hidden><div id="suite-summary"></div><span id="case-provenance"></span><label>Search <input id="case-search" type="search" placeholder="Test name"></label><label>Status <select id="case-status"><option value="">All</option><option>passed</option><option>failed</option><option>skipped</option><option>pending</option><option>unknown</option></select></label><label>Test <select id="case-select"></select></label><label>Recording <select id="trace-select"></select></label></div>
-<main id="workspace"><section><div id="evidence-choice" hidden><label>Evidence <select id="evidence-mode"><option value="dom">DOM snapshot</option><option value="video">Browser video</option></select></label></div><div id="dom-evidence"><h2>DOM snapshot</h2><div id="viewport"></div></div><div id="video-evidence" hidden><h2>Browser video</h2><label>Recording <select id="video-select"></select></label><video id="browser-video" controls playsinline preload="metadata"></video><p id="video-note">Recorded browser playback. Select an explicitly timestamped step or assertion to seek.</p></div></section><aside><div id="gherkin" hidden><h2>Scenario steps</h2><div id="gherkin-steps"></div></div><div id="assertions-panel" hidden><h2>Assertions</h2><div id="assertion-steps"></div></div><h2>Interaction steps</h2><div id="steps"></div></aside></main>
+<main id="workspace"><section><div id="evidence-choice" hidden><label>Evidence <select id="evidence-mode"><option value="dom">DOM snapshot</option><option value="video">Browser video</option></select></label></div><div id="dom-evidence"><h2>DOM snapshot</h2><div id="viewport"></div></div><div id="video-evidence" hidden><h2>Browser video</h2><label>Recording <select id="video-select"></select></label><div id="focus-settings" hidden><label><input type="checkbox" id="smart-zoom" checked> Smart Zoom</label><label><input type="checkbox" id="focus-highlight" checked> Highlight</label><label>Zoom <select id="focus-scale"><option value="1.25">1.25×</option><option value="1.5" selected>1.5×</option><option value="2">2×</option><option value="2.5">2.5×</option></select></label><label>Motion <select id="focus-speed"><option value="0">Off</option><option value="120">Fast</option><option value="220" selected>Normal</option><option value="400">Slow</option></select></label></div><div id="video-stage"><div id="video-layer"><video id="browser-video" playsinline preload="metadata"></video><div id="focus-outline" hidden></div></div></div><div id="video-controls"><button id="video-play" type="button">Play</button><input id="video-seek" type="range" min="0" max="0" value="0" step="0.01" aria-label="Video position"><span id="video-time">0.00 / 0.00 s</span><button id="video-mute" type="button">Mute</button></div><p id="video-note">Recorded browser playback. Select an explicitly timestamped step or assertion to seek.</p></div></section><aside><div id="gherkin" hidden><h2>Scenario steps</h2><div id="gherkin-steps"></div></div><div id="assertions-panel" hidden><h2>Assertions</h2><div id="assertion-steps"></div></div><h2>Interaction steps</h2><div id="steps"></div></aside></main>
 <footer><button id="previous">Previous</button><button id="next">Next</button><span id="position"></span></footer>
 <script type="application/json" id="recording-data">__RECORDING_JSON__</script>
 <script nonce="__NONCE__">
@@ -96,6 +96,7 @@ function show() {
 function releaseVideo() {
   const video = $("browser-video");
   pendingSeek = null;
+  resetFocus();
   video.pause(); video.removeAttribute("src"); video.load();
   if (videoUrl) URL.revokeObjectURL(videoUrl);
   videoUrl = null;
@@ -109,6 +110,7 @@ function loadVideo() {
   const bytes = Uint8Array.from(binary, c=>c.charCodeAt(0));
   videoUrl = URL.createObjectURL(new Blob([bytes],{type:"video/webm"}));
   $("browser-video").src = videoUrl;
+  $("focus-settings").hidden = !item.focus?.length;
   $("video-note").textContent = item.cues?.length ? "Timestamped evidence · select a step or assertion to seek." : "No verified timestamp mapping for this recording.";
 }
 function findCue(kind, sequence) {
@@ -139,11 +141,50 @@ function applySeek() {
   try { video.currentTime=seconds; syncVideoHighlight(); }
   catch (_) { $("video-note").textContent="Video seek unavailable."; }
 }
+function resetFocus() {
+  $("video-layer").style.transform="none";
+  $("focus-outline").hidden=true;
+  $("focus-settings").hidden=true;
+}
+function updateVideoControls() {
+  const video=$("browser-video");
+  $("video-play").textContent=video.paused?"Play":"Pause";
+  $("video-mute").textContent=video.muted?"Unmute":"Mute";
+  const duration=Number.isFinite(video.duration)?video.duration:0;
+  $("video-seek").max=String(duration);
+  $("video-seek").value=String(Math.min(video.currentTime,duration));
+  $("video-time").textContent=video.currentTime.toFixed(2)+" / "+duration.toFixed(2)+" s";
+}
+function updateFocus(item,ms) {
+  const stage=$("video-stage"), layer=$("video-layer"), outline=$("focus-outline"), video=$("browser-video");
+  if (video.videoWidth && video.videoHeight) {
+    stage.style.setProperty("--video-aspect",video.videoWidth+" / "+video.videoHeight);
+    stage.style.setProperty("--video-max-width","calc(60vh * "+(video.videoWidth/video.videoHeight)+")");
+  }
+  $("focus-settings").hidden=!item.focus?.length;
+  layer.style.setProperty("--focus-speed",$("focus-speed").value+"ms");
+  const target=(item.focus || []).find(s=>ms>=s.start_ms && ms<s.end_ms);
+  if (!target) {
+    layer.style.transform="none"; outline.hidden=true; return;
+  }
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+  // Keep the entire target visible, plus context, rather than blindly magnifying.
+  const zoom=$("smart-zoom").checked?Math.max(1,Math.min(Number($("focus-scale").value),0.88/target.width,0.88/target.height)):1;
+  const x=clamp(0.5-(target.x+target.width/2)*zoom,1-zoom,0);
+  const y=clamp(0.5-(target.y+target.height/2)*zoom,1-zoom,0);
+  layer.style.transform=zoom>1?"translate("+(x*100)+"%,"+(y*100)+"%) scale("+zoom+")":"none";
+  outline.style.left=(target.x*100)+"%"; outline.style.top=(target.y*100)+"%";
+  outline.style.width=(target.width*100)+"%"; outline.style.height=(target.height*100)+"%";
+  outline.classList.toggle("failed",target.status==="failed");
+  outline.hidden=!$("focus-highlight").checked;
+}
 function syncVideoHighlight() {
   if ($("evidence-mode").value!=="video" || !videoUrl) return;
   const video=$("browser-video"), item=activeCase?.videos?.[Number($("video-select").value)];
   if (!item) return;
   const ms=pendingSeek ? pendingSeek.seconds*1000 : video.currentTime*1000;
+  updateFocus(item,ms);
+  updateVideoControls();
   const latest = kind => (item.cues || []).filter(c=>c.kind===kind && c.time_ms<=ms+0.5)
     .sort((a,b)=>b.time_ms-a.time_ms || b.sequence-a.sequence)[0];
   const step=latest("step");
@@ -168,7 +209,11 @@ function syncVideoHighlight() {
 }
 const videoElement=$("browser-video");
 videoElement.addEventListener("loadedmetadata",()=>{applySeek();syncVideoHighlight();});
-for (const event of ["timeupdate","seeking","seeked","play","pause","ended"]) videoElement.addEventListener(event,syncVideoHighlight);
+for (const event of ["timeupdate","seeking","seeked","play","pause","ended","durationchange","volumechange"]) videoElement.addEventListener(event,syncVideoHighlight);
+$("video-play").onclick=()=>{if(videoElement.paused) videoElement.play().catch(()=>{$("video-note").textContent="Video playback unavailable.";});else videoElement.pause();};
+$("video-seek").oninput=()=>{if(Number.isFinite(videoElement.duration)) videoElement.currentTime=Number($("video-seek").value);};
+$("video-mute").onclick=()=>{videoElement.muted=!videoElement.muted;updateVideoControls();};
+for (const id of ["smart-zoom","focus-highlight","focus-scale","focus-speed"]) $(id).onchange=syncVideoHighlight;
 function updateEvidenceVisibility() {
   const available = !!activeCase?.videos?.length;
   $("evidence-choice").hidden = !available;

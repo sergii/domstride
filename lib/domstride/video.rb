@@ -7,7 +7,7 @@ module Domstride
     MAX_VIDEOS = 4
     MAGIC = "\x1a\x45\xdf\xa3".b.freeze
 
-    def self.attach(path, label: "Browser recording", cues: [])
+    def self.attach(path, label: "Browser recording", cues: [], focus: [])
       item = ReportCase.current || raise(Error, "No active report case")
       source = File.expand_path(path)
       raise Error, "Invalid video file" unless File.file?(source) && !File.symlink?(source)
@@ -17,7 +17,7 @@ module Domstride
       destination = format("video-%02d.webm", item.videos.size + 1)
       bytes = read_webm(source)
       File.open(File.join(item.path, destination), File::WRONLY | File::CREAT | File::EXCL, 0o600) { |file| file.write(bytes) }
-      item.videos << {file: destination, label: name, cues: cues}
+      item.videos << {file: destination, label: name, cues: cues, focus: focus}
       destination
     end
 

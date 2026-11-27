@@ -17,7 +17,8 @@ Replay viewer must support viewport left / steps right and steps left / viewport
 
 - 010.2a: native Playwright Test reporter verified (45924985700).
 - 010.2b: isolated Xvfb/FFmpeg automatic Selenium and Cuprite recording implemented; CI pending. Headless capture remains future.
-- 010.3: cue import and one-way seeking verified (45925493199); bidirectional playback highlight and real URL reference added, CI pending; X11 capture workflow still unverified. Playwright clock alignment remains future.
+- 010.3: cue import and one-way seeking verified (45925493199); bidirectional playback highlight and real URL reference verified (45926523887 / 45926523970); X11 capture workflow still unverified. Playwright clock alignment remains future.
+- 010.4: smart zoom / element focus protocol, viewer and explicit viewport geometry helper implemented; CI pending. Automatic geometry/timing calibration and higher-quality capture presets remain follow-up.
 - 011: performance optimization, local worker reuse experiment, reporting overhead benchmarks.
 - 007.1: finish real-app compatibility; Fizzy blockers remain explicit.
 - 007.2: Webpack/legacy frontend compatibility remains last, as requested.
