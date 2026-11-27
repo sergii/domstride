@@ -1,0 +1,65 @@
+name: Living documentation reference
+on:
+  pull_request:
+    branches: [foundation/mvp]
+  workflow_dispatch:
+jobs:
+  reference:
+    runs-on: ubuntu-22.04
+    env:
+      RAILS_ENV: test
+      PETSTORE_BASE_URL: http://127.0.0.1:3000
+      PETSTORE_COMMIT: 78b67b411c41011e8cabc2130190c8e3dfeb9a61
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: sergii/petstore
+          ref: 78b67b411c41011e8cabc2130190c8e3dfeb9a61
+          path: petstore-app
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+          working-directory: petstore-app
+      - run: bundle install
+        working-directory: petstore-app
+      - run: bin/rails db:prepare
+        working-directory: petstore-app
+      - run: |
+          bin/rails runner 'User.find_or_create_by!(email_address: "seller@example.test") { |u| u.name = "Alex Demo"; u.password = "synthetic-demo-password" }'
+          nohup bin/rails server -b 127.0.0.1 -p 3000 > "$RUNNER_TEMP/petstore.log" 2>&1 &
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000/up; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/petstore.log"
+          exit 1
+        working-directory: petstore-app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+        working-directory: examples/petstore
+      - run: npx playwright install chromium
+        working-directory: examples/petstore
+      - run: npm run typecheck
+        working-directory: examples/petstore
+      - run: npm test
+        working-directory: examples/petstore
+        env:
+          PETSTORE_FEATURE: ${{ github.workspace }}/petstore-app/features/marketplace/listings/publish_listing.feature
+      - run: bin/rails runner 'User.find_by!(email_address: "seller@example.test").listings.destroy_all'
+        working-directory: petstore-app
+      - run: npm run docs
+        working-directory: examples/petstore
+        env:
+          PETSTORE_FEATURE: ${{ github.workspace }}/petstore-app/features/marketplace/listings/publish_listing.feature
+      - run: node verify.cjs
+        working-directory: examples/petstore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: petstore-living-documentation
+          path: examples/petstore/artifacts/
+          retention-days: 7

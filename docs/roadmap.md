@@ -9,7 +9,8 @@ Ordered work, not a commitment to a release date. Keep related changes in one fu
 | 3 | 009 | Interactive HTML test reports: suite/scenario navigation, automatic test-framework step and assertion mapping, replay timeline | 009.1 verified (45921278517); 009.2 verified (45921849166); 009.3 verified (45922715942); 009.4 verified (45924024922) |
 | 4 | 010 | Real-browser video recording and shared report integration | 010.1 verified (45924024922); Protocol v1 / standalone Studio verified (45924668233) |
 | 5 | 011 | Performance optimization and benchmarks | Planned |
-| 6 | 007.2 | Webpack and legacy frontend asset compatibility, informed by local experiment | Deferred to last |
+| 6 | 012 | [Executable Living Documentation](roadmap/batch-012-living-documentation.md) | Reference implementation; CI pending |
+| 7 | 007.2 | Webpack and legacy frontend asset compatibility, informed by local experiment | Deferred to last |
 
 Replay viewer must support viewport left / steps right and steps left / viewport right, without changing the current event or before/after selection. Default viewport left. On narrow screens stack panels in selected order. Selected operation and exact corresponding target must be clearly outlined in green. The preview is reconstructed from saved state and does not execute application scripts or repeat actions. Full visual browser fidelity is not promised. Existing recording is opt-in; raw snapshots and replay reports are sensitive. No automatic publishing or upload.
 
@@ -20,6 +21,7 @@ Replay viewer must support viewport left / steps right and steps left / viewport
 - 010.3: cue import and one-way seeking verified (45925493199); bidirectional playback highlight and real URL reference verified (45926523887 / 45926523970); X11 capture workflow still unverified. Playwright clock alignment remains future.
 - 010.4: smart zoom / element focus protocol, viewer and explicit viewport geometry helper implemented; CI pending. Automatic geometry/timing calibration and higher-quality capture presets remain follow-up.
 - 011: performance optimization, local worker reuse experiment, reporting overhead benchmarks.
+- 012: [Living Documentation](roadmap/batch-012-living-documentation.md); independent reference, then Studio integration.
 - 007.1: finish real-app compatibility; Fizzy blockers remain explicit.
 - 007.2: Webpack/legacy frontend compatibility remains last, as requested.
 

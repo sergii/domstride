@@ -1,0 +1,23 @@
+# Petstore reference
+
+The public [Petstore Rails application](https://github.com/sergii/petstore) is the actual system under test. The canonical feature is in that repository at features/marketplace/listings/publish_listing.feature; no copied feature or synthetic HTML implementation here. Only synthetic public demo data. The example illustrates Cucumber.js / TypeScript / Playwright evidence collection and offline documentation, independent of the Ruby runner.
+
+Use a disposable Rails test database and a local Rails server (never production). Seed Alex Demo / seller@example.test with the synthetic password synthetic-demo-password; clear that user's listings before each suite. See the dedicated workflow for exact setup. Install Node 22+, npm dependencies and Chromium.
+
+```sh
+cd examples/petstore
+npm install
+npx playwright install chromium
+export PETSTORE_FEATURE=/absolute/path/to/petstore/features/marketplace/listings/publish_listing.feature
+export PETSTORE_BASE_URL=http://127.0.0.1:3000
+export PETSTORE_COMMIT=<checked-out-application-commit>
+npm run typecheck
+npm test
+# Reset the isolated test database's demo listings before the next run.
+npm run docs
+node verify.cjs
+```
+
+Open artifacts/<documentation-run>/documentation/index.html. The feature intro, numbered steps, inline real screenshots, results and video are generated from Gherkin and runtime evidence. Four cases in each mode; only the selected positive case records media. Screencast starts after sign-in. Fast mode has no recording or pacing. Browser-native invalid price errors are asserted using validity state and non-empty validation message; server-side validation is a separate Rails concern.
+
+Reference only: no calibrated timestamps, VTT, DOM snapshots, production schema validation, public publication, Studio integration or mobile drivers yet. Do not claim verified until CI passes. Production generator extraction and Ruby acceptance adapter remain planned. Dependencies are pinned directly; lockfile is pending.

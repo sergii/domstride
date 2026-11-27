@@ -1,0 +1,17 @@
+{
+  "name": "domstride-petstore-example",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "node run.cjs fast",
+    "docs": "node run.cjs documentation",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "12.2.0",
+    "@playwright/test": "1.59.0",
+    "@types/node": "22.15.3",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}
