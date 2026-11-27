@@ -109,6 +109,12 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await video.hover({position:{x:(first.x+first.width/2)*target.width,y:(first.y+first.height/2)*target.height}});
  await expect(page.locator('#element-tooltip')).toBeVisible();
  await expect(page.locator('#element-tooltip')).toContainText('input');
+ await expect(page.locator('#element-tooltip dt [data-lucide=package]')).toHaveCount(1);
+ const expectedIcons={id:'hash',name:'tag',test_id:'target',type:'text-cursor-input'};
+ for(const [field,icon] of Object.entries(expectedIcons)){
+   await expect(page.locator('#element-tooltip dt [data-lucide='+icon+']')).toHaveCount(first.element[field]?1:0);
+ }
+ assert.equal(await page.locator('#element-tooltip dt svg').first().evaluate(el=>getComputedStyle(el).width),'12px');
  if(first.element.id)await expect(page.locator('#element-tooltip')).toContainText(first.element.id);
  await page.keyboard.press('Escape');
  await expect(page.locator('#element-tooltip')).toBeHidden();

@@ -153,3 +153,11 @@ CI 46065561540 again resolved all six focus candidates and seven of eight comple
 ## Full-step reference calibration passes
 
 CI 46066744748 matched all eight complete recorded step intervals and six focus actions after waiting for the rendered Turbo destination. Prototype replay smoke and core report export succeeded. Legacy fixture then failed because it removed timing_quality but retained new step_intervals and step_timing_quality. Remove both in legacy fixture, preserving strict production validation, and add negative tests for missing quality, overlapping intervals and focus without a containing step interval. Core UI smoke not reached in this run. New CI pending; Fizzy remains unrelated unresolved failure.
+
+## Viewer v1 feature freeze (2026-11-27)
+
+Baseline verified in CI 46067542697 on 88d131b: eight complete recorded steps, six focus actions, independent sidebar chip seek, core and prototype Chromium smoke, twelve malformed manifest tests, legacy export, Starlight and Fumadocs. 18/19 workflows passed; Fizzy compatibility remains unresolved. Final cosmetic change: use original Lucide 0.456.0 package/hash/tag/target/text-cursor-input icons at 12 px in inspector metadata rows. Only actual recorded attributes are displayed; no new data capture. Final cosmetic CI pending.
+
+Frozen v1 scope: offline self-contained report; rounded blue/slate/white controls; summary, provenance, test search/filter/selection; video and inert DOM replay; recorded step and action highlighting/seek; smart zoom; captions/chapters; transition annotation; optional hatch; minimal default-off element inspector. Keep setup outside recording and unknown evidence explicit. No Pill theme, locator generation, advanced explorer, analytics or new capture modes.
+
+Known limitations and backlog: full-step visual landmarks are reference Guided capture only, visible in the raw recording and not general production clock calibration; inspector in video is limited to recorded targets; screenshots are documentation evidence rather than full interactive element maps; native mobile adapters, clean-media calibration, S3/CDN publishing and generalized producer integration remain separate. Do not imply merge/release while Fizzy and final verification remain open. Further viewer work is bug fixes or accessibility regressions only unless explicitly requested.
