@@ -17,7 +17,7 @@ let bundleOutcome = null;
 const BUNDLE_MARKER = '<script data-domstride-cache="bundle"></script>';
 const MAX_BUNDLE_BYTES = 8 * 1024 * 1024;
 const engine = process.argv[2] || "jsdom";
-let window, closeWindow, createWindow;
+let window, closeWindow, createWindow, assetParser;
 const javascriptErrors = [];
 const errorListeners = new Set();
 class JavaScriptFailure extends Error {}
@@ -341,6 +341,7 @@ async function waitVirtual(message) {
 async function boot() {
   if (engine === "jsdom" || engine === "jsdom31") {
     const { JSDOM, VirtualConsole } = require(engine);
+    assetParser = JSDOM;
     createWindow = (html, url, bridge, compiledBundle, state) => {
       const virtualConsole = new VirtualConsole();
       virtualConsole.on("jsdomError", error => reportJavaScript(error.cause || error.detail || error, "jsdom"));
@@ -511,7 +512,7 @@ async function execute(message) {
     let moduleCode;
     if (message.assets === "bundle" && message.bridge) {
       const { prepareAssets } = require("./assets.cjs");
-      const resolved = await prepareAssets(prepared.html, message.url, url => rackRequest(url, "GET"), message.asset_warnings, commandPhases);
+      const resolved = await prepareAssets(prepared.html, message.url, url => rackRequest(url, "GET"), message.asset_warnings, commandPhases, assetParser);
       prepared.html = resolved.html;
       moduleCode = resolved.moduleCode;
     }

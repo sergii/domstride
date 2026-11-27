@@ -31,16 +31,17 @@ function rewriteDynamicImports(source, imports) {
     " default: return Promise.reject(new Error('UNSUPPORTED_DYNAMIC_IMPORT: ' + specifier)); } }\n" + source;
 }
 
-async function prepareAssets(html, url, request, warningPolicy = "strict", phases = null) {
+async function prepareAssets(html, url, request, warningPolicy = "strict", phases = null, Parser = null) {
   let phaseStart = performance.now();
   const mark = name => {
     if (phases) phases[name] = performance.now() - phaseStart;
     phaseStart = performance.now();
   };
   if (!["strict", "direct-eval"].includes(warningPolicy)) throw new Error("Unknown asset warning policy");
-  const { JSDOM } = require("jsdom");
+  // Reuse the selected DOM engine; do not load a second jsdom version.
+  if (!Parser) throw new Error("Asset parser constructor required");
   mark("assets.load_parser");
-  const parsed = new JSDOM(html, { url });
+  const parsed = new Parser(html, { url });
   mark("assets.parse_html");
   const doc = parsed.window.document;
   const origin = new URL(url).origin;

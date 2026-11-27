@@ -40,6 +40,23 @@ class AssetsTest < Minitest::Test
     end
   end
 
+  def test_asset_preparse_is_inert_with_either_jsdom_engine
+    app = ->(_) { [200, {"content-type" => "text/html"}, [<<~HTML]] }
+      <p id="result">Pending</p>
+      <script>window.executions = (window.executions || 0) + 1;</script>
+      <script type="module">
+        document.querySelector("#result").textContent = String(window.executions);
+      </script>
+    HTML
+    %w[jsdom jsdom31].each do |engine|
+      open_assets(app, engine: engine, profile: true) do |page|
+        page.visit("/")
+        assert_equal "1", page.text("#result")
+        assert_operator page.profile[:phases_ms]["assets.parse_html"], :>, 0
+      end
+    end
+  end
+
   def test_binary_tagged_utf8_html_and_javascript_preserve_unicode
     app = lambda do |env|
       case env["PATH_INFO"]
