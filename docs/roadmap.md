@@ -12,3 +12,7 @@ Ordered work, not a commitment to a release date. Keep related changes in one fu
 | 6 | 007.2 | Webpack and legacy frontend asset compatibility, informed by local experiment | Deferred to last |
 
 Replay viewer must support viewport left / steps right and steps left / viewport right, without changing the current event or before/after selection. Default viewport left. On narrow screens stack panels in selected order. Selected operation and exact corresponding target must be clearly outlined in green. The preview is reconstructed from saved state and does not execute application scripts or repeat actions. Full visual browser fidelity is not promised. Existing recording is opt-in; raw snapshots and replay reports are sensitive. No automatic publishing or upload.
+
+## Performance research input (batch 011)
+
+See [Pet Store evidence and native/WASM research direction](petstore-performance-native-wasm.md). Sequential benchmark passed; next: profile CPU/IPC/assets before optimizing. Rust native and WASM are proposed research tracks gated by evidence, not commitments to replace the current runtime.
