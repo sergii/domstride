@@ -17,6 +17,8 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  const video=page.locator('#browser-video'),segments=data.cases[idx].videos[0].focus;assert.equal(segments.length,6);
  await expect.poll(()=>video.evaluate(v=>v.readyState>=1&&Number.isFinite(v.duration))).toBe(true);
  await page.locator('#focus-speed').selectOption('0');
+ assert.equal(await page.locator('#smart-zoom').evaluate(el=>getComputedStyle(el).accentColor),'rgb(37, 99, 235)');
+ assert.equal(await page.locator('#gherkin-steps .step-status[data-status=passed]').first().evaluate(el=>getComputedStyle(el).color),'rgb(51, 115, 78)');
  await expect(page.locator('#gherkin-steps .action-icon')).not.toHaveCount(0);
  await expect(page.locator('#gherkin-steps .step-action-chip')).toHaveCount(6);
  await expect(page.locator('#gherkin-steps .step-status').first()).toHaveText('passed');

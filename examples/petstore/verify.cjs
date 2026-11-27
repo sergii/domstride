@@ -26,6 +26,7 @@ for(const mode of ['fast','execution','documentation']){
   if(mode==='documentation'){
    const evidence=JSON.parse(fs.readFileSync(observations,'utf8'));
    assert.equal(evidence.timing_quality,'unmapped');
+   assert.equal(evidence.outline_color,'#2563eb');
    assert.equal(evidence.targets.length,6);assert.ok(evidence.frames.length>0);
    assert.ok(evidence.recording_window.endMonotonicMs>=evidence.recording_window.startMonotonicMs);
    const stepIds=new Set(positive.data.steps.map(s=>s.runtime_id));

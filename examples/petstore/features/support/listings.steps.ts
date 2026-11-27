@@ -35,11 +35,11 @@ class ListingWorld extends World {
         const doc=el.ownerDocument;
         const style=doc.createElement('style');
         style.id='domstride-reference-focus-style';
-        style.textContent='[data-domstride-reference-focus] { outline: 3px solid #059669 !important; outline-offset: 4px !important; }';
+        style.textContent='[data-domstride-reference-focus] { outline: 3px solid #2563eb !important; outline-offset: 4px !important; }';
         doc.head.append(style);
         el.setAttribute('data-domstride-reference-focus','');
         const computed=getComputedStyle(el);
-        return computed.outlineColor==='rgb(5, 150, 105)' && computed.outlineWidth==='3px';
+        return computed.outlineColor==='rgb(37, 99, 235)' && computed.outlineWidth==='3px';
       });
       if (!highlighted) throw new Error('Focus outline was not applied');
       this.focusCount++;
@@ -129,7 +129,7 @@ After(async function(this: ListingWorld) {
   finally { try { await this.context?.close(); } finally { await this.browser?.close(); } }
   if (this.directory) {
     if(this.profile==='guided') await writeFile(join(this.directory,'focus-observations.json'),JSON.stringify({
-      format:'domstride.reference-focus-observations',schema_version:1,timing_quality:'unmapped',
+      format:'domstride.reference-focus-observations',schema_version:1,timing_quality:'unmapped',outline_color:'#2563eb',
       recording_window:this.recordingWindow,targets:this.focusObservations,frames:this.frameObservations
     },null,2));
     await writeFile(join(this.directory,'capture.json'),JSON.stringify({

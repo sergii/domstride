@@ -5,6 +5,14 @@ import pathlib
 import subprocess
 import sys
 
+def matches_outline(r, g, b, color):
+    # Keep historic recordings readable; do not infer a new color from the UI theme.
+    if color == "#059669":
+        return r < 80 and 95 < g < 205 and 50 < b < 155 and g-r > 65 and g-b > 20
+    if color == "#2563eb":
+        return r < 100 and 45 < g < 155 and b > 175 and b-g > 65 and b-r > 100
+    raise ValueError("Unsupported outline color")
+
 def inspect_video(video, observations):
     probe = json.loads(subprocess.check_output([
         "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_frames", "-show_streams",
@@ -16,12 +24,15 @@ def inspect_video(video, observations):
     if not pts or any(not math.isfinite(t) for t in pts) or any(b <= a for a, b in zip(pts, pts[1:])):
         raise ValueError("Invalid or non-monotonic decoded presentation timestamps")
     targets = observations["targets"]
-    def green(frame, x, y):
+    outline_color = observations.get("outline_color", "#059669")
+    if outline_color not in ("#059669", "#2563eb"):
+        raise ValueError("Unsupported outline color")
+    def outline_pixel(frame, x, y):
         if not (0 <= x < width and 0 <= y < height):
             return False
         i = (y * width + x) * 3
         r, g, b = frame[i:i+3]
-        return r < 80 and 95 < g < 205 and 50 < b < 155 and g-r > 65 and g-b > 20
+        return matches_outline(r, g, b, outline_color)
     def score(frame, target):
         if target["viewport"] != {"width": width, "height": height}:
             return False
@@ -40,7 +51,7 @@ def inspect_video(video, observations):
         for side in sides:
             if any(not (3<=px<width-3 and 3<=py<height-3) for px,py,_,_ in side):
                 continue
-            matches.append(sum(any(green(frame,px+dx*d,py+dy*d) for d in range(-3,4)) for px,py,dx,dy in side)/len(side))
+            matches.append(sum(any(outline_pixel(frame,px+dx*d,py+dy*d) for d in range(-3,4)) for px,py,dx,dy in side)/len(side))
         return len(matches)>=3 and sum(m>=0.75 for m in matches)>=3
     hit = [[] for _ in targets]
     proc = subprocess.Popen(["ffmpeg","-v","error","-i",str(video),"-map","0:v:0","-f","rawvideo","-pix_fmt","rgb24","-fps_mode","passthrough","-"],stdout=subprocess.PIPE)
@@ -73,7 +84,7 @@ def inspect_video(video, observations):
         for e in valid:
             e["match"]="ambiguous"
     return {"format":"domstride.reference-focus-media-observations","schema_version":1,
-            "timing_quality":"visual_candidates_unvalidated","method":"decoded_outline_match",
+            "timing_quality":"visual_candidates_unvalidated","method":"decoded_outline_match","outline_color":outline_color,
             "frame_count":len(pts),"media_origin_pts_ms":pts[0]*1000,"targets":results}
 
 if __name__=="__main__":
