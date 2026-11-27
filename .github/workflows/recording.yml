@@ -32,6 +32,7 @@ jobs:
           node-version: '22.23.5'
       - run: npm install --no-audit --no-fund
       - run: bundle exec ruby -Ilib test/recording_test.rb
+      - run: bundle exec ruby -Ilib test/report_test.rb
       - name: Replay viewer browser contract
         if: matrix.engine == 'jsdom31'
         run: |

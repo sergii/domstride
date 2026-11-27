@@ -143,3 +143,7 @@ Share key encoding across Capybara node and driver. In logical profile field set
 ## ADR-033: explicit observer contracts
 
 Keep legacy behavior off by default. Node/jsdom manual profile exposes synthetic notify_intersection and notify_resize commands, deduplicates states, respects unobserve/disconnect, bounded delivery and targets. Logical-visible profile emits initial binary intersection based on DOM visibility, not viewport geometry, ignores geometric root margins/threshold distinctions, rejects rectangle access and does not simulate resize. Use only as functional fixture policy, never claim layout parity. Fizzy candidate opts into initial logical observation to investigate missing activity pagination.
+
+## ADR-034: explicit case-level suite reporting
+
+Fiber-local case scope groups newly created workers in private case directories. Final case status is independent of operation outcomes; no exception messages or test data automatically stored. Reuse inert replay renderer for bounded suite export, filter tests by name/status and select each worker recording. Explicit names and HTML opt-in; no auto framework status inference. Preserve reversible layout and single recording export.

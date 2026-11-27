@@ -5,8 +5,8 @@ Ordered work, not a commitment to a release date. Keep related changes in one fu
 | Priority | Batch | Scope | Status |
 |---|---|---|---|
 | 1 | 008 | Interaction recording and DOM replay: target highlight, live control state, before/after, configurable sidebar position | Verified (45914593771) |
-| 2 | 007.1 follow-up | Fizzy functional compatibility; investigate direct eval bundler warning and subsequent observed failures | In progress: direct-eval diagnostic policy |
-| 3 | 009 | Interactive HTML test reports: suite/scenario navigation, automatic test-framework step and assertion mapping, replay timeline | Planned |
+| 2 | 007.1 follow-up | Fizzy functional compatibility; investigate direct eval bundler warning and subsequent observed failures | In progress: joining account passed; observer CI pending |
+| 3 | 009 | Interactive HTML test reports: suite/scenario navigation, automatic test-framework step and assertion mapping, replay timeline | First slice implemented; CI pending |
 | 4 | 010 | Real-browser video recording and shared report integration | Planned |
 | 5 | 011 | Performance optimization and benchmarks | Planned |
 | 6 | 007.2 | Webpack and legacy frontend asset compatibility, informed by local experiment | Deferred to last |

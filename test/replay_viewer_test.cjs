@@ -56,3 +56,48 @@ test("offline viewer switches panels without losing selection or executing snaps
     fs.rmSync(directory,{recursive:true,force:true});
   }
 });
+
+
+test("suite report filters cases and selects recordings independently of operation status", async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "domstride-suite-"));
+  let browser;
+  try {
+    for (const [id, name, status] of [["a","Create expense","passed"],["b","Failed assertion","failed"],["c","Skipped","skipped"]]) {
+      const root = path.join(directory, "domstride-case-"+id);
+      fs.mkdirSync(root);
+      fs.writeFileSync(path.join(root,"case.json"),JSON.stringify({schema_version:1,name,status,duration_ms:120}));
+      if (id === "c") continue;
+      const recording = path.join(root,"domstride-recording-a");
+      fs.mkdirSync(recording);
+      fs.writeFileSync(path.join(recording,"events.jsonl"),[
+        {type:"header",schema_version:1,engine:"jsdom31"},
+        {type:"interaction",sequence:1,kind:"click",status:"passed",duration_ms:2,after:{snapshot:"000001-after.html",body_path:[1],target_path:[1,0]}},
+        {type:"footer",event_count:1}
+      ].map(row=>JSON.stringify(row)).join("\n")+"\n");
+      fs.writeFileSync(path.join(recording,"000001-after.html"),"<p>"+name+"</p>");
+    }
+    execFileSync("bundle",["exec","ruby","exe/domstride","report",directory],{stdio:"pipe"});
+    browser = await chromium.launch({headless:true});
+    const page = await browser.newPage({viewport:{width:1280,height:800}});
+    const errors = [];
+    page.on("pageerror",error=>errors.push(error.message));
+    await page.goto(pathToFileURL(path.join(directory,"report.html")).href);
+    assert.match(await page.locator("#suite-summary").innerText(),/3 tests · 1 passed · 1 failed · 1 skipped/);
+    assert.equal(await page.locator("#viewport").innerText(),"Create expense");
+    await page.locator("#case-status").selectOption("failed");
+    assert.equal(await page.locator("#viewport").innerText(),"Failed assertion");
+    assert.match(await page.locator("#steps").innerText(),/passed/);
+    await page.locator("#layout").selectOption("left");
+    await page.locator("#case-status").selectOption("skipped");
+    assert.equal(await page.locator("#viewport").innerText(),"No recorded interactions.");
+    assert.equal(await page.locator("#layout").inputValue(),"left");
+    await page.locator("#case-status").selectOption("");
+    await page.locator("#case-search").fill("no match");
+    assert.equal(await page.locator("#case-select option").count(),0);
+    assert.equal(await page.locator("#viewport").innerText(),"No recorded interactions.");
+    assert.deepEqual(errors,[]);
+  } finally {
+    await browser?.close();
+    fs.rmSync(directory,{recursive:true,force:true});
+  }
+});

@@ -4,7 +4,7 @@ require "securerandom"
 module Domstride
   module Replay
     # Export a single local recording; never run application HTML or requests.
-    def self.export(directory, output: nil)
+    def self.load_recording(directory)
       root = File.realpath(directory)
       events_path = File.join(root, "events.jsonl")
       raise Error, "Invalid recording metadata" unless File.file?(events_path) && !File.symlink?(events_path) && File.size(events_path) <= 2 * 1024 * 1024
@@ -29,12 +29,23 @@ module Domstride
           frame["html"] = File.read(path, encoding: "UTF-8")
         end
       end
-      payload = JSON.generate({ events: events, complete: rows.last.is_a?(Hash) && rows.last["type"] == "footer" })
+      { events: events, complete: rows.last.is_a?(Hash) && rows.last["type"] == "footer", html_bytes: total, engine: header["engine"], runtime: header["runtime"] }
+    rescue JSON::ParserError => error
+      raise Error, "Invalid recording JSON: #{error.class}"
+    end
+
+    def self.export(directory, output: nil)
+      root = File.realpath(directory)
+      render(load_recording(root), output || File.join(root, "replay.html"))
+    end
+
+    def self.render(data, output)
+      payload = JSON.generate(data)
          .gsub(/[<>&]/) { |character| format('\\u%04x', character.ord) }
       nonce = SecureRandom.hex(16)
       template = File.read(File.join(__dir__, "replay.html"))
       html = template.gsub("__NONCE__", nonce).sub("__RECORDING_JSON__") { payload }
-      destination = output ? File.expand_path(output) : File.join(root, "replay.html")
+      destination = File.expand_path(output)
       File.open(destination, File::WRONLY | File::CREAT | File::EXCL, 0o600) { |file| file.write(html) }
       destination
     rescue JSON::ParserError => error

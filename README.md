@@ -172,3 +172,5 @@ For account-prefixed Action Cable paths, the experimental `DOMSTRIDE_WEBSOCKET_P
 Page-level Capybara `send_keys` dispatches to the active element and supports ordinary Enter form submission; logical profile focuses filled fields and records `scrollIntoView` intent, not geometry. No arbitrary key chords, layout, resize or intersection parity.
 
 `DOMSTRIDE_OBSERVER_PROFILE=manual` enables explicit `notify_intersection` / `notify_resize` inputs to native Session. `logical-visible` delivers initial synthetic binary intersections from DOM visibility, without physical viewport geometry or automatic resize. Both are bounded test policies, default off; browser required for layout-sensitive tests.
+
+See [suite reports](docs/reporting.md) for explicit case capture and `bundle exec domstride report CASE_DIRECTORY`. Case results are separate from interaction results; automatic framework integration is follow-up.

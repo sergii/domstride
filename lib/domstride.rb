@@ -8,6 +8,7 @@ require_relative "domstride/version"
 require_relative "domstride/configuration"
 require_relative "domstride/runtime"
 require_relative "domstride/recording"
+require_relative "domstride/report_case"
 
 module Domstride
   class Error < StandardError; end
@@ -88,6 +89,10 @@ module Domstride
       @wait_strategy = wait_strategy
       @profiling = profile
       reset_profile!
+      if (report_case = ReportCase.current)
+        recording_directory = report_case.path
+        recording_html = report_case.html?
+      end
       @recorder = Recording.new(directory: recording_directory, html: recording_html, engine: engine, runtime: runtime) if recording_directory && !recording_directory.empty?
       if app
         require "rack/test"
