@@ -82,8 +82,14 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  assert.ok(first.element?.tag==='input');
  await page.locator('#inspect-elements').check();
  await page.locator('#smart-zoom').uncheck();
+ await expect.poll(()=>page.locator('#video-layer').evaluate(el=>new DOMMatrix(getComputedStyle(el).transform).a)).toBe(1);
+ await video.evaluate((v,t)=>{v.pause();v.currentTime=t;},(first.start_ms+first.end_ms)/2000);
+ await expect.poll(()=>video.evaluate((v,c)=>!v.seeking&&v.paused&&v.currentTime*1000>=c.start_ms&&v.currentTime*1000<c.end_ms,first)).toBe(true).catch(async()=>{throw Error('Video did not settle before inspector hover');});
+ await expect(page.locator('#observed-caption')).toHaveText('Focus: '+first.label);
+ // The playback controls can scroll the video out of the panel. Hover via the locator,
+ // which scrolls the actual action point into view instead of using offscreen coordinates.
  const target=await video.boundingBox();
- await page.mouse.move(target.x+(first.x+first.width/2)*target.width,target.y+(first.y+first.height/2)*target.height);
+ await video.hover({position:{x:(first.x+first.width/2)*target.width,y:(first.y+first.height/2)*target.height}});
  await expect(page.locator('#element-tooltip')).toBeVisible();
  await expect(page.locator('#element-tooltip')).toContainText('input');
  if(first.element.id)await expect(page.locator('#element-tooltip')).toContainText(first.element.id);

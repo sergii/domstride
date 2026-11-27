@@ -144,6 +144,9 @@ function inspectAt(){
   hideInspector();
   if(!$("inspect-elements").checked||!inspectPointer)return;
   const {x,y}=inspectPointer;
+  if(x<0||y<0||x>=innerWidth||y>=innerHeight)return;
+  const hit=document.elementFromPoint(x,y);
+  if(!hit||!previewPanel.contains(hit))return;
   const inside=(rect)=>x>=rect.left&&x<=rect.right&&y>=rect.top&&y<=rect.bottom&&rect.width>0&&rect.height>0;
   let info=null;
   if(!$("video-evidence").hidden && videoUrl && inside($("video-stage").getBoundingClientRect())){
@@ -176,7 +179,7 @@ $("inspect-elements").onchange=()=>{hideInspector();inspectPointer=null;};
 const previewPanel=document.querySelector("#workspace > section");
 previewPanel.addEventListener("pointermove",e=>{if(!$("inspect-elements").checked)return;inspectPointer={x:e.clientX,y:e.clientY};inspectAt();});
 previewPanel.addEventListener("pointerleave",()=>{inspectPointer=null;hideInspector();});
-previewPanel.addEventListener("scroll",()=>{inspectPointer=null;hideInspector();});
+previewPanel.addEventListener("scroll",()=>{if(inspectPointer)inspectAt();else hideInspector();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){inspectPointer=null;hideInspector();}});
 
 function renderSnapshot(frame) {
