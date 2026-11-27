@@ -191,7 +191,7 @@ module Domstride
     end
 
     def reset_profile!
-      @profile = { commands: {}, rack_requests: 0, rack_ms: 0.0, bytes_sent: 0, bytes_received: 0, bundle_hits: 0, bundle_misses: 0, phases_ms: {} }
+      @profile = { commands: {}, rack_requests: 0, rack_ms: 0.0, bytes_sent: 0, bytes_received: 0, bundle_hits: 0, bundle_misses: 0, importmap_hits: 0, importmap_misses: 0, phases_ms: {} }
     end
 
     def profile
@@ -378,6 +378,9 @@ module Domstride
         end
         if @profiling && response["bundle_cache"]
           @profile[response["bundle_cache"] == "hit" ? :bundle_hits : :bundle_misses] += 1
+        end
+        if @profiling && response["importmap_cache"]
+          @profile[response["importmap_cache"] == "hit" ? :importmap_hits : :importmap_misses] += 1
         end
         response["value"]
       ensure

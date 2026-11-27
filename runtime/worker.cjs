@@ -14,6 +14,7 @@ const turn = () => new Promise(resolve => setImmediate(resolve));
 const pause = () => new Promise(resolve => setTimeout(resolve, 1));
 let bundleEntry = null;
 let bundleOutcome = null;
+let importmapOutcome = null;
 const BUNDLE_MARKER = '<script data-domstride-cache="bundle"></script>';
 const MAX_BUNDLE_BYTES = 8 * 1024 * 1024;
 const engine = process.argv[2] || "jsdom";
@@ -535,6 +536,7 @@ async function execute(message) {
       const resolved = await prepareAssets(prepared.html, message.url, url => rackRequest(url, "GET"), message.asset_warnings, commandPhases, assetParser);
       prepared.html = resolved.html;
       moduleCode = resolved.moduleCode;
+      importmapOutcome = resolved.importmapCache;
     }
     mark("mount.assets_total");
     if (window) {
@@ -670,6 +672,7 @@ async function main() {
     }
     queue = queue.then(async () => {
       bundleOutcome = null;
+      importmapOutcome = null;
       const start = message.profile ? performance.now() : null;
       commandPhases = message.profile ? {} : null;
       const timing = () => {
@@ -689,7 +692,7 @@ async function main() {
         if (message.settling === "tracked" && mutating) await settle(pageState);
         else await turn();
         checkJavaScript();
-        send({ id: message.id, ok: true, value, ...(bundleOutcome ? { bundle_cache: bundleOutcome } : {}), ...timing(), ...finishRecording(message, recording) });
+        send({ id: message.id, ok: true, value, ...(bundleOutcome ? { bundle_cache: bundleOutcome } : {}), ...(importmapOutcome ? { importmap_cache: importmapOutcome } : {}), ...timing(), ...finishRecording(message, recording) });
       } catch (error) {
         // Prefer a captured JavaScript exception over a generic action failure.
         if (javascriptErrors.length) {
