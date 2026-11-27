@@ -1,0 +1,34 @@
+const assert=require('node:assert/strict');
+const {parseMessages,normalizeMessages}=require('../lib/domstride/documentation/cucumber-messages.cjs');
+const tag=name=>({name});
+const step=(id,keyword,text,line)=>({id,keyword,text,location:{line}});
+const scenario={id:'s',name:'Borrow <book>',tags:[tag('@scenario:LIB-01')],steps:[step('a','When ','Borrow <book>',8),step('b','Then ','It is checked out',9)],examples:[{id:'ex',tableBody:[{id:'row'}]}]};
+const doc={uri:'library.feature',feature:{name:'Library',tags:[tag('@feature:LIB')],children:[{rule:{name:'Loans',children:[{background:{steps:[step('bg','Given ','A library',5)]}},{scenario}]}}]}};
+const pickle={id:'p',uri:doc.uri,name:'Borrow Hamlet',astNodeIds:['s','row'],steps:[{id:'pb',astNodeIds:['bg'],text:'A library'},{id:'pa',astNodeIds:['a','row'],text:'Borrow Hamlet',argument:{dataTable:{rows:[]}}},{id:'pc',astNodeIds:['b'],text:'It is checked out'}]};
+const testCase={id:'t',pickleId:'p',testSteps:[{id:'hook',hookId:'before'},{id:'bg',pickleStepId:'pb'},{id:'a',pickleStepId:'pa'},{id:'b',pickleStepId:'pc'}]};
+const env=[{gherkinDocument:doc},{pickle},{testCase}];
+for(const [id,attempt] of [['first',0],['second',1],['partial',2]]){
+ env.push({testCaseStarted:{id,testCaseId:'t',attempt}});
+ if(id==='partial')continue;
+ for(const testStepId of ['hook','bg','a','b'])env.push({testStepFinished:{testCaseStartedId:id,testStepId,testStepResult:{status:id==='first'&&testStepId==='hook'?'FAILED':'PASSED',duration:{seconds:0,nanos:1000000}}}});
+ env.push({testCaseFinished:{testCaseStartedId:id,willBeRetried:id==='first'}});
+}
+const output=normalizeMessages(parseMessages(env.map(e=>JSON.stringify(e)).join('\n')));
+assert.equal(output.specification.scenarios[0].rule,'Loans');
+assert.deepEqual(output.cases.map(c=>c.status),['failed','passed','unknown']);
+assert.deepEqual(output.cases.map(c=>c.attempt),[0,1,2]);
+assert.equal(output.cases[0].will_be_retried,true);
+assert.equal(output.cases[1].duration_ms,4);
+assert.equal(output.cases[2].duration_ms,null);
+assert.equal(output.cases[0].hooks[0].status,'failed');
+assert.equal(output.cases[1].steps[0].background,true);
+assert.equal(output.cases[1].steps[1].text,'Borrow Hamlet');
+assert.equal(output.cases[1].steps[1].source_line,8);
+assert.deepEqual(output.cases[1].steps[1].argument,pickle.steps[1].argument);
+assert.deepEqual(output.cases[1].example_ast_ids,['row']);
+assert.deepEqual(output.cases[1].steps.map(s=>s.sequence),[1,2,3]);
+assert.throws(()=>parseMessages('{}\nnope'),/line 2/);
+assert.throws(()=>normalizeMessages([...env,{testCaseStarted:{id:'first',testCaseId:'t'}}]),/Duplicate attempt/);
+assert.throws(()=>normalizeMessages([...env,{testCaseStarted:{id:'orphan',testCaseId:'missing'}}]),/Missing test case/);
+assert.throws(()=>normalizeMessages([...env,{gherkinDocument:doc}]),/Duplicate feature/);
+console.log('Cucumber Messages normalization: independent synthetic library fixture passed.');
