@@ -183,6 +183,16 @@ jobs:
             examples/petstore/fumadocs/help-center-desktop.png
             examples/petstore/fumadocs/help-center-mobile.png
           retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fumadocs-diagnostics
+          path: |
+            examples/petstore/fumadocs/out/
+            examples/petstore/fumadocs/help-center-failure.png
+            examples/petstore/fumadocs/failure.html
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Rails server log
         if: failure()
         run: cat "$RUNNER_TEMP/petstore.log" || true

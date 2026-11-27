@@ -1,7 +1,7 @@
 import { Before, After, AfterStep, Given, When, Then, World, setWorldConstructor, setDefaultTimeout } from '@cucumber/cucumber';
 import type { DataTable } from '@cucumber/cucumber';
 import { chromium, expect } from '@playwright/test';
-import type { Browser, BrowserContext, Page } from '@playwright/test';
+import type { Browser, BrowserContext, Page, Locator } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -17,6 +17,44 @@ class ListingWorld extends World {
   seller = '';
   profile: 'execution' | 'guided' | null = null;
   presentationWaitMs = 0;
+  focusCount = 0;
+  async withFocus(target: Locator, action: () => Promise<void>, beforeMs=0, afterMs=0) {
+    if (this.profile !== 'guided') { await action(); return; }
+    // Reference presentation only: no geometry reads or DOM writes in unpaced execution.
+    let highlighted = false;
+    try {
+      await target.scrollIntoViewIfNeeded();
+      highlighted = await target.evaluate(el => {
+        const doc=el.ownerDocument;
+        const style=doc.createElement('style');
+        style.id='domstride-reference-focus-style';
+        style.textContent='[data-domstride-reference-focus] { outline: 3px solid #059669 !important; outline-offset: 4px !important; }';
+        doc.head.append(style);
+        el.setAttribute('data-domstride-reference-focus','');
+        const computed=getComputedStyle(el);
+        return computed.outlineColor==='rgb(5, 150, 105)' && computed.outlineWidth==='3px';
+      });
+      if (!highlighted) throw new Error('Focus outline was not applied');
+      this.focusCount++;
+      await this.hold(beforeMs);
+    } catch(error) { this.evidenceErrors.push('Target focus: '+String(error)); }
+    try {
+      await action();
+      if (highlighted && this.focusCount===1 && this.directory) {
+        // Internal diagnostic evidence only, not a published checkpoint.
+        try { await this.page.screenshot({path:join(this.directory,'focus-proof.png'),animations:'disabled'}); }
+        catch(error) { this.evidenceErrors.push('Focus proof: '+String(error)); }
+      }
+      await this.hold(afterMs);
+    } finally {
+      try {
+        await this.page.evaluate(() => {
+          document.querySelectorAll('[data-domstride-reference-focus]').forEach(el=>el.removeAttribute('data-domstride-reference-focus'));
+          document.getElementById('domstride-reference-focus-style')?.remove();
+        });
+      } catch(error) { this.evidenceErrors.push('Focus cleanup: '+String(error)); }
+    }
+  }
   async hold(ms: number) {
     if (this.profile !== 'guided') return;
     this.presentationWaitMs += ms;
@@ -74,7 +112,7 @@ After(async function(this: ListingWorld) {
   finally { try { await this.context?.close(); } finally { await this.browser?.close(); } }
   if (this.directory) {
     await writeFile(join(this.directory,'capture.json'),JSON.stringify({
-      screenshots:this.screenshots,video:file,errors:this.evidenceErrors,profile:this.profile,presentation_wait_ms:this.presentationWaitMs
+      screenshots:this.screenshots,video:file,errors:this.evidenceErrors,profile:this.profile,presentation_wait_ms:this.presentationWaitMs,focus_count:this.focusCount
     },null,2));
   }
 });
@@ -107,15 +145,19 @@ When('the seller creates a listing',async function(this:ListingWorld){
 });
 When('enters the following listing details:',async function(this:ListingWorld,table:DataTable){
   const details=table.rowsHash();this.title=details.title;
-  // Presentation pacing applies only to the recorded reference scenario.
-  const pace=async()=>{await this.hold(650);};
-  await this.page.getByLabel('Title',{exact:true}).fill(details.title); await pace();
-  await this.page.getByLabel('Description',{exact:true}).fill(details.description); await pace();
-  await this.page.getByLabel('Category',{exact:true}).selectOption({label:details.category}); await pace();
-  await this.page.getByLabel('Condition',{exact:true}).selectOption({label:details.condition}); await pace();
-  await this.page.getByLabel('Price (USD)',{exact:true}).fill(details.price); await pace();
+  // Apply a visible focus outline during each guided field action.
+  const title=this.page.getByLabel('Title',{exact:true});
+  const description=this.page.getByLabel('Description',{exact:true});
+  const category=this.page.getByLabel('Category',{exact:true});
+  const condition=this.page.getByLabel('Condition',{exact:true});
+  const price=this.page.getByLabel('Price (USD)',{exact:true});
+  await this.withFocus(title,()=>title.fill(details.title),200,650);
+  await this.withFocus(description,()=>description.fill(details.description),200,650);
+  await this.withFocus(category,()=>category.selectOption({label:details.category}).then(()=>{}),200,650);
+  await this.withFocus(condition,()=>condition.selectOption({label:details.condition}).then(()=>{}),200,650);
+  await this.withFocus(price,()=>price.fill(details.price),200,650);
 });
-When('publishes the listing',async function(this:ListingWorld){await this.hold(700);await this.page.getByRole('button',{name:'Publish listing'}).click();});
+When('publishes the listing',async function(this:ListingWorld){const button=this.page.getByRole('button',{name:'Publish listing'});await this.withFocus(button,()=>button.click(),700);});
 When('enters a price of {string}',async function(this:ListingWorld,price:string){
   const input=this.page.getByLabel('Price (USD)',{exact:true});
   await input.fill('');

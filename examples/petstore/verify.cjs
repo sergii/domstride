@@ -19,6 +19,10 @@ for(const mode of ['fast','execution','documentation']){
   assert.equal(positive.data.evidence_errors.length,0);
   if(mode==='execution'){assert.equal(positive.data.screenshots.length,0);assert.equal(positive.data.presentation_wait_ms,0);}
   else {assert.ok(positive.data.screenshots.length>=4);assert.ok(positive.data.presentation_wait_ms>0);}
+  const capture=JSON.parse(fs.readFileSync(path.join(positive.dir,'capture.json'),'utf8'));
+  assert.equal(capture.focus_count,mode==='documentation'?6:0);
+  if(mode==='documentation')assert.equal(fs.readFileSync(path.join(positive.dir,'focus-proof.png')).subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+  else assert.ok(!fs.existsSync(path.join(positive.dir,'focus-proof.png')));
   assert.equal(positive.data.videos.length,1);
   for(const s of positive.data.screenshots)assert.equal(fs.readFileSync(path.join(positive.dir,s.file)).subarray(0,8).toString('hex'),'89504e470d0a1a0a');
   assert.equal(fs.readFileSync(path.join(positive.dir,'video-01.webm')).subarray(0,4).toString('hex'),'1a45dfa3');

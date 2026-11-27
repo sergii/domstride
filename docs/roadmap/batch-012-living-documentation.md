@@ -77,3 +77,7 @@ Reference static export now separates Overview, Business value, Actors, Prerequi
 ## Fumadocs reference iteration
 
 Reader-facing Starlight guide passed after distinguishing related-scenario link from pagination in CI 45989250145. Added a shared publication importer and Fumadocs static Next.js reference with native Steps, MDX, sidebar, TOC and local approved media. Search intentionally disabled in the initial static reference. CI build and browser smoke pending. No hosted deployment or released plugin. See [Fumadocs reference](../../examples/petstore/fumadocs/README.md).
+
+## Guided focus reference
+
+Fumadocs dependencies and static build passed in CI 45992816860; browser smoke failed on exact accessible heading name (investigating anchor-copy label). Updated heading assertion and failure artifacts for diagnosis. Guided reference now applies a temporary 3 px emerald outline to the five form fields and publish button, holds before/after meaningful actions, and removes the annotation before normal screenshots. Fast/Execution bypass all focus DOM operations and presentation waits. Internal focus-proof PNG and six-focus count verified by CI assertions; actual recorded visibility still needs media inspection. No calibrated offsets, Smart Zoom, or production focus protocol yet.
