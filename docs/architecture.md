@@ -123,3 +123,7 @@ Strict by default; only opt-in direct-eval warning ID may proceed with visible s
 ## ADR-028: bounded static media environment
 
 Observed Fizzy Turbo matchMedia blocker after asset boot. Provide an explicit Node/jsdom static media profile, with fixed logical dimensions and preferences, real EventTarget registration, and rejection of unsupported expressions. Do not fake scrolling or geometry or claim responsive/browser parity. Native implementation is not overridden. Keep opt-in default off and test independently of the app.
+
+## ADR-029: explicit logical DOM API subset
+
+Add opt-in logical visibility, dialog open/returnValue/close lifecycle, and window scroll offset state with event delivery. Preserve native visibility/dialog implementations if complete; do not override a partially implemented dialog API. No fake geometry or modal inertness, no smooth scroll or automatic intersections. Default off, Node/jsdom only. Authenticated Action Cable remains separate. Verify state transitions and unsupported behavior with regression tests; retain original Fizzy assertions.
