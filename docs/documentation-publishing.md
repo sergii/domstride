@@ -25,3 +25,7 @@ Same Petstore scenario can render standalone HTML and a real Starlight site, the
 ## Reference adapter implementation
 
 The Petstore Starlight example imports the portable publication only, verifies media checksums, converts numbered walkthrough blocks to native Steps, and uses local versioned media paths. CI builds the static site and tests images, video playback and mobile viewport. Production plugin, generic base-path support and external publishing remain future work.
+
+## Verified Starlight reference
+
+CI run 45980012782 verified actual static build, both routes, native Steps, screenshots, video playback and mobile layout. Reference adapter remains local and root-path only; production plugin, publishing policy and other frameworks are pending. See the [roadmap](roadmap/batch-012-living-documentation.md).

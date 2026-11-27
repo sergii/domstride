@@ -43,10 +43,11 @@ CI reference runs as an independent job in the existing Rails reference and brow
 
 ## Dual video and external documentation roadmap
 
-- [ ] Explicit unpaced execution capture and guided capture of the same canonical scenario, isolated data/reset, independent attempt IDs and per-profile media timing. Keep Fast zero capture; verify duration and no intentional execution holds.
+- [x] Reference unpaced and guided capture, isolated data/reset, independent attempt/run IDs and measured media duration; Fast zero capture and Execution zero intentional holds. Calibrated per-profile cues remain pending.
 - [ ] Action-aware pacing, target focus, calibrated per-video cues, captions and chapters; preserve unmodified evidence.
-- [ ] Normalize portable documentation model and export Markdown/MDX with numbered sections, prerequisites, actors, screenshots, expected outcomes and optional native video at bottom. Generate from approved verified artifacts offline, without running tests at site build.
-- [ ] Starlight adapter first (actual site build + browser smoke), Fumadocs second, Docusaurus third; plain Markdown fallback. No duplicate feature source. Optional player integration later.
+- [x] Reference portable documentation model and Markdown/MDX export from approved verified artifacts without test execution at site build. Reader-facing section structure and production normalization remain follow-up.
+- [x] Starlight reference adapter: actual static build and browser smoke.
+- [ ] Improve reader-facing guide structure, then Fumadocs and Docusaurus adapters; plain Markdown fallback. No duplicate feature source. Optional player integration later.
 - [ ] Media publication manifest and local/S3-compatible adapters; safe allowlist, private by default, immutable versioned assets, auth-aware delivery and stale evidence handling. See [documentation publishing](../documentation-publishing.md).
 
 UI v2 CI: [45974971779](https://github.com/sergii/domstride/actions/runs/45974971779), Petstore job passed; artifact 15185619987 available. New design output inspection remains pending.
@@ -61,4 +62,10 @@ Dual-profile CI verified in [45977292382](https://github.com/sergii/domstride/ac
 
 ## Starlight reference iteration
 
-Portable model and static export passed in CI run 45979024431. Implemented standalone Starlight reference site with generated namespace, native Steps, navigation/TOC, integrity-checked local assets, two video profiles, desktop/mobile smoke. Actual site build and browser verification pending. No hosted site or production plugin yet.
+Portable model and static export passed in CI run 45979024431. Implemented standalone Starlight reference site with generated namespace, native Steps, navigation/TOC, integrity-checked local assets, two video profiles, desktop/mobile smoke. Actual site build and CI browser verification passed. No hosted site or production plugin yet.
+
+## Verified Starlight reference (2026-11-27)
+
+[CI run 45980012782](https://github.com/sergii/domstride/actions/runs/45980012782), head 64502b65318285711a606ed1cc96083a35d94602: all five workflows passed. Petstore ran 12 cases / 111 steps successfully across three modes. Static exporter produced two guides and eight approved media assets. Starlight build and Chromium smoke passed both scenario routes, six loaded screenshots, two playable videos, native numbered Steps and mobile viewport. [Site artifact](https://github.com/sergii/domstride/actions/runs/45980012782/artifacts/15188339187) contains built dist and desktop/mobile screenshots; retention seven days. Downloaded archive inspected: positive page has eight native Steps entries, six images, two videos; no raw NDJSON in dist. Desktop/mobile CI screenshots visually inspected. Local independent browser navigation was blocked by the execution environment, not an observed site failure.
+
+Next UX work: separate reader-facing Overview, Actors, Prerequisites and Expected results into meaningful headings; put source/attempt/timing provenance in an expandable technical details section; avoid exposing setup assertions as user instructions; use task-oriented wording from explicit specification metadata, not invented actions; retain original Gherkin and distinguish verification from actual user actions. Add real links between related scenarios. Keep native Steps, accessible images and ordinary video controls. Validate these changes before adding another framework. This is a reference integration, not a released plugin or hosted site.
