@@ -276,11 +276,126 @@
                   "type": "number",
                   "minimum": 0,
                   "maximum": 1
+                },
+                "step_sequence": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "transition": {
+                  "const": "navigation"
+                },
+                "element": {
+                  "type": "object",
+                  "required": [
+                    "tag"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "tag": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "test_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "type": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "timing_quality": {
+            "enum": [
+              "visual_candidates_unvalidated"
+            ]
+          },
+          "step_timing_quality": {
+            "const": "visual_landmarks"
+          },
+          "step_intervals": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 300,
+            "items": {
+              "type": "object",
+              "required": [
+                "step_sequence",
+                "start_ms",
+                "end_ms"
+              ],
+              "properties": {
+                "step_sequence": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "start_ms": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 86400000
+                },
+                "end_ms": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 86400000
                 }
               }
             }
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "timing_quality"
+              ]
+            },
+            "then": {
+              "required": [
+                "focus"
+              ],
+              "properties": {
+                "cues": {
+                  "maxItems": 0
+                },
+                "focus": {
+                  "items": {
+                    "required": [
+                      "step_sequence",
+                      "label"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
       }
     }
   }

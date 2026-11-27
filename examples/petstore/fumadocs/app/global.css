@@ -1,0 +1,6 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+[data-domstride-guide] img, [data-domstride-guide] video { max-width: 100%; height: auto; border-radius: 0.6rem; }
+[data-domstride-guide] video { width:100%; background:#17202a; }
+[data-domstride-guide] { overflow-wrap:anywhere; }

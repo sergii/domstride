@@ -52,7 +52,8 @@ test("actual Chromium video is attached to a failed case and plays offline", asy
     assert.equal(await viewer.locator("#evidence-mode").inputValue(),"video");
     assert.equal(await viewer.locator("#video-select option").innerText(),"Chromium");
     assert.match(await viewer.locator("#suite-summary").innerText(),/1 failed/);
-    assert.match(await viewer.locator("#case-provenance").innerText(),/external-node · node:test · playwright · web · javascript/);
+    assert.deepEqual(await viewer.locator("#case-provenance .provenance-tag").allTextContents(),["external-node","node:test","playwright","web","javascript"]);
+    assert.equal(await viewer.locator("#trace-picker").isVisible(),false);
     await viewer.waitForFunction(()=>document.querySelector("#browser-video").readyState>=2);
     await viewer.locator("#browser-video").evaluate(video=>video.play());
     await viewer.waitForFunction(()=>document.querySelector("#browser-video").currentTime>0);

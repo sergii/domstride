@@ -1,0 +1,16 @@
+{
+  "name": "domstride-petstore-help-center",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "astro build",
+    "preview": "astro preview --host 127.0.0.1 --port 4321",
+    "import": "node import-publication.cjs",
+    "smoke": "node smoke.cjs"
+  },
+  "dependencies": {
+    "astro": "5.13.2",
+    "@astrojs/starlight": "0.35.2",
+    "sharp": "0.34.3"
+  }
+}

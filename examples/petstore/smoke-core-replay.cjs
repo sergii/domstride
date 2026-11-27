@@ -1,0 +1,138 @@
+// Verify the production Replay template via the actual Ruby Report exporter.
+const {chromium,expect}=require('@playwright/test');
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{pathToFileURL}=require('node:url');
+(async()=>{
+ const root=path.resolve(process.argv[2]||'artifacts'),files=fs.readdirSync(root,{recursive:true}).filter(n=>path.basename(n)==='core-replay.html');
+ assert.equal(files.length,1);
+ const file=path.join(root,files[0]),browser=await chromium.launch();
+ try{
+ const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(pathToFileURL(file).href);
+ const data=JSON.parse(await page.locator('#recording-data').textContent());
+ const idx=data.cases.findIndex(c=>c.videos.some(v=>v.timing_quality==='visual_candidates_unvalidated'));assert.ok(idx>=0);
+ await expect(page.locator('#case-select')).toHaveValue(String(idx));
+ await expect(page.locator('#video-evidence')).toBeVisible();
+ await expect(page.locator('#no-evidence')).toBeHidden();
+ const video=page.locator('#browser-video'),segments=data.cases[idx].videos[0].focus;assert.equal(segments.length,6);
+ const intervals=data.cases[idx].videos[0].step_intervals;assert.equal(intervals.length,data.cases[idx].steps.length-2);
+ assert.equal(data.cases[idx].videos[0].step_timing_quality,'visual_landmarks');
+ await expect.poll(()=>video.evaluate(v=>v.readyState>=1&&Number.isFinite(v.duration))).toBe(true);
+ await page.locator('#focus-speed').selectOption('0');
+ await expect(page.locator('#suite-summary .summary-pill')).toHaveCount(6);
+ await expect(page.locator('#case-provenance .provenance-tag')).toHaveCount(5);
+ await expect(page.locator('#trace-picker')).toBeHidden();
+ await expect(page.locator('#control-shape')).toHaveCount(0);
+ assert.equal(await page.locator('#case-select').evaluate(el=>getComputedStyle(el).borderTopLeftRadius),'7px');
+ assert.equal(await page.locator('#smart-zoom').evaluate(el=>getComputedStyle(el).appearance),'none');
+ await expect(page.locator('#inspect-elements')).not.toBeChecked();
+ await expect(page.locator('#inspector-toolbar')).toBeVisible();
+ await expect(page.locator('#suite-summary [data-status=passed]')).toHaveText('4 passed');
+ await expect(page.locator('#shade-unreplayed')).toBeChecked();
+ const unrecorded=page.locator('#gherkin-steps [data-replay=none]').first();
+ await expect(unrecorded).toBeVisible();
+ assert.match(await unrecorded.evaluate(el=>getComputedStyle(el).backgroundImage),/repeating-linear-gradient/);
+ await page.locator('#shade-unreplayed').uncheck();
+ assert.equal(await unrecorded.evaluate(el=>getComputedStyle(el).backgroundImage),'none');
+ await page.locator('#shade-unreplayed').check();
+ await expect(page.locator('#gherkin-steps .step-card [data-lucide=file-pen-line]')).toHaveCount(1);
+ await expect(page.locator('#gherkin-steps .step-action-chip [data-lucide=text-cursor-input]')).toHaveCount(3);
+ await expect(page.locator('#gherkin-steps .step-action-chip [data-lucide=list-filter]')).toHaveCount(2);
+ await expect(page.locator('#gherkin-steps .step-action-chip [data-lucide=send]')).toHaveCount(1);
+ for(const id of ['layout','phase','case-select','video-select','focus-scale','focus-speed']){
+   const style=await page.locator('#'+id).evaluate(el=>({appearance:getComputedStyle(el).appearance,padding:getComputedStyle(el).paddingRight,height:getComputedStyle(el).height}));
+   assert.deepEqual(style,{appearance:'none',padding:'30px',height:'34px'});
+ }
+ assert.equal(await page.locator('#smart-zoom').evaluate(el=>getComputedStyle(el).accentColor),'rgb(37, 99, 235)');
+ assert.equal(await page.locator('#gherkin-steps .step-status[data-status=passed]').first().evaluate(el=>getComputedStyle(el).color),'rgb(51, 115, 78)');
+ await expect(page.locator('#gherkin-steps .action-icon')).not.toHaveCount(0);
+ await expect(page.locator('#gherkin-steps .step-action-chip')).toHaveCount(6);
+ for(const interval of intervals){
+  await video.evaluate((v,t)=>v.currentTime=t,(interval.start_ms+interval.end_ms)/2000);
+  await expect(page.locator('#gherkin-steps button[aria-current=true]')).toHaveAttribute('data-sequence',String(interval.step_sequence));
+ }
+ const noFocus=intervals.find(s=>!segments.some(f=>f.step_sequence===s.step_sequence));assert.ok(noFocus);
+ await page.locator('#gherkin-steps button[data-sequence="'+noFocus.step_sequence+'"]').click();
+ await expect.poll(()=>video.evaluate((v,t)=>Math.abs(v.currentTime-t),noFocus.start_ms/1000)).toBeLessThan(0.06);
+ await expect(page.locator('#observed-caption')).toHaveText('');
+ await expect(page.locator('#gherkin-steps .step-status').first()).toHaveText('passed');
+ await expect(page.locator('#observed-actions [data-kind=fill]')).toHaveCount(3);
+ await expect(page.locator('#observed-actions [data-kind=select]')).toHaveCount(2);
+ const transition=segments.find(s=>s.transition==='navigation');assert.ok(transition);
+ await video.evaluate((v,t)=>v.currentTime=t,(transition.end_ms+200)/1000);
+ await expect(page.locator('#page-transition')).toHaveText('Page transition');
+ await expect(page.locator('#page-transition')).toBeVisible();
+ await video.evaluate(v=>v.currentTime=0);
+ await expect(page.locator('#page-transition')).toBeHidden();
+ await expect(page.locator('#focus-highlight')).toBeDisabled();
+ assert.deepEqual(await video.evaluate(v=>Array.from(v.textTracks).map(t=>({kind:t.kind,count:t.cues.length}))),[{kind:'captions',count:6},{kind:'chapters',count:6}]);
+ for(const [i,s] of segments.entries()){
+   const chip=page.locator('#gherkin-steps button.step-action-chip').filter({hasText:s.label});
+   await chip.click();
+   await expect.poll(()=>video.evaluate((v,t)=>Math.abs(v.currentTime-t),s.start_ms/1000)).toBeLessThan(0.06);
+   await expect(chip).toHaveAttribute('aria-pressed','true');
+   await video.evaluate((v,t)=>v.currentTime=t,(s.start_ms+s.end_ms)/2000);
+   await expect(page.locator('#observed-caption')).toHaveText('Focus: '+s.label);
+   await expect(page.locator('#gherkin-steps button[aria-current=true]')).toHaveAttribute('data-sequence',String(s.step_sequence));
+   await expect.poll(()=>page.locator('#video-layer').evaluate(el=>new DOMMatrix(getComputedStyle(el).transform).a)).toBeGreaterThan(1);
+ }
+ await page.locator('#smart-zoom').uncheck();
+ await expect.poll(()=>page.locator('#video-layer').evaluate(el=>new DOMMatrix(getComputedStyle(el).transform).a)).toBe(1);
+ await page.locator('#smart-zoom').check();
+ await page.locator('#observed-cc').uncheck();await expect(page.locator('#observed-caption')).toHaveText('');
+ assert.equal(await video.evaluate(v=>v.textTracks[0].mode),'disabled');
+ await page.locator('#observed-cc').check();
+ assert.equal(await video.evaluate(v=>v.textTracks[0].mode),'hidden');
+ const gap=intervals.findIndex((x,i)=>i+1<intervals.length&&intervals[i+1].start_ms>x.end_ms);
+ assert.ok(gap>=0);
+ await video.evaluate((v,t)=>v.currentTime=t,(intervals[gap].end_ms+intervals[gap+1].start_ms)/2000);
+ await expect(page.locator('#gherkin-steps button[aria-current=true]')).toHaveCount(0);
+ await expect(page.locator('#observed-caption')).toHaveText('');
+ await video.evaluate(v=>v.currentTime=0);
+ await page.locator('#video-play').click();await expect.poll(()=>video.evaluate(v=>v.currentTime)).toBeGreaterThan(0.1);await page.locator('#video-play').click();
+ const first=segments[0];await page.locator('#gherkin-steps button[data-sequence="'+first.step_sequence+'"]').click();
+ await expect.poll(()=>video.evaluate((v,t)=>Math.abs(v.currentTime-t),intervals.find(s=>s.step_sequence===first.step_sequence).start_ms/1000)).toBeLessThan(0.06);
+ await video.evaluate((v,t)=>v.currentTime=t,(first.start_ms+first.end_ms)/2000);
+ await expect(page.locator('#observed-caption')).toHaveText('Focus: '+first.label);
+ await page.screenshot({path:path.join(path.dirname(file),'core-replay-desktop.png')});
+ assert.ok(first.element?.tag==='input');
+ await page.locator('#inspect-elements').check();
+ await expect(page.locator('#inspector-hint')).toBeVisible();
+ await page.locator('#smart-zoom').uncheck();
+ await expect.poll(()=>page.locator('#video-layer').evaluate(el=>new DOMMatrix(getComputedStyle(el).transform).a)).toBe(1);
+ await video.evaluate((v,t)=>{v.pause();v.currentTime=t;},(first.start_ms+first.end_ms)/2000);
+ await expect.poll(()=>video.evaluate((v,c)=>!v.seeking&&v.paused&&v.currentTime*1000>=c.start_ms&&v.currentTime*1000<c.end_ms,first)).toBe(true).catch(async()=>{throw Error('Video did not settle before inspector hover');});
+ await expect(page.locator('#observed-caption')).toHaveText('Focus: '+first.label);
+ // The playback controls can scroll the video out of the panel. Hover via the locator,
+ // which scrolls the actual action point into view instead of using offscreen coordinates.
+ const target=await video.boundingBox();
+ await video.hover({position:{x:(first.x+first.width/2)*target.width,y:(first.y+first.height/2)*target.height}});
+ await expect(page.locator('#element-tooltip')).toBeVisible();
+ await expect(page.locator('#element-tooltip')).toContainText('input');
+ await expect(page.locator('#element-tooltip dt [data-lucide=package]')).toHaveCount(1);
+ const expectedIcons={id:'hash',name:'tag',test_id:'target',type:'text-cursor-input'};
+ for(const [field,icon] of Object.entries(expectedIcons)){
+   await expect(page.locator('#element-tooltip dt [data-lucide='+icon+']')).toHaveCount(first.element[field]?1:0);
+ }
+ assert.equal(await page.locator('#element-tooltip dt svg').first().evaluate(el=>getComputedStyle(el).width),'12px');
+ if(first.element.id)await expect(page.locator('#element-tooltip')).toContainText(first.element.id);
+ await page.keyboard.press('Escape');
+ await expect(page.locator('#element-tooltip')).toBeHidden();
+ await page.locator('#inspect-elements').uncheck();
+ await page.locator('#smart-zoom').check();
+ await expect.poll(()=>video.evaluate(v=>Array.from(v.textTracks).map(t=>t.activeCues?.length||0))).toEqual([1,1]);
+ const other=data.cases.findIndex(c=>!c.videos.length);assert.ok(other>=0);
+ await page.locator('#case-select').selectOption(String(other));
+ await expect(page.locator('#observed-actions')).toBeHidden();
+ await expect(page.locator('#no-evidence-title')).toHaveText('No replay captured');
+ await expect(page.locator('#dom-evidence')).toBeHidden();
+ await expect(page.locator('#open-recorded-case')).toBeVisible();
+ assert.deepEqual(await video.evaluate(v=>Array.from(v.textTracks).map(t=>t.mode)),['disabled','disabled']);
+ await page.locator('#open-recorded-case').click();
+ await expect(page.locator('#case-select')).toHaveValue(String(idx));
+ await expect.poll(()=>video.evaluate(v=>v.readyState>=1)).toBe(true);
+ assert.deepEqual(await video.evaluate(v=>Array.from(v.textTracks).map(t=>({kind:t.kind,count:t.cues.length}))),[{kind:'captions',count:6},{kind:'chapters',count:6}]);
+ assert.deepEqual(errors,[]);
+ console.log('Verified core Report export, observed action seek, step seek, active step, unmapped gaps, zoom and focus captions.');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

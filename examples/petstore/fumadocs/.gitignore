@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.source/
+out/
+content/docs/generated/
+public/domstride-media/
+generated-publication.json
+help-center-*.png
+next-env.d.ts
+*.tsbuildinfo

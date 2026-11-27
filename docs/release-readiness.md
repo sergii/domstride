@@ -35,3 +35,7 @@ See compatibility.md for exact limitations. No rendering/screenshots/video, full
 Real app host/asset and authenticated Action Cable compatibility; general navigation/form submission and history; further upstream Capybara coverage; reproducible runtime lockfile; Cucumber/Turnip integration; semantic event recording and HTML replay versus actual rendered browser video. These are not part of the current release scope.
 
 See [ordered roadmap](roadmap.md) for current follow-up priorities.
+
+## Known developer-preview limitation (2026-11-27)
+
+Maintainer accepted Fizzy as an explicit known limitation for the consolidation review, not as a passing check or a supported-app certification. Baseline CI 46068831277: join_account passed; create_card, lightbox and navigation failed. Recorded errors include missing ResizeObserver and ElementInternals.setValidity. Keep the original functional workflow and assertions unchanged; do not suppress failures. The consolidated candidate must still pass all other applicable workflows, and any changed Fizzy failure must be investigated. Final merge, tag and publication require separate maintainer approval.
