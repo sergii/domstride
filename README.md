@@ -170,3 +170,5 @@ For explicit test-only authenticated Action Cable, set `DOMSTRIDE_WEBSOCKET_COOK
 For account-prefixed Action Cable paths, the experimental `DOMSTRIDE_WEBSOCKET_PATH_MODE=numeric-account` requires an authenticated `/cable` endpoint. Accepts only logical same-origin numeric account prefixes, forwards root-path allowlisted cookies, and preserves the path for real Rails tenant middleware. Default `exact`.
 
 Page-level Capybara `send_keys` dispatches to the active element and supports ordinary Enter form submission; logical profile focuses filled fields and records `scrollIntoView` intent, not geometry. No arbitrary key chords, layout, resize or intersection parity.
+
+`DOMSTRIDE_OBSERVER_PROFILE=manual` enables explicit `notify_intersection` / `notify_resize` inputs to native Session. `logical-visible` delivers initial synthetic binary intersections from DOM visibility, without physical viewport geometry or automatic resize. Both are bounded test policies, default off; browser required for layout-sensitive tests.

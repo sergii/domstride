@@ -139,3 +139,7 @@ Opt-in numeric-account mode requires authenticated exact /cable loopback configu
 ## ADR-032: focused page keyboard and scroll intent
 
 Share key encoding across Capybara node and driver. In logical profile field set focuses the input; page-level Enter dispatches cancelable keyboard event and ordinary implicit form submission through real DOM click/requestSubmit. No physical keyboard, chords or focus traversal parity. Store scrollIntoView target path and requested alignment without fabricating coordinates; reject smooth scrolling. Preliminary asset discovery uses selected jsdom and isolated console, not live CSS suppression. ResizeObserver and layout-dependent activity pagination remain unresolved.
+
+## ADR-033: explicit observer contracts
+
+Keep legacy behavior off by default. Node/jsdom manual profile exposes synthetic notify_intersection and notify_resize commands, deduplicates states, respects unobserve/disconnect, bounded delivery and targets. Logical-visible profile emits initial binary intersection based on DOM visibility, not viewport geometry, ignores geometric root margins/threshold distinctions, rejects rectangle access and does not simulate resize. Use only as functional fixture policy, never claim layout parity. Fizzy candidate opts into initial logical observation to investigate missing activity pagination.

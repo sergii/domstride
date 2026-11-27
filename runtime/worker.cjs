@@ -6,6 +6,7 @@ const forms = require("./forms.cjs");
 const { installWebSocket } = require("./websocket.cjs");
 const { installStaticMedia } = require("./media.cjs");
 const { installLogicalDOM } = require("./logical_dom.cjs");
+const { installObservers } = require("./observers.cjs");
 let pageState;
 const turn = () => new Promise(resolve => setImmediate(resolve));
 const pause = () => new Promise(resolve => setTimeout(resolve, 1));
@@ -197,6 +198,7 @@ function prepareWindow(win, bridge, state) {
     if (typeof win.WebSocket === "function") installWebSocket(win, state);
   }
   if (state.mode === "virtual") state.clock = new VirtualClock(win, state.epoch);
+  if (state.observerProfile !== "off" && state.observerProfile) installObservers(win, state);
   // Observe before application scripts, including parser-time DOM changes.
   if (state.tracked || state.clock) {
     state.observer = new win.MutationObserver(() => { state.activity += 1; });
@@ -322,6 +324,12 @@ function element(selector) {
 function action(message) {
   switch (message.command) {
     case "send_keys": return forms.sendPageKeys(window, message.keys);
+    case "observer_intersection":
+      if (!pageState?.notifyIntersection) throw new Error("Observer profile is disabled");
+      return pageState.notifyIntersection(element(message.selector), message.intersecting);
+    case "observer_resize":
+      if (!pageState?.notifyResize) throw new Error("Manual resize observer profile is disabled");
+      return pageState.notifyResize(element(message.selector), message.width, message.height);
     case "logical_scroll_state": return pageState?.logicalScroll?.() ?? null;
     case "check_javascript": checkJavaScript(); return true;
     case "find_handles": return findHandles(message);
@@ -458,7 +466,7 @@ async function execute(message) {
       await closeWindow(window);
     }
     handles.clear(); identities = new WeakMap();
-    pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, websocketUrl: message.websocket_url, websocketAuth: message.websocket_auth, websocketPathMode: message.websocket_path_mode, websocketCookie, mediaProfile: message.media_profile, domProfile: message.dom_profile, fetches: 0, activity: 0 };
+    pageState = { mode: message.clock || "real", tracked: message.settling === "tracked", epoch: message.clock_epoch_ms, websocketUrl: message.websocket_url, websocketAuth: message.websocket_auth, websocketPathMode: message.websocket_path_mode, websocketCookie, mediaProfile: message.media_profile, domProfile: message.dom_profile, observerProfile: message.observer_profile, fetches: 0, activity: 0 };
     window = createWindow(prepared.html, message.url || "https://example.test/", message.bridge, prepared.compiled, pageState);
     if (moduleCode) {
       try { window.eval(moduleCode); }
@@ -587,7 +595,7 @@ async function main() {
         checkJavaScript();
         const value = await execute(message);
         // One event-loop checkpoint, not a deterministic timer/network drain.
-        const mutating = ["mount", "click", "fill", "send_keys", "execute_script", "evaluate_script"].includes(message.command) || (message.command === "node_action" && ["click", "set", "select_option", "unselect_option", "send_keys", "attach_files"].includes(message.operation));
+        const mutating = ["mount", "click", "fill", "send_keys", "observer_intersection", "observer_resize", "execute_script", "evaluate_script"].includes(message.command) || (message.command === "node_action" && ["click", "set", "select_option", "unselect_option", "send_keys", "attach_files"].includes(message.operation));
         if (message.settling === "tracked" && mutating) await settle(pageState);
         else await turn();
         checkJavaScript();

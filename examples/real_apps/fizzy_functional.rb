@@ -23,7 +23,7 @@ result = { app: "fizzy", revision: REVISION, group: group, selected: spec,
            test_sha256: test_digest, baseline_mode: "fresh_browser_per_test",
            candidate_mode: "functional_only", candidate_trusted_types_inventory: "not_measured",
            candidate_asset_warnings: "direct-eval", candidate_media_profile: "static-desktop", candidate_dom_profile: "logical",
-           candidate_cable: "real_rails_same_process_async_adapter",
+           candidate_cable: "real_rails_same_process_async_adapter", candidate_observer_profile: "logical-visible",
            phases: {} }
 save = -> { File.write(File.join(output, "result.json"), JSON.pretty_generate(result)) }
 
@@ -90,7 +90,7 @@ begin
         RUBY
         File.binwrite(helper, patched)
         result[:phases][:candidate] = run_phase(output, "candidate", command,
-          env: { "DOMSTRIDE_ASSETS" => "bundle", "DOMSTRIDE_ASSET_WARNINGS" => "direct-eval", "DOMSTRIDE_MEDIA_PROFILE" => "static-desktop", "DOMSTRIDE_DOM_PROFILE" => "logical", "DOMSTRIDE_PERFORMANCE_PROFILE" => "compatible" })
+          env: { "DOMSTRIDE_ASSETS" => "bundle", "DOMSTRIDE_ASSET_WARNINGS" => "direct-eval", "DOMSTRIDE_MEDIA_PROFILE" => "static-desktop", "DOMSTRIDE_DOM_PROFILE" => "logical", "DOMSTRIDE_OBSERVER_PROFILE" => "logical-visible", "DOMSTRIDE_PERFORMANCE_PROFILE" => "compatible" })
         reference = result[:phases][:browser][:test_summary]
         candidate = result[:phases][:candidate]
         result[:status] = if passed?(candidate, spec.fetch(:expected)) &&

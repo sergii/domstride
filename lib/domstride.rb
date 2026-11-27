@@ -29,6 +29,11 @@ module Domstride
       @settings = settings.freeze
       @assets = settings[:assets]
       @asset_warnings = settings[:asset_warnings]
+      @observer_profile = settings[:observer_profile]
+      raise ArgumentError, "Unknown observer profile" unless %w[off manual logical-visible].include?(@observer_profile)
+      if @observer_profile != "off" && (runtime != "node" || !%w[jsdom jsdom31].include?(engine))
+        raise ArgumentError, "Observer profile requires Node/jsdom"
+      end
       @dom_profile = settings[:dom_profile]
       raise ArgumentError, "Unknown DOM profile" unless %w[off logical].include?(@dom_profile)
       if @dom_profile != "off" && (runtime != "node" || !%w[jsdom jsdom31].include?(engine))
@@ -93,9 +98,19 @@ module Domstride
     attr_reader :settings, :recorder
     attr_accessor :recording_step
 
+    # Explicit synthetic observer input, never inferred physical layout.
+    def notify_intersection(selector, intersecting:)
+      raise ArgumentError, "Expected boolean intersection state" unless [true, false].include?(intersecting)
+      dom_command("observer_intersection", selector: selector, intersecting: intersecting)
+    end
+
+    def notify_resize(selector, width:, height:)
+      dom_command("observer_resize", selector: selector, width: width, height: height)
+    end
+
     def mount_html(html, url: "https://example.test/", bridge: false)
       # Only explicitly marked final classic scripts are eligible.
-      clock_options = { clock: @clock, clock_epoch_ms: @clock_epoch_ms, assets: @assets, asset_warnings: @asset_warnings, media_profile: @media_profile, dom_profile: @dom_profile, websocket_url: @websocket_url, websocket_path_mode: @websocket_path_mode, websocket_auth: !@websocket_cookie_names.empty?, websocket_cookie: websocket_cookie_header }
+      clock_options = { clock: @clock, clock_epoch_ms: @clock_epoch_ms, assets: @assets, asset_warnings: @asset_warnings, media_profile: @media_profile, dom_profile: @dom_profile, observer_profile: @observer_profile, websocket_url: @websocket_url, websocket_path_mode: @websocket_path_mode, websocket_auth: !@websocket_cookie_names.empty?, websocket_cookie: websocket_cookie_header }
       match = @bundle_cache != "off" && /<script data-domstride-cache="bundle">([^<]*(?:<(?!\/script\b)[^<]*)*)<\/script>\s*<\/body>\s*<\/html>\s*\z/i.match(html)
       return call("mount", html: html, url: url, bridge: bridge, **clock_options) unless match
 
