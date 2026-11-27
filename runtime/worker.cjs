@@ -8,6 +8,7 @@ const { installStaticMedia } = require("./media.cjs");
 const { installLogicalDOM } = require("./logical_dom.cjs");
 const { installObservers } = require("./observers.cjs");
 let pageState;
+let confirmScope = null;
 const turn = () => new Promise(resolve => setImmediate(resolve));
 const pause = () => new Promise(resolve => setTimeout(resolve, 1));
 let bundleEntry = null;
@@ -148,6 +149,17 @@ function rackRequest(url, method, headers = {}, body = null, redirect = "follow"
     send({ kind: "request", request_id: id, url, method, headers, body, redirect, body_encoding: bodyEncoding });
   });
 }
+// DOM event listeners need the document's own AbortSignal. Adapt only at
+// the Node Request boundary, keeping the DOM constructors untouched.
+function bridgeAbortSignal(win, signal) {
+  if (signal == null || signal instanceof globalThis.AbortSignal) return null;
+  if (!win.AbortSignal || !(signal instanceof win.AbortSignal)) return null;
+  const controller = new globalThis.AbortController();
+  const abort = () => controller.abort(signal.reason);
+  if (signal.aborted) abort();
+  else signal.addEventListener("abort", abort, { once: true });
+  return { signal: controller.signal, cleanup: () => signal.removeEventListener("abort", abort) };
+}
 function installBridge(win, state) {
   forms.installFormData(win);
   win.Headers = globalThis.Headers;
@@ -155,13 +167,18 @@ function installBridge(win, state) {
   win.Response = globalThis.Response;
   win.fetch = async (input, init = {}) => {
     state.fetches += 1; state.activity += 1;
+    let bridgedSignal;
     try {
     const options = { ...init };
+    bridgedSignal = bridgeAbortSignal(win, options.signal);
+    if (bridgedSignal) options.signal = bridgedSignal.signal;
+    options.signal?.throwIfAborted?.();
     if (options.body instanceof win.URLSearchParams) {
       options.body = new URLSearchParams(options.body.toString());
     }
     if (win.FormData && options.body instanceof win.FormData) options.body = await forms.nodeFormData(win, options.body);
     const req = input instanceof Request ? new Request(input, options) : new Request(new URL(typeof input === "string" ? input : input.url || input.href, win.location.href), options);
+    req.signal.throwIfAborted();
     let body = null, encoding = null;
     if (!["GET", "HEAD"].includes(req.method)) {
       if ((req.headers.get("content-type") || "").startsWith("multipart/form-data;")) {
@@ -171,13 +188,20 @@ function installBridge(win, state) {
         encoding = "base64";
       } else body = await req.text();
     }
+    req.signal.throwIfAborted();
     const reply = await rackRequest(req.url, req.method, Object.fromEntries(req.headers), body, req.redirect, encoding);
     if (state.websocketAuth && typeof reply.websocket_cookie === "string") state.websocketCookie = reply.websocket_cookie;
+    // Rack requests already dispatched cannot be rolled back by aborting fetch.
+    // Do not expose their response to an aborted caller.
+    req.signal.throwIfAborted();
     const response = new Response(req.method === "HEAD" || [204, 205, 304].includes(reply.status) ? null : reply.body, { status: reply.status, headers: reply.headers });
     Object.defineProperty(response, "url", { value: reply.url });
     Object.defineProperty(response, "redirected", { value: Boolean(reply.redirected) });
     return response;
-    } finally { state.fetches -= 1; state.activity += 1; }
+    } finally {
+      bridgedSignal?.cleanup();
+      state.fetches -= 1; state.activity += 1;
+    }
   };
   if (!win.IntersectionObserver) win.IntersectionObserver = class {
     observe() {} unobserve() {} disconnect() {}
@@ -188,12 +212,48 @@ function installBridge(win, state) {
   if (!win.cancelAnimationFrame) win.cancelAnimationFrame = id => win.clearTimeout(id);
 }
 
+// A layout-free document is always at the origin. Support the ordinary
+// Turbo scroll-to-top request without claiming viewport or geometry parity.
+function installOriginScroll(win) {
+  const scrollToOrigin = (first, second) => {
+    const options = first !== null && typeof first === "object" ? first : null;
+    const x = Number((options ? options.left : first) ?? 0);
+    const y = Number((options ? options.top : second) ?? 0);
+    const behavior = options?.behavior ?? "auto";
+    if (x !== 0 || y !== 0 || !["auto", "instant"].includes(behavior)) {
+      throw new Error("UNSUPPORTED_SCROLL: jsdom bridge supports immediate scroll to origin only");
+    }
+  };
+  win.scrollTo = scrollToOrigin;
+  win.scroll = scrollToOrigin;
+}
+
+// A scoped decision, not an interactive browser modal. Never auto-accept.
+function installConfirm(win) {
+  win.confirm = value => {
+    const text = value === undefined ? "" : String(value);
+    if (!confirmScope) {
+      reportJavaScript(new Error("UNEXPECTED_CONFIRM: use a scoped Capybara confirm handler"), "window.confirm");
+      return false;
+    }
+    if (confirmScope.result) {
+      reportJavaScript(new Error("UNEXPECTED_CONFIRM: multiple dialogs in one scope"), "window.confirm");
+      return false;
+    }
+    const matched = confirmScope.text === null || text.includes(confirmScope.text);
+    confirmScope.result = { text, matched };
+    return matched && confirmScope.accept;
+  };
+}
+
 function prepareWindow(win, bridge, state) {
   installErrorCapture(win);
+  installConfirm(win);
   if (state.mediaProfile === "static-desktop") installStaticMedia(win);
   if (state.domProfile === "logical") installLogicalDOM(win, state);
   if (bridge) {
     installBridge(win, state);
+    if (engine === "jsdom" || engine === "jsdom31") installOriginScroll(win);
     if (state.websocketUrl && typeof win.WebSocket !== "function") throw new Error("UNSUPPORTED_WEBSOCKET_ENGINE");
     if (typeof win.WebSocket === "function") installWebSocket(win, state);
   }
@@ -444,6 +504,13 @@ function scriptCommand(message) {
 }
 
 async function execute(message) {
+  if (message.command === "confirm_arm") {
+    if (confirmScope) throw new Error("UNSUPPORTED_NESTED_CONFIRM");
+    confirmScope = { accept: message.accept, text: message.text, result: null };
+    return true;
+  }
+  if (message.command === "confirm_result") return confirmScope?.result ?? null;
+  if (message.command === "confirm_clear") { confirmScope = null; return true; }
   if (["execute_script", "evaluate_script"].includes(message.command)) return scriptCommand(message);
   if (message.command === "mount") {
     const prepared = prepareBundle(message);

@@ -14,6 +14,25 @@ class JavaScriptApiTest < Minitest::Test
     end
   end
 
+  def test_jsdom_bridge_supports_scroll_to_origin_without_layout
+    skip "Origin scroll compatibility is specific to jsdom" if ENV["DOMSTRIDE_ENGINE"] == "happy-dom"
+    app = ->(_) { [200, {"content-type" => "text/html"}, [<<~HTML]] }
+      <p id="result">Pending</p>
+      <script>
+        window.scrollTo(0, 0);
+        window.scrollTo({left: 0, top: 0, behavior: "auto"});
+        window.scroll(0, 0);
+        document.querySelector("#result").textContent = window.scrollX + ":" + window.scrollY;
+      </script>
+    HTML
+    Domstride::Session.open(app: app) do |page|
+      page.visit("/")
+      assert_equal "0:0", page.text("#result")
+      assert_equal true, page.evaluate_script('(() => { try { window.scrollTo(0, 100); return false; } catch (e) { return e.message.includes("UNSUPPORTED_SCROLL"); } })()')
+      assert_equal true, page.evaluate_script('(() => { try { window.scrollTo({top: 0, behavior: "smooth"}); return false; } catch (e) { return e.message.includes("UNSUPPORTED_SCROLL"); } })()')
+    end
+  end
+
   def test_capybara_element_arguments
     app = ->(_) { [200, {"content-type" => "text/html"}, ['<input id="field"><p id="result">Initial</p>']] }
     page = Capybara::Session.new(:domstride, app)

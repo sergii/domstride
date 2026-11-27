@@ -80,6 +80,45 @@ module Domstride
         command("send_keys", keys: Node.encode_keys(keys))
       end
 
+      def accept_modal(type, **options, &block)
+        handle_confirm(type, true, **options, &block)
+      end
+
+      def dismiss_modal(type, **options, &block)
+        handle_confirm(type, false, **options, &block)
+      end
+
+      # A decision is armed before the triggering action, since a DOM confirm
+      # call is synchronous and cannot pause for an interactive browser dialog.
+      def handle_confirm(type, accept, text: nil, wait: nil, **options)
+        unless type.to_sym == :confirm && (text.nil? || text.is_a?(String)) && options.empty?
+          raise ::Capybara::NotSupportedByDriverError, "Only confirm dialogs with optional string text are supported"
+        end
+        command("confirm_arm", accept: accept, text: text)
+        begin
+          yield
+          deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + (wait || ::Capybara.default_max_wait_time)
+          loop do
+            result = command("confirm_result")
+            if result
+              raise ::Capybara::ModalNotFound, "Confirmation text did not match" unless result.fetch("matched")
+              return result.fetch("text")
+            end
+            break if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+            sleep 0.01
+          end
+          raise ::Capybara::ModalNotFound, "No confirmation appeared"
+        ensure
+          original_error = $!
+          begin
+            command("confirm_clear")
+          rescue StandardError
+            raise unless original_error
+          end
+        end
+      end
+      private :handle_confirm
+
       def execute_script(script, *args)
         command("execute_script", script: script, arguments: script_arguments(args))
         nil

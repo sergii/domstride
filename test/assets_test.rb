@@ -40,6 +40,40 @@ class AssetsTest < Minitest::Test
     end
   end
 
+  def test_binary_tagged_utf8_html_and_javascript_preserve_unicode
+    app = lambda do |env|
+      case env["PATH_INFO"]
+      when "/"
+        html = '<p id="result">Очікування</p><script src="/classic.js"></script><script type="importmap">{"imports":{"application":"/app.js"}}</script><script type="module">import "application";</script>'
+        [200, {"content-type" => "text/html; charset=utf-8"}, [html.b]]
+      when "/classic.js"
+        [200, {"content-type" => "text/javascript"}, ['window.prefix = "© ";'.b]]
+      when "/app.js"
+        [200, {"content-type" => "application/javascript"}, ['document.querySelector("#result").textContent = window.prefix + "€ Україна 🐾";'.b]]
+      else
+        [404, {}, []]
+      end
+    end
+    open_assets(app) do |page|
+      page.visit("/")
+      assert page.wait_for_text("#result", "© € Україна 🐾")
+    end
+  end
+
+  def test_invalid_utf8_asset_fails_explicitly
+    app = lambda do |env|
+      if env["PATH_INFO"] == "/"
+        [200, {"content-type" => "text/html"}, ['<script type="module" src="/app.js"></script>']]
+      else
+        [200, {"content-type" => "application/javascript"}, ["\xFF".b]]
+      end
+    end
+    open_assets(app) do |page|
+      error = assert_raises(Domstride::Error) { page.visit("/") }
+      assert_match(/Rack response body is not valid UTF-8/, error.message)
+    end
+  end
+
   def test_direct_eval_warning_policy_is_explicit
     app = ->(_) { [200, {"content-type" => "text/html"}, ['<p id="result">Pending</p><script type="module">export function total() { const amount = 25; return eval("amount + 1"); } document.getElementById("result").textContent = String(total());</script>']] }
     open_assets(app, asset_warnings: "strict") do |page|
