@@ -12,7 +12,7 @@ jobs:
   capture:
     if: ${{ (github.event.action != 'labeled' && github.event.action != 'unlabeled' || github.event.label.name == 'ci:full' || github.event.label.name == 'ci:release') && (github.event_name != 'pull_request' || !github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'ci:full') || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -30,12 +30,24 @@ jobs:
         with:
           ruby-version: '3.4.13'
           bundler-cache: true
+      - name: Install video capture system dependencies
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null || ! command -v xvfb-run >/dev/null || ! command -v xauth >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends ffmpeg xvfb xauth
+          fi
       - name: Check runner tools
         run: |
           command -v ffmpeg
           command -v ffprobe
           command -v xvfb-run
-          echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          command -v xauth
+          chrome="$(command -v google-chrome || command -v google-chrome-stable)"
+          test -x "$chrome"
+          "$chrome" --version
+          ffmpeg -version | head -n 1
+          ffprobe -version | head -n 1
+          echo "CHROME_PATH=$chrome" >> "$GITHUB_ENV"
           echo "REPORT_TEST_DIRECTORY=$RUNNER_TEMP/browser-cases" >> "$GITHUB_ENV"
       - name: Capture real headed browser on a dedicated display
         run: |
@@ -46,7 +58,7 @@ jobs:
             test "$status" -eq 1
           '
       - name: Verify video frames and final test statuses
-        run: ruby -Ilib examples/browser_capture/verify.rb "$REPORT_TEST_DIRECTORY"
+        run: bundle exec ruby -Ilib examples/browser_capture/verify.rb "$REPORT_TEST_DIRECTORY"
       - uses: actions/upload-artifact@v4
         with:
           name: browser-video-${{ matrix.driver }}-synthetic
