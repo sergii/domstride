@@ -64,7 +64,9 @@ module Specdrive
           # Recording may begin after the driver was initialized, but never
           # silently replace the active document in the middle of a test.
           raise Specdrive::Error, "Reset the active session before starting recording" if @mounted
+          pending_step = @recording_step
           quit
+          @recording_step = pending_step
         end
         if !@worker
           @worker = Specdrive::Session.new(app: @app, **@settings)
