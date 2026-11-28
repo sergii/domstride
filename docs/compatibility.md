@@ -7,7 +7,7 @@ Maintained subset, not the complete upstream Capybara spec suite. Evidence: BATC
 | CSS/scoped selectors, text/count filters | Contract tested | Contract tested |
 | Visibility (DOM/CSS approximation, not layout) | Contract tested | Contract tested |
 | Text fields, textarea, checkbox/radio | Contract tested | Contract tested |
-| XPath field locators | Contract tested | Unsupported / pending |
+| XPath field locators | Contract tested | Experimental XPath 1.0 adapter; integration verification pending |
 | Async query retry, refresh, reset, stale handles | Contract tested | Contract tested |
 | GET/HEAD/POST/PUT/PATCH/DELETE; JSON and URL-encoded bodies; same-origin redirects | Contract tested | Contract tested |
 | Single/multiple select and basic text keyboard events | Contract tested | Contract tested (driver live option values) |

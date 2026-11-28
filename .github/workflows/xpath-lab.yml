@@ -1,11 +1,5 @@
 name: Specdrive experimental XPath lab
 on:
-  pull_request:
-    paths:
-      - 'examples/xpath_lab/**'
-      - 'examples/locator_compatibility/**'
-      - '.github/workflows/xpath-lab.yml'
-      - 'runtime/**'
   workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

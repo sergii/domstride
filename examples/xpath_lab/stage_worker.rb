@@ -14,14 +14,14 @@ File.symlink(dependencies, File.join(cache, "node_modules"))
 
 worker = File.join(cache, "worker.cjs")
 source = File.read(worker)
-needle = '    if (typeof window.document.evaluate !== "function") throw new Error("UNSUPPORTED_XPATH");'
+needle = '    nodes = require("./happy_xpath.cjs").select(message.query, root);'
 abort "Worker boundary changed" unless source.scan(needle).length == 1
 replacement = <<~JS.chomp
-    if (engine === "happy-dom" && typeof window.document.evaluate !== "function") {
-      require(#{JSON.generate(adapter)})(window);
-    }
+    require(#{JSON.generate(adapter)})(window);
+    const result = window.document.evaluate(message.query, root, null, 7, null);
+    nodes = Array.from({ length: result.snapshotLength }, (_, i) => result.snapshotItem(i));
 JS
-File.write(worker, source.sub(needle, replacement + "\n" + needle))
+File.write(worker, source.sub(needle, replacement))
 File.write(File.join(cache, ".ready"), "ready\n")
 abort "Staged runtime is incomplete" unless Specdrive::Runtime.ready?(cache)
 puts "Experimental worker staged at #{cache}; checkout unchanged"

@@ -5,7 +5,7 @@ Gem::Specification.new do |spec|
   spec.version = Specdrive::VERSION
   spec.authors = ["Specdrive contributors"]
   spec.summary = "Experimental browserless interaction testing for Ruby"
-  spec.homepage = "https://github.com/sergii/domstride"
+  spec.homepage = "https://github.com/sergii/specdrive"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.3"
   spec.files = Dir["lib/**/*", "runtime/**/*", "README.md", "LICENSE", "package.json", "exe/*", "protocol/**/*", "adapters/**/*.cjs"]
