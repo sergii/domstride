@@ -70,6 +70,35 @@ class CapybaraWorkerLifecycleTest < Minitest::Test
     end
   end
 
+  def test_capybara_session_reset_retains_default_worker
+    Capybara.register_driver(:specdrive_lifecycle_contract) do |app|
+      Specdrive::CapybaraAdapter::Driver.new(app, runtime: "node", engine: "jsdom31",
+        clock: "real", assets: "off", websocket_url: nil)
+    end
+    session = Capybara::Session.new(:specdrive_lifecycle_contract, APP)
+    @drivers << session.driver
+    session.visit("/seed")
+    pid = session.driver.worker.worker_pid
+    session.visit("/check")
+    assert session.has_css?("#cookie", text: "present")
+    session.reset!
+    session.visit("/check")
+    assert_equal pid, session.driver.worker.worker_pid
+    assert session.has_css?("#cookie", text: "absent")
+  end
+
+  def test_recording_environment_uses_isolated_worker
+    Dir.mktmpdir do |directory|
+      ENV["SPECDRIVE_RECORD_DIR"] = directory
+      item = driver
+      item.visit("/")
+      refute item.diagnostics.fetch(:worker_reusable)
+      item.reset!
+      refute item.diagnostics.fetch(:worker_started)
+      assert_raises(ArgumentError) { driver(reuse_worker: true) }
+    end
+  end
+
   def test_explicit_false_keeps_process_per_reset
     item = driver(reuse_worker: false)
     item.visit("/")
