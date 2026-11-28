@@ -22,6 +22,8 @@ jobs:
         run: |
           temp="$RUNNER_TEMP/independent-consumer"
           mkdir -p "$temp"
+          ruby viewer/build.rb "$RUNNER_TEMP/independent-viewer"
+          export INDEPENDENT_VIEWER_CLI="$RUNNER_TEMP/independent-viewer/bin/viewer"
           gem build specdrive.gemspec --output "$temp/specdrive.gem"
           export GEM_HOME="$temp/gems" GEM_PATH="$temp/gems"
           gem install "$temp/specdrive.gem" --no-document

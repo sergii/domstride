@@ -4,6 +4,8 @@ on:
     paths:
       - 'lib/**'
       - 'test/**'
+      - 'viewer/**'
+      - 'protocol/**'
       - '.github/workflows/isolated-viewer.yml'
   workflow_dispatch:
 permissions:
@@ -22,20 +24,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Stage only consumer and protocol dependencies
+      - name: Build independent Viewer preview distribution
         run: |
           temp="$RUNNER_TEMP/isolated-viewer"
-          mkdir -p "$temp/lib/domstride"
-          cp -R lib/domstride/consumer "$temp/lib/domstride/"
-          cp lib/domstride/{consumer.rb,namespace.rb,errors.rb,protocol.rb,replay.html} "$temp/lib/domstride/"
-          cp test/isolated_viewer_cli.rb "$temp/cli.rb"
-          cp test/support/isolated_viewer_smoke.rb "$temp/test.rb"
-          cd "$temp"
-          env -u RUBYOPT -u RUBYLIB ruby -Ilib test.rb
+          ruby viewer/build.rb "$temp"
+          test "$("$temp/bin/viewer" --version)" = "$(cat viewer/VERSION)"
+          test ! -e "$temp/lib/domstride.rb"
+          test ! -e "$temp/lib/domstride/report_case.rb"
+          test ! -e "$temp/lib/domstride/documentation/playwright-recorder.cjs"
+          test ! -e "$temp/runtime"
+          ruby -rjson -rdigest -e 'root=ARGV.fetch(0); m=JSON.parse(File.read(File.join(root,"manifest.json"))); m.fetch("files").each { |f| p=File.join(root,f.fetch("file")); abort unless File.size(p)==f.fetch("size_bytes") && Digest::SHA256.file(p).hexdigest==f.fetch("sha256") }' "$temp"
+          cp test/support/isolated_viewer_smoke.rb "$RUNNER_TEMP/viewer-smoke.rb"
+          (cd "$temp"; env -u RUBYOPT -u RUBYLIB ruby -Ilib "$RUNNER_TEMP/viewer-smoke.rb")
+          node test/documentation_package_test.cjs "$temp/bin/viewer"
           echo "ISOLATED_VIEWER_LIB=$temp/lib" >> "$GITHUB_ENV"
-          echo "ISOLATED_VIEWER_CLI=$temp/cli.rb" >> "$GITHUB_ENV"
+          echo "ISOLATED_VIEWER_CLI=$temp/bin/viewer" >> "$GITHUB_ENV"
       - name: Browser contract against isolated consumer
         run: |
           npm install --no-audit --no-fund
           npx playwright install chromium
           node --test test/replay_viewer_test.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: independent-viewer-preview
+          path: ${{ runner.temp }}/isolated-viewer/
+          if-no-files-found: error
