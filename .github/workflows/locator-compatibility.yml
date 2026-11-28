@@ -1,0 +1,56 @@
+name: Specdrive locator compatibility
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, labeled, unlabeled]
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name != 'ci:full' && github.event.label.name != 'ci:release' && format('-ignored-{0}', github.run_id) || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions:
+  contents: read
+jobs:
+  locators:
+    if: ${{ (github.event.action != 'labeled' && github.event.action != 'unlabeled' || github.event.label.name == 'ci:full' || github.event.label.name == 'ci:release') && (github.event_name != 'pull_request' || github.head_ref == 'feature/locator-compatibility' || !github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'ci:full') || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
+    name: locators (${{ matrix.engine }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [jsdom, jsdom31, happy-dom, selenium, cuprite]
+    env:
+      BUNDLE_GEMFILE: examples/locator_compatibility/Gemfile
+      LOCATOR_ENGINE: ${{ matrix.engine }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.13'
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        if: matrix.engine != 'selenium' && matrix.engine != 'cuprite'
+        with:
+          node-version: '22.23.5'
+      - if: matrix.engine != 'selenium' && matrix.engine != 'cuprite'
+        run: npm install --no-audit --no-fund
+      - name: Locate Chrome
+        if: matrix.engine == 'selenium' || matrix.engine == 'cuprite'
+        run: |
+          chrome="$(command -v google-chrome || command -v google-chrome-stable)"
+          test -x "$chrome"
+          "$chrome" --version
+          echo "CHROME_PATH=$chrome" >> "$GITHUB_ENV"
+      - name: Run shared locator contract
+        run: |
+          mkdir -p locator-results
+          set -o pipefail
+          bundle exec rspec -Ilib examples/locator_compatibility/locator_spec.rb --format documentation --format json --out locator-results/rspec.json | tee locator-results/contract.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: locator-compatibility-${{ matrix.engine }}
+          path: locator-results/
+          if-no-files-found: warn
+          retention-days: 7

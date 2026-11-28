@@ -1,0 +1,66 @@
+name: Specdrive experimental XPath lab
+on:
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  live-dom:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        candidate: [wgxpath, xpath]
+    name: live-dom (${{ matrix.candidate }})
+    env:
+      XPATH_LAB_CANDIDATE: ${{ matrix.candidate }}
+      BUNDLE_GEMFILE: examples/locator_compatibility/Gemfile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.13'
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - name: Install checkout and isolated candidate dependencies
+        run: |
+          npm install --no-audit --no-fund
+          npm install --prefix examples/xpath_lab --ignore-scripts --no-audit --no-fund
+          mkdir -p xpath-lab-results
+          npm ls --prefix examples/xpath_lab --all --json > xpath-lab-results/dependencies.json
+          cp examples/xpath_lab/package-lock.json xpath-lab-results/
+      - name: Direct live DOM contract and query microbenchmark
+        id: probe
+        run: |
+          set -o pipefail
+          node examples/xpath_lab/probe.cjs | tee xpath-lab-results/probe.json
+      - name: Stage isolated experimental worker
+        if: always() && steps.probe.outcome != 'skipped'
+        id: stage
+        run: |
+          home="$(mktemp -d "$RUNNER_TEMP/specdrive-xpath-lab.XXXXXX")"
+          echo "SPECDRIVE_RUNTIME_HOME=$home" >> "$GITHUB_ENV"
+          SPECDRIVE_RUNTIME_HOME="$home" bundle exec ruby -Ilib examples/xpath_lab/stage_worker.rb
+      - name: Run unchanged locator contract with experimental XPath
+        if: always() && steps.stage.outcome == 'success'
+        env:
+          LOCATOR_ENGINE: happy-dom
+          XPATH_LAB_TRACE: "1"
+        run: |
+          set -o pipefail
+          bundle exec rspec -Ilib examples/locator_compatibility/locator_spec.rb --format documentation --format json --out xpath-lab-results/rspec.json 2>&1 | tee xpath-lab-results/rspec.log
+      - name: Upload experiment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: happy-dom-xpath-lab-${{ matrix.candidate }}
+          path: xpath-lab-results/
+          if-no-files-found: warn
+          retention-days: 7

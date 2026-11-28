@@ -108,8 +108,7 @@ RSpec.describe "Domstride Capybara compatibility contract" do
     expect { page.find(:css, "#replace").click(x: 1, y: 1) }.to raise_error(Capybara::NotSupportedByDriverError)
   end
 
-  it "supports standard Capybara XPath form locators on jsdom" do
-    skip "Happy DOM XPath not established" if page.driver.worker.settings[:engine] == "happy-dom"
+  it "supports standard Capybara XPath form locators" do
     page.fill_in("Name", with: "Ada")
     page.check("Accept")
     page.choose("Premium")
