@@ -46,6 +46,8 @@ jobs:
             root=ARGV.fetch(0); m=JSON.parse(File.read(File.join(root,"manifest.json"))); m.fetch("files").each { |f| p=File.join(root,f.fetch("file")); abort unless File.size(p)==f.fetch("size_bytes") && Digest::SHA256.file(p).hexdigest==f.fetch("sha256") }
             puts JSON.pretty_generate(version:m.fetch("version"),files:m.fetch("files").length,payload_bytes:m.fetch("files").sum { |f| f.fetch("size_bytes") })
           ' "$out/viewer" > "$out/viewer-inventory.json"
+      - name: Validate lockfile migration fixtures
+        run: ruby scripts/test_normalize_preview_lock.rb
       - name: Prepare comparable base and candidate
         if: github.event_name == 'pull_request' || inputs.base_sha != ''
         env:

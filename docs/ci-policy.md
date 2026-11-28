@@ -19,3 +19,5 @@ Resolve baseline Ruby and npm dependencies once on the same runner. Normalize on
 ## Transition
 
 PR #20 has ci:release, so it retains all release and integration checks even while draft. Audit run 46092313336 failed at comparison of independently resolved lockfiles (byte 7126, line 286); no engine regression was established. The new policy and corrected audit need CI verification.
+
+Audit 46092871140 passed package inspection but Bundler 4 rejected the missing renamed CHECKSUMS entry in frozen mode. The normalization now renames the digest-free local checksum entry and keeps all external checksums unchanged, with fixtures for old/new names, legacy lockfiles and unexpected local digests. Frozen installation remains mandatory; A/B still pending.
