@@ -1,0 +1,37 @@
+# Batch 013.1 - Herb static inventory experiment
+
+Independent research branch based on main 04b6515; does not modify PR #27 or its running A/B audit. Herb 0.11.2 is the first pinned candidate (upstream release https://github.com/marcoroth/herb/releases/tag/v0.11.2). Verify installation availability, gem metadata, licensing and actual parser behavior in CI; no production dependency approval. Documentation: https://herb-tools.dev/bindings/parsing and https://herb-tools.dev/bindings/tree.
+
+The isolated Gemfile and synthetic Petstore ERB templates test static literal element discovery, conditional controls, partial inventory, helper transformation with action_view_helpers on/off and a JS-generated control that is not static HTML. The scanner never renders templates or runs embedded Ruby or JavaScript. Source coordinates use Herb locations; IDs are source-location-derived within the scanned revision, not permanent business IDs. Static candidates are not rendered or exercised controls. No coverage denominator or source-to-runtime mapping yet. The verifier checks exact literal counts, helper link discovery, source positions and parser diagnostics. Five batches of 100 parses per file/mode are descriptive parser measurements. Ruby 3.3/3.4/4.0 tested by CI; Rails runtime compatibility not established by this standalone lab.
+
+## Important upstream finding
+
+Herb exposes SourceAttributionVisitor (https://herb-tools.dev/projects/engine/visitors/source-attribution), which can stamp rendered elements with template source coordinates using data-herb-source. Repeated partial instances can share one source location; source identity is not runtime instance identity. Consider it only for explicit test/development instrumentation; never enable it in normal execution, production HTML or Fast Mode by default. Evaluate actual Rails integration, helper and partial semantics, path disclosure, attribute collisions and snapshot exposure before adoption. Prefer this upstream mechanism over writing a custom compiler solely for provenance. Existing Batch 014.2 records presence flags, not locator values or source paths, so it cannot provide this mapping by itself.
+
+Next: validate lab results; assess literal/dynamic attribute extraction and unresolved helper/branch evidence; prototype test-only source attribution on a rendered Rails fixture; preserve ambiguity and unmatched elements, distinguish rendering/interaction/assertion evidence. Do not imply total UI coverage. No gem/runtime/Viewer changes in this phase.
+
+## 013.2 first mapping probe
+
+Static inventory passed on Ruby 3.4.13 in run 46099866654 (job 140839634375); other versions were not complete at observation. Upstream API verified from https://herb-tools.dev/projects/engine/visitors/source-attribution and https://herb-tools.dev/projects/engine; exact installed implementation still needs CI validation.
+
+Separate runtime-only lab Gemfile uses the local Specdrive gem and Herb. Render only checked-in synthetic templates with the documented SourceAttributionVisitor, using a minimal synthetic renderer, not Rails Action View. Mount the generated HTML in jsdom31, add a dynamic unstamped button and an unknown stamp, click the second of two repeated partial instances, assert the visible result and correlate the existing recording's before target_path to observed element paths. Compare source stamps against the AST inventory; source candidate and runtime instance are separate identities. Report conditional candidate absence as not observed in this snapshot, not proof it can never render. No raw HTML recording, no general source-path trust, no production changes, no real Rails handler integration yet. All checks pending the new workflow. 
+
+### Ruby 4 dependency correction
+
+[Job 140840474566](https://github.com/sergii/specdrive/actions/runs/46100137588/job/140840474566) failed before parsing on Ruby 4.0.10: benchmark is not available inside the isolated bundle. Declare benchmark ~> 0.4 only in the static lab Gemfile. This is a dependency packaging correction, not evidence of a Herb parser failure. Other jobs remain unverified. No changes to production dependencies or assertions.
+
+### Source mapping first runtime result
+
+[Run 46100365460](https://github.com/sergii/specdrive/actions/runs/46100365460) verified static inventory on Ruby 3.3.14, 3.4.13 and 4.0.10. The source-mapping job reached the Specdrive evaluation call, but failed with SyntaxError: Unexpected token 'return'. Native Session.evaluate_script evaluates an expression; remove the top-level return from this probe only. All mapping expectations remain unchanged. Reaching this point is not proof that any source stamp or interaction mapping is correct.
+
+### Partial composition diagnostic
+
+[Run 46100620856](https://github.com/sergii/specdrive/actions/runs/46100620856) static inventory passed on all three Ruby versions. The source-mapping probe passed expression evaluation but failed the exact two repeated partial buttons expectation. Hypothesis: the standalone engine's escaping mode differs from the intended Rails-style escaped/raw output behavior. Explicitly select escape: true, retaining the existing raw partial output tag. Add an independent synthetic rendered-markup precondition before mounting and include actual count in the DOM failure. No assertion weakened and no production changes. The hypothesis remains unverified until CI completes. Engine option documentation: https://herb-tools.dev/projects/engine.
+
+## 013.2 verified mapping
+
+[Run 46101001696](https://github.com/sergii/specdrive/actions/runs/46101001696) passed all four Herb jobs at a1c1298. The standalone renderer with escape:true produced two repeated partial instances mapped to pets/_card.html.erb:2:3, exactly one clicked and the visible result asserted. Archive disabled: 2/3 static button candidates observed, 1/3 interacted, 1/3 matched instances clicked (1/5 of all observed). Archive enabled: 3/3 observed, 1/3 interacted, 1/4 matched instances clicked (1/6 of all observed). Each run has two unmatched nodes. No actual Rails handler or real ambiguous stamp proof.
+
+## 013.3 offline interaction evidence report
+
+Tracking #29. Add research-only coverage.rb and coverage_test.rb. Consume the existing trusted synthetic mapping v1 with source_revision (local-unversioned when not set by CI). Produce separate per-run source rendering, source interaction, matched-instance interaction and all-observed-instance interaction metrics, explicit unmatched counts and null assertion coverage; zero denominators yield null. Validate unique snapshot paths, candidate references, mapping statuses and duplicate IDs. Do not combine across snapshots/runs or conflate ambiguous evidence with confirmed source matches. Offline escaped HTML with no scripts or external resources; JSON/HTML files created exclusively with mode 0600. CI uploads only synthetic reports. Tests use real mapping output plus artificial ambiguous/unknown/zero-denominator and invalid input cases. The mapping producer still captures only successful clicks at a single pre-action checkpoint. Actual ambiguous source mapping, failed actions, DOM replacement and Rails Action View integration remain separate milestones. No production dependency or Fast Mode changes. CI pending.
