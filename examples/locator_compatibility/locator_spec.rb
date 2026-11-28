@@ -162,4 +162,44 @@ RSpec.describe "Locator compatibility (#{target})" do
     page.fill_in("adoption-name", with: "Fresh", exact: true)
     expect(page.find(:css, "#localized").value).to eq("Fresh")
   end
+
+  context "CSS-only contract" do
+    it "fills an explicit test-ID attribute selector independently of XPath" do
+      page.find(:css, '[data-testid="adoption-name"]', match: :one).set("Milo")
+      expect(page.find(:css, "#localized").value).to eq("Milo")
+    end
+
+    it "clicks an explicit ARIA attribute selector independently of XPath" do
+      page.find(:css, 'button[aria-label="Remove pet"]', match: :one).click
+      expect(page.find(:css, "#result").text).to eq("Removed")
+    end
+
+    it "detects ambiguous CSS targets and preserves scope" do
+      selector = '[data-testid="duplicate-name"]'
+      expect { page.find(:css, selector, match: :one, wait: 0) }.to raise_error(Capybara::Ambiguous)
+      page.find(:css, "#second").find(:css, selector, match: :one).set("Luna")
+      expect(page.find(:css, "#first-name").value).to eq("")
+      expect(page.find(:css, "#second-name").value).to eq("Luna")
+    end
+
+    it "queries hidden and disabled CSS targets explicitly" do
+      selector = '[data-testid="hidden-name-target"]'
+      expect { page.find(:css, selector, visible: :visible, wait: 0) }.to raise_error(Capybara::ElementNotFound)
+      expect(page.find(:css, selector, visible: :all)["id"]).to eq("hidden-name")
+      expect(page.find(:css, '[data-testid="disabled-name-target"]')).to be_disabled
+    end
+
+    it "re-resolves stable CSS targets after localization and dynamic changes" do
+      selector = '[data-testid="adoption-name"]'
+      page.find(:css, "#translate").click
+      expect(page.find(:css, 'label[for="localized"]').text).to eq("Nom")
+      page.find(:css, selector).set("Milo")
+      expect(page.find(:css, selector).value).to eq("Milo")
+      page.find(:css, "#replace").click
+      expect(page.find(:css, selector).value).to eq("replaced")
+      page.find(:css, "#add").click
+      page.find(:css, '[data-testid="new-name"]').set("Luna")
+      expect(page.find(:css, "#dynamic-name").value).to eq("Luna")
+    end
+  end
 end
