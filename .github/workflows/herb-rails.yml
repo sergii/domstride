@@ -1,0 +1,46 @@
+name: Specdrive Herb Rails Action View research
+on:
+  pull_request:
+    paths:
+      - 'examples/herb_lab/rails/**'
+      - '.github/workflows/herb-rails.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  rails-attribution:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      BUNDLE_GEMFILE: examples/herb_lab/rails/Gemfile
+      RAILS_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - run: npm install --no-audit --no-fund
+      - name: Test attribution enabled and disabled in fresh Rails processes
+        run: |
+          mkdir -p herb-rails-results
+          for enabled in 0 1; do
+            HERB_SOURCE_ATTRIBUTION="$enabled" bundle exec ruby examples/herb_lab/rails/verify.rb > "herb-rails-results/attribution-$enabled.json"
+            cat "herb-rails-results/attribution-$enabled.json"
+          done
+          cp examples/herb_lab/rails/Gemfile.lock herb-rails-results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: herb-rails-attribution
+          path: herb-rails-results/
+          if-no-files-found: warn
+          retention-days: 7
