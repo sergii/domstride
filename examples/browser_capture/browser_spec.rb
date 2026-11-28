@@ -30,7 +30,7 @@ RSpec.describe "real browser video" do
   let(:app) do
     ->(_) { [200, {"content-type"=>"text/html"}, [<<~HTML]] }
       <html><body style="background:#e8f5e9;font:24px sans-serif">
-      <h1>Expense</h1><input id="amount" aria-label="Amount">
+      <h1>Expense</h1><label for="amount">Amount</label><input id="amount" name="amount" type="text">
       <button onclick="document.querySelector('h1').textContent='Saved'">Save</button>
       </body></html>
     HTML

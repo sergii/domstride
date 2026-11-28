@@ -51,10 +51,11 @@ jobs:
           echo "REPORT_TEST_DIRECTORY=$RUNNER_TEMP/browser-cases" >> "$GITHUB_ENV"
       - name: Capture real headed browser on a dedicated display
         run: |
+          mkdir -p "$REPORT_TEST_DIRECTORY"
           xvfb-run -a -s '-screen 0 800x600x24 -nolisten tcp' bash -c '
             export DOMSTRIDE_VIDEO_DISPLAY="$DISPLAY"
             status=0
-            bundle exec rspec -Ilib examples/browser_capture/browser_spec.rb || status=$?
+            bundle exec rspec -Ilib examples/browser_capture/browser_spec.rb --format progress --format json --out "$REPORT_TEST_DIRECTORY/rspec.json" || status=$?
             test "$status" -eq 1
           '
       - name: Verify video frames and final test statuses
@@ -64,3 +65,12 @@ jobs:
           name: browser-video-${{ matrix.driver }}-synthetic
           path: ${{ runner.temp }}/browser-cases/report.html
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-video-${{ matrix.driver }}-synthetic-diagnostics
+          path: |
+            ${{ runner.temp }}/browser-cases/rspec.json
+            ${{ runner.temp }}/browser-cases/domstride-case-*/case.json
+          if-no-files-found: ignore
+          retention-days: 7
