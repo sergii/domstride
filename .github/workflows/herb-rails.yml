@@ -33,9 +33,11 @@ jobs:
         run: |
           mkdir -p herb-rails-results
           for enabled in 0 1; do
-            HERB_SOURCE_ATTRIBUTION="$enabled" bundle exec ruby examples/herb_lab/rails/verify.rb > "herb-rails-results/attribution-$enabled.json"
+            HERB_SOURCE_ATTRIBUTION="$enabled" bundle exec ruby examples/herb_lab/rails/verify.rb herb-rails-results > "herb-rails-results/attribution-$enabled.json"
             cat "herb-rails-results/attribution-$enabled.json"
           done
+          test -s herb-rails-results/coverage.json
+          test -s herb-rails-results/coverage.html
           cp examples/herb_lab/rails/Gemfile.lock herb-rails-results/
       - uses: actions/upload-artifact@v4
         if: always()

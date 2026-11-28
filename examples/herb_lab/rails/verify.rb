@@ -3,6 +3,7 @@ require_relative "../inventory_visitor"
 require "specdrive"
 require "rack/mock"
 require "tmpdir"
+require_relative "../coverage"
 
 enabled = ENV.fetch("HERB_SOURCE_ATTRIBUTION", "1") == "1"
 root = Rails.root.join("app/views")
@@ -16,6 +17,7 @@ end
 index = candidates.to_h { |c| ["#{c[:file]}:#{c[:source][:start][0]}:#{c[:source][:start][1] + 1}", c] }
 raise "Expected three distinct source candidates" unless index.size == 3
 
+mapping_runs = []
 reports = [false, true].map do |archive|
   Dir.mktmpdir("herb-rails-") do |dir|
     path = nil
@@ -57,6 +59,15 @@ reports = [false, true].map do |archive|
       raise "Unexpected source stamps with attribution disabled" unless nodes.all? { |node| node["source"].nil? }
       raise "Unexpected source stamps in response" if response.body.include?("data-herb-source")
     end
+    if enabled
+      mapping_runs << {
+        archive_enabled: archive, candidates: candidates,
+        nodes: nodes.map do |node|
+          {path: node.fetch("path"), candidate_ids: [index.fetch(node.fetch("source")).fetch(:candidate_id)],
+           status: "source_matched", clicked: clicked.include?(node)}
+        end
+      }
+    end
     {archive_enabled: archive, observed_buttons: nodes.size, distinct_stamps: nodes.map { |node| node["source"] }.compact.uniq.size,
       clicked_source: clicked.first["source"], clicked_instances: clicked.size}
   end
@@ -65,3 +76,25 @@ puts JSON.pretty_generate(format: "specdrive.research.rails-source-attribution",
   rails: Rails.version, herb: Gem.loaded_specs.fetch("herb").version.to_s,
   reactionview: Gem.loaded_specs.fetch("reactionview").version.to_s,
   attribution_enabled: enabled, runs: reports)
+
+# Disabled attribution is a control run, not evidence of zero source coverage.
+if enabled && ARGV[0]
+  directory = ARGV.fetch(0)
+  raise "Expected existing output directory" unless File.directory?(directory)
+  mapping = JSON.parse(JSON.generate(format: "specdrive.research.source-mapping", version: 1,
+    source_revision: ENV.fetch("GITHUB_SHA", "local-unversioned"), runs: mapping_runs))
+  coverage = UICoverage.aggregate(mapping)
+  coverage["scope"] = "Synthetic Rails Action View button candidates; one pre-action checkpoint per run"
+  coverage["runs"].each_with_index do |run,i|
+    raise "Rails source coverage mismatch" unless run["source_rendering"] == UICoverage.ratio(2+i,3)
+    raise "Rails interaction coverage mismatch" unless run["source_interaction"] == UICoverage.ratio(1,3)
+    raise "Rails runtime coverage mismatch" unless run["matched_instance_interaction"] == UICoverage.ratio(1,3+i) &&
+      run["all_observed_instance_interaction"] == UICoverage.ratio(1,3+i)
+    raise "Unexpected unmatched nodes" unless run["mapping_counts"].values_at("unstamped","unresolved_stamp","ambiguous") == [0,0,0]
+  end
+  {"rails-mapping.json"=>JSON.pretty_generate(mapping), "coverage.json"=>JSON.pretty_generate(coverage),
+   "coverage.html"=>UICoverage.render(coverage)}.each do |name, content|
+    File.open(File.join(directory,name), File::WRONLY | File::CREAT | File::EXCL, 0o600) { |file| file.write(content) }
+  end
+  warn "Rails coverage export contract passed"
+end
