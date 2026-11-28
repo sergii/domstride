@@ -38,6 +38,9 @@ jobs:
           done
           test -s herb-rails-results/coverage.json
           test -s herb-rails-results/coverage.html
+          ruby viewer/build.rb "$RUNNER_TEMP/herb-coverage-viewer"
+          bundle exec ruby examples/herb_lab/rails/replay_bundle_test.rb herb-rails-results/rails-mapping.json "$RUNNER_TEMP/herb-coverage-viewer/bin/viewer"
+          "$RUNNER_TEMP/herb-coverage-viewer/bin/viewer" coverage-bundle herb-rails-results/rails-mapping.json herb-rails-results/replay-bundle
           cp examples/herb_lab/rails/Gemfile.lock herb-rails-results/
       - uses: actions/upload-artifact@v4
         if: always()
