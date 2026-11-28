@@ -3,7 +3,18 @@ require "domstride"
 
 class StimulusAssetsTest < Minitest::Test
   def test_real_stimulus_with_computed_controller_imports
-    skip "Asset bundler requires Node and jsdom" if ENV["DOMSTRIDE_RUNTIME"] == "bun" || ENV["DOMSTRIDE_ENGINE"] == "happy-dom"
+    skip "Asset bundler requires Node" if ENV["DOMSTRIDE_RUNTIME"] == "bun" || ENV["DOMSTRIDE_ENGINE"] == "happy-dom"
+    exercise_stimulus
+  end
+
+  def test_happy_dom_real_stimulus_with_computed_controller_imports
+    skip "Experimental asset bridge requires Node" if ENV["DOMSTRIDE_RUNTIME"] == "bun"
+    exercise_stimulus(engine: "happy-dom", runtime: "node")
+  end
+
+  private
+
+  def exercise_stimulus(**options)
     root = File.expand_path("..", __dir__)
     stimulus = File.read(File.join(root, "node_modules/@hotwired/stimulus/dist/stimulus.js"))
     app = lambda do |env|
@@ -45,7 +56,7 @@ class StimulusAssetsTest < Minitest::Test
       else [404, {}, []]
       end
     end
-    Domstride::Session.open(app: app, assets: "bundle", bundle_cache: "off") do |page|
+    Domstride::Session.open(app: app, assets: "bundle", bundle_cache: "off", **options) do |page|
       page.visit("/")
       assert page.wait_for_text('[data-ready="true"] #count', "0")
       page.click("#increment")
