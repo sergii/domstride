@@ -45,3 +45,7 @@ Use Specdrive as a single-word product name and canonical Ruby module, consisten
 ## Phase 4 implementation candidate
 
 Build a name-neutral independent local Viewer preview via ruby viewer/build.rb NEW_DIRECTORY. Separate viewer/VERSION (0.0.1) and protocol/compatibility-v1.json; existing wire schemas stay at v1. Explicit allowlist, SHA-256 inventory and standalone bin/viewer support offline report/replay plus trusted synthetic Markdown/MDX export. No session/runtime, Capybara, Cucumber recorder/normalizer, or producer hooks in the distribution. No duplicated renderer or exporter. CI uploads the package and tests it in isolation, including existing browser contract and negative docs fixture. Real Cucumber/Chromium integration uses installed gem for producing artifacts and the independent Viewer for docs and replay, comparing report payload with legacy CLI. No final Viewer name, public npm/gem release, protocol v2 or redaction. Full combined CI pending. On 99ee2c8 isolated Viewer, installed consumer and independent Studio protocol passed; other checks still running at review.
+
+## Phase 5: developer preview readiness candidate
+
+See [release readiness audit](specdrive-preview-readiness.md). Added same-runner A/B and package inventory CI without publishing. Final checks and maintainer release gates remain open.

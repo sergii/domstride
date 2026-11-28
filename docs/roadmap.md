@@ -59,3 +59,5 @@ See [MVP consolidation review](mvp-consolidation.md) and [Petstore performance e
 ## Specdrive Product Separation & Rebranding
 
 See [product separation and migration](product-separation.md). Phase 1 introduces compatible public names; independent Viewer extraction, package rename and release are separate review gates.
+
+Developer preview preparation: [Specdrive readiness audit](specdrive-preview-readiness.md). Final CI, package inspection, controlled A/B and release approvals are still open.

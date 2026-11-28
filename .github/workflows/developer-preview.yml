@@ -1,0 +1,88 @@
+name: Specdrive developer preview audit
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'runtime/**'
+      - 'exe/**'
+      - 'viewer/**'
+      - 'protocol/**'
+      - 'specdrive.gemspec'
+      - 'scripts/release_benchmark_summary.rb'
+      - '.github/workflows/developer-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - name: Build local release candidates and inspect file inventory
+        run: |
+          mkdir -p "$RUNNER_TEMP/preview-audit"
+          out="$RUNNER_TEMP/preview-audit"
+          gem build specdrive.gemspec --output "$out/specdrive.gem"
+          ruby viewer/build.rb "$out/viewer"
+          ruby -rrubygems/package -rjson -rdigest -e '
+            file=ARGV.fetch(0); pkg=Gem::Package.new(file); spec=pkg.spec
+            abort "Incorrect gem" unless spec.name=="specdrive" && spec.executables.sort==%w[domstride specdrive]
+            paths=pkg.contents.sort
+            abort "Unexpected file" unless paths.all? { |p| p.match?(%r{\A(?:lib/|runtime/|exe/|protocol/|adapters/|README\.md\z|LICENSE\z|package\.json\z)}) && !p.match?(%r{(?:\A|/)(?:\.env(?:\.|\z)|node_modules(?:/|\z)|artifacts(?:/|\z))}) }
+            puts JSON.pretty_generate(name:spec.name,version:spec.version,size_bytes:File.size(file),sha256:Digest::SHA256.file(file).hexdigest,files:paths)
+          ' "$out/specdrive.gem" > "$out/gem-inventory.json"
+          ruby -rjson -rdigest -e '
+            root=ARGV.fetch(0); m=JSON.parse(File.read(File.join(root,"manifest.json"))); m.fetch("files").each { |f| p=File.join(root,f.fetch("file")); abort unless File.size(p)==f.fetch("size_bytes") && Digest::SHA256.file(p).hexdigest==f.fetch("sha256") }
+            puts JSON.pretty_generate(version:m.fetch("version"),files:m.fetch("files").length,payload_bytes:m.fetch("files").sum { |f| f.fetch("size_bytes") })
+          ' "$out/viewer" > "$out/viewer-inventory.json"
+      - name: Prepare comparable base and candidate
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          out="$RUNNER_TEMP/preview-audit"
+          git worktree add --detach "$RUNNER_TEMP/preview-base" "$BASE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/preview-head" "$HEAD_SHA"
+          base="$RUNNER_TEMP/preview-base"
+          head="$RUNNER_TEMP/preview-head"
+          cmp "$base/package.json" "$head/package.json"
+          (cd "$base"; bundle install; npm install --no-audit --no-fund; npm run build:reference)
+          cp "$base/package-lock.json" "$head/package-lock.json"
+          (cd "$head"; bundle install; npm ci --no-audit --no-fund; npm run build:reference)
+          # Reject dependency drift except the intentional root gem rename.
+          sed 's/\bdomstride\b/specdrive/g' "$base/Gemfile.lock" > "$out/base-normalized.lock"
+          cmp "$out/base-normalized.lock" "$head/Gemfile.lock"
+          cmp "$base/examples/rails_reference/capybara_benchmark.rb" "$head/examples/rails_reference/capybara_benchmark.rb"
+          cmp "$base/examples/rails_reference/application.bundle.js" "$head/examples/rails_reference/application.bundle.js"
+          { echo "base=$BASE_SHA"; echo "head=$HEAD_SHA"; ruby -v; node -v; lscpu; } > "$out/environment.txt"
+          cp "$head/Gemfile.lock" "$head/package-lock.json" "$out/"
+      - name: Same-runner alternating Capybara benchmark
+        if: github.event_name == 'pull_request'
+        run: |
+          out="$RUNNER_TEMP/preview-audit"
+          for engine in jsdom jsdom31; do
+            for round in 1 2 3 4; do
+              if (( round % 2 )); then order="base head"; else order="head base"; fi
+              for variant in $order; do
+                (cd "$RUNNER_TEMP/preview-$variant"; RUBY_YJIT_ENABLE=0 CAPYBARA_DRIVER=domstride DOMSTRIDE_ENGINE="$engine" ITERATIONS=10 REPEATS=5 bundle exec ruby examples/rails_reference/capybara_benchmark.rb) > "$out/$engine-$round-$variant.json"
+              done
+            done
+          done
+          ruby scripts/release_benchmark_summary.rb "$out" | tee "$out/benchmark-summary.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: developer-preview-audit
+          path: ${{ runner.temp }}/preview-audit/
+          if-no-files-found: error
