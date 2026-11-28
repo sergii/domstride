@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Library demo</title>
+<main><h1>Library catalog</h1><h2>Example book</h2><p role="status">Available</p><button type="button">Borrow book</button></main>
+<script>
+document.querySelector('button').addEventListener('click',event=>{
+ document.querySelector('[role=status]').textContent='Borrowed';
+ event.currentTarget.disabled=true;
+});
+</script></html>

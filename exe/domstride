@@ -35,12 +35,16 @@ begin
     require "domstride/replay"
     abort "Usage: domstride replay RECORDING_DIRECTORY [OUTPUT_HTML]" unless (1..2).cover?(ARGV.size)
     puts Domstride::Replay.export(ARGV[0], output: ARGV[1])
+  when "docs"
+    abort "Usage: domstride docs export --synthetic-reference RUN_DIRECTORY" unless ARGV.length == 3 && ARGV.shift == "export" && ARGV.shift == "--synthetic-reference"
+    script = File.expand_path("../lib/domstride/documentation/export-docs.cjs", __dir__)
+    raise Domstride::Error, "Documentation export failed (Node.js required)" unless system("node", script, "--synthetic-reference", ARGV.fetch(0))
   when "report"
     require "domstride/report"
     abort "Usage: domstride report CASE_DIRECTORY [OUTPUT_HTML]" unless (1..2).cover?(ARGV.size)
     puts Domstride::Report.export(ARGV[0], output: ARGV[1])
   else
-    abort "Usage: domstride setup | doctor [--json] | replay RECORDING_DIRECTORY [OUTPUT_HTML] | report CASE_DIRECTORY [OUTPUT_HTML]"
+    abort "Usage: domstride setup | doctor [--json] | replay RECORDING_DIRECTORY [OUTPUT_HTML] | report CASE_DIRECTORY [OUTPUT_HTML] | docs export --synthetic-reference RUN_DIRECTORY"
   end
 rescue Domstride::Error, SystemCallError, ArgumentError => e
   abort "Domstride: #{e.message}"

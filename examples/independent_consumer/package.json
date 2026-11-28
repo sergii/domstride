@@ -1,0 +1,8 @@
+{
+  "name": "domstride-independent-consumer",
+  "private": true,
+  "devDependencies": {
+    "@cucumber/cucumber": "12.2.0",
+    "@playwright/test": "1.59.0"
+  }
+}
