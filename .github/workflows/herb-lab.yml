@@ -43,3 +43,34 @@ jobs:
           path: herb-lab-results/
           if-no-files-found: warn
           retention-days: 7
+
+  source-mapping:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      BUNDLE_GEMFILE: examples/herb_lab/runtime/Gemfile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - run: npm install --no-audit --no-fund
+      - name: Verify source-to-runtime mapping and recorded target
+        run: |
+          mkdir -p herb-mapping-results
+          bundle exec ruby examples/herb_lab/source_mapping.rb > herb-mapping-results/mapping.json
+          cat herb-mapping-results/mapping.json
+          cp examples/herb_lab/runtime/Gemfile.lock herb-mapping-results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: herb-source-mapping
+          path: herb-mapping-results/
+          if-no-files-found: warn
+          retention-days: 7
