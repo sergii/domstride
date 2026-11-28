@@ -51,7 +51,7 @@ reports = [false, true].map do |archive|
         document.querySelector("#dynamic").append(fake);
       JS
       observed = page.evaluate_script(<<~JS)
-        return Array.from(document.querySelectorAll("button"), node => {
+        Array.from(document.querySelectorAll("button"), node => {
           const path = [];
           let current = node;
           while (current !== document.documentElement) {

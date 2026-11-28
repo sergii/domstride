@@ -19,3 +19,7 @@ Separate runtime-only lab Gemfile uses the local Specdrive gem and Herb. Render 
 ### Ruby 4 dependency correction
 
 [Job 140840474566](https://github.com/sergii/specdrive/actions/runs/46100137588/job/140840474566) failed before parsing on Ruby 4.0.10: benchmark is not available inside the isolated bundle. Declare benchmark ~> 0.4 only in the static lab Gemfile. This is a dependency packaging correction, not evidence of a Herb parser failure. Other jobs remain unverified. No changes to production dependencies or assertions.
+
+### Source mapping first runtime result
+
+[Run 46100365460](https://github.com/sergii/specdrive/actions/runs/46100365460) verified static inventory on Ruby 3.3.14, 3.4.13 and 4.0.10. The source-mapping job reached the Specdrive evaluation call, but failed with SyntaxError: Unexpected token 'return'. Native Session.evaluate_script evaluates an expression; remove the top-level return from this probe only. All mapping expectations remain unchanged. Reaching this point is not proof that any source stamp or interaction mapping is correct.
