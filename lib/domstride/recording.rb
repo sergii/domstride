@@ -2,6 +2,7 @@ require_relative "namespace"
 require "fileutils"
 require "tmpdir"
 require "json"
+require_relative "protocol"
 
 module Specdrive
   # Bounded, per-worker recording. Never record request bodies, command arguments or results.
@@ -44,6 +45,8 @@ module Specdrive
           frame = evidence[phase]
           next unless frame.is_a?(Hash)
           row[phase] = { target_path: frame["target_path"] }
+          identity = Protocol.target_identity(frame["target_identity"])
+          row[phase][:target_identity] = identity if identity
           snapshot = frame["snapshot"]
           next unless html? && snapshot.is_a?(Hash)
           html = snapshot["html"]

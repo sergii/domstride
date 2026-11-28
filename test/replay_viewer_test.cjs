@@ -26,7 +26,7 @@ test("offline viewer switches panels without losing selection or executing snaps
     const events = [
       {type:"header", schema_version:1},
       {type:"interaction", sequence:1, kind:"mount", status:"passed", duration_ms:1, after:frame(1,"after")},
-      {type:"interaction", sequence:2, kind:"fill", status:"passed", duration_ms:2, before:frame(2,"before"), after:frame(2,"after")},
+      {type:"interaction", sequence:2, kind:"fill", status:"passed", duration_ms:2, before:frame(2,"before"), after:{...frame(2,"after"),target_identity:{version:1,basis:"resolved_handle",tag:"input",input_type:"text",hints:{id:true,name:false,native_label:true,aria_label:false,aria_labelledby:false,role:false,test_id:true}}}},
       {type:"footer", event_count:2}
     ];
     fs.writeFileSync(path.join(directory,"events.jsonl"), events.map(row=>JSON.stringify(row)).join("\n")+"\n");
@@ -40,6 +40,8 @@ test("offline viewer switches panels without losing selection or executing snaps
     await page.locator("#next").click();
     assert.equal(await page.locator("#viewport input.target").inputValue(), "25");
     assert.equal(await page.locator("#position").innerText(), "2 / 2");
+    assert.match(await page.locator("#target-summary").innerText(),/input.*text.*Resolved handle/);
+    assert.match(await page.locator("#target-hints").innerText(),/Native label.*Test ID attribute/);
     assert.equal(await page.locator("#inspect-elements").isChecked(),false);
     await page.locator("#inspect-elements").check();
     const input=await page.locator("#viewport input.target").boundingBox();
@@ -58,6 +60,7 @@ test("offline viewer switches panels without losing selection or executing snaps
     assert.equal(await page.locator("#position").innerText(), "2 / 2");
     await page.locator("#phase").selectOption("before");
     assert.equal(await page.locator("#viewport input.target").inputValue(), "0");
+    assert.equal(await page.locator("#target-identity").isVisible(), false);
     await page.locator("#layout").selectOption("right");
     assert.equal(await page.locator("#phase").inputValue(), "before");
     await page.locator("#phase").selectOption("after");

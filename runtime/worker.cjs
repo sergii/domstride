@@ -676,11 +676,38 @@ function recordingSnapshot(enabled) {
   const html = copy.querySelector("body").innerHTML;
   return Buffer.byteLength(html, "utf8") <= 256 * 1024 ? { html, body_path: recordingPath(body) } : { omitted: "size_limit" };
 }
+// Only bounded structural metadata: no attribute values, names, text or selectors.
+function recordingIdentity(message, node) {
+  if (!node || node.nodeType !== 1 || !node.isConnected || node.ownerDocument !== window?.document) return null;
+  const handleAction = message.command === "node_action" &&
+    ["click", "set", "select_option", "unselect_option", "send_keys", "attach_files"].includes(message.operation);
+  const selectorAction = ["click", "fill"].includes(message.command);
+  if (!handleAction && !selectorAction) return null;
+  const tag = String(node.localName || "").toLowerCase();
+  const knownTags = ["input", "textarea", "select", "option", "button", "a", "label", "form", "div", "span"];
+  const knownTypes = ["text", "password", "checkbox", "radio", "file", "hidden", "submit", "button", "reset", "email", "number", "search", "tel", "url", "date", "datetime-local", "time", "month", "week", "color", "range", "image"];
+  const inputType = tag === "input" ? String(node.type).toLowerCase() : null;
+  return {
+    version: 1,
+    basis: handleAction ? "resolved_handle" : "selector_match",
+    tag: knownTags.includes(tag) ? tag : "other",
+    input_type: inputType === null ? null : knownTypes.includes(inputType) ? inputType : "other",
+    hints: {
+      id: node.hasAttribute("id"),
+      name: node.hasAttribute("name"),
+      native_label: typeof node.labels?.length === "number" ? node.labels.length > 0 : null,
+      aria_label: node.hasAttribute("aria-label"),
+      aria_labelledby: node.hasAttribute("aria-labelledby"),
+      role: node.hasAttribute("role"),
+      test_id: node.hasAttribute("data-testid")
+    }
+  };
+}
 function startRecording(message) {
   if (!message.record_event) return null;
   try {
     const target = recordingTarget(message);
-    return { target, before: { target_path: recordingPath(target),
+    return { target, before: { target_path: recordingPath(target), target_identity: recordingIdentity(message, target),
       snapshot: recordingSnapshot(message.record_html && target !== null) } };
   } catch (_) { return null; }
 }
@@ -688,7 +715,7 @@ function finishRecording(message, recording) {
   if (!recording) return {};
   try {
     return { recording: { before: recording.before,
-      after: { target_path: recordingPath(recording.target), snapshot: recordingSnapshot(message.record_html) } } };
+      after: { target_path: recordingPath(recording.target), target_identity: recordingIdentity(message, recording.target), snapshot: recordingSnapshot(message.record_html) } } };
   } catch (_) { return { recording: { omitted: "capture_failed" } }; }
 }
 

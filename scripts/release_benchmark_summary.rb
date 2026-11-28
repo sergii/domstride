@@ -6,7 +6,10 @@ def median(values)
   sorted = values.sort
   (sorted[(sorted.size - 1) / 2] + sorted[sorted.size / 2]) / 2.0
 end
-results = %w[jsdom jsdom31].map do |engine|
+engines = ARGV.drop(1)
+engines = %w[jsdom jsdom31] if engines.empty?
+abort "Unexpected engines" unless engines.uniq == engines && (engines - %w[jsdom jsdom31 happy-dom]).empty?
+results = engines.map do |engine|
   pairs = (1..4).map do |round|
     base, head = %w[base head].map do |variant|
       row = JSON.parse(File.read(File.join(root, "#{engine}-#{round}-#{variant}.json")))

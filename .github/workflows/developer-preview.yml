@@ -15,7 +15,7 @@ permissions:
   contents: read
 jobs:
   audit:
-    if: ${{ (github.event.action != 'labeled' && github.event.action != 'unlabeled' || github.event.label.name == 'ci:full' || github.event.label.name == 'ci:release') && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
+    if: ${{ (github.event.action != 'labeled' && github.event.action != 'unlabeled' || github.event.label.name == 'ci:full' || github.event.label.name == 'ci:release') && (github.event_name != 'pull_request' || github.head_ref == 'feature/semantic-target-identity' || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -84,15 +84,19 @@ jobs:
         if: github.event_name == 'pull_request' || inputs.base_sha != ''
         run: |
           out="$RUNNER_TEMP/preview-audit"
-          for engine in jsdom jsdom31; do
+          engines=(jsdom jsdom31)
+          if [[ "${{ github.head_ref }}" == "feature/semantic-target-identity" ]]; then
+            engines+=(happy-dom)
+          fi
+          for engine in "${engines[@]}"; do
             for round in 1 2 3 4; do
               if (( round % 2 )); then order="base head"; else order="head base"; fi
               for variant in $order; do
-                (cd "$RUNNER_TEMP/preview-$variant"; RUBY_YJIT_ENABLE=0 CAPYBARA_DRIVER=domstride DOMSTRIDE_ENGINE="$engine" ITERATIONS=10 REPEATS=5 bundle exec ruby examples/rails_reference/capybara_benchmark.rb) > "$out/$engine-$round-$variant.json"
+                (cd "$RUNNER_TEMP/preview-$variant"; env -u SPECDRIVE_RECORD_DIR -u DOMSTRIDE_RECORD_DIR -u SPECDRIVE_RECORD_HTML -u DOMSTRIDE_RECORD_HTML RUBY_YJIT_ENABLE=0 CAPYBARA_DRIVER=domstride DOMSTRIDE_ENGINE="$engine" SPECDRIVE_ENGINE="$engine" ITERATIONS=10 REPEATS=5 bundle exec ruby examples/rails_reference/capybara_benchmark.rb) > "$out/$engine-$round-$variant.json"
               done
             done
           done
-          ruby scripts/release_benchmark_summary.rb "$out" | tee "$out/benchmark-summary.json"
+          ruby scripts/release_benchmark_summary.rb "$out" "${engines[@]}" | tee "$out/benchmark-summary.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
