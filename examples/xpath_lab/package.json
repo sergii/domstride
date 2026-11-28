@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "wicked-good-xpath": "1.3.0"
+    "wicked-good-xpath": "1.3.0",
+    "xpath": "0.0.34"
   }
 }

@@ -16,7 +16,13 @@ jobs:
   live-dom:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        candidate: [wgxpath, xpath]
+    name: live-dom (${{ matrix.candidate }})
     env:
+      XPATH_LAB_CANDIDATE: ${{ matrix.candidate }}
       BUNDLE_GEMFILE: examples/locator_compatibility/Gemfile
     steps:
       - uses: actions/checkout@v4
@@ -52,14 +58,15 @@ jobs:
         if: always() && steps.stage.outcome == 'success'
         env:
           LOCATOR_ENGINE: happy-dom
+          XPATH_LAB_TRACE: "1"
         run: |
           set -o pipefail
-          bundle exec rspec -Ilib examples/locator_compatibility/locator_spec.rb --format documentation --format json --out xpath-lab-results/rspec.json | tee xpath-lab-results/rspec.log
+          bundle exec rspec -Ilib examples/locator_compatibility/locator_spec.rb --format documentation --format json --out xpath-lab-results/rspec.json 2>&1 | tee xpath-lab-results/rspec.log
       - name: Upload experiment evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: happy-dom-xpath-lab
+          name: happy-dom-xpath-lab-${{ matrix.candidate }}
           path: xpath-lab-results/
           if-no-files-found: warn
           retention-days: 7

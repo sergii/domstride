@@ -69,7 +69,7 @@ function measure(doc) {
     assert.equal(typeof happy.document.evaluate, "function");
     verify(reference.window.document);
     verify(happy.document);
-    console.log(JSON.stringify({contract: "live nodes, scope, order, invalid/scalar queries, mutation", result: "passed", unit: "ms per 1000 queries", samples: {jsdom: measure(reference.window.document), happyDomWgxpath: measure(happy.document)}}, null, 2));
+    console.log(JSON.stringify({candidate: process.env.XPATH_LAB_CANDIDATE || "wgxpath", contract: "live nodes, scope, order, invalid/scalar queries, mutation", result: "passed", unit: "ms per 1000 queries", samples: {jsdom: measure(reference.window.document), happyDom: measure(happy.document)}}, null, 2));
   } finally {
     reference.window.close();
     await happy.happyDOM.close();
