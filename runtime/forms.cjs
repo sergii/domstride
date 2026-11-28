@@ -136,6 +136,9 @@ async function nodeFormData(win, form) {
       size += Buffer.byteLength(value);
       output.append(name, value);
     } else {
+      // Rack treats a browser's unnamed empty file part as no uploaded file.
+      // Do not manufacture a blob filename for an unselected input.
+      if (value.name === "" && value.size === 0) continue;
       size += value.size;
       if (size > MAX_UPLOAD) throw new Error("Upload byte limit exceeded");
       const bytes = await new Promise((resolve, reject) => {
