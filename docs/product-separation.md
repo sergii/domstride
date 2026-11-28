@@ -24,4 +24,8 @@ Audit security and redaction scope, release notes, dependency reproducibility, p
 
 ## Current status
 
-Base: merged PR #19 (cb8222e). Pre-merge reviewed CI 19/20, accepted Fizzy failure. The available commit workflow listing is PR-triggered only, so it does not establish post-merge CI. Phase 1 candidate; CI pending. No repository rename, new gem publication, independent Viewer distribution or protocol migration yet.
+Base: merged PR #19 (cb8222e). Pre-merge reviewed CI 19/20, accepted Fizzy failure. The available commit workflow listing is PR-triggered only, so it does not establish post-merge CI. Phase 1 verified on df4ba26: 19/20 workflows passed; Fizzy remains the accepted failure. No repository rename, new gem publication, independent Viewer distribution or protocol migration yet.
+
+## Phase 2 implementation candidate
+
+The artifact-only API is `require "domstride/consumer"`, then `Domstride::Consumer::Report.export` or `Domstride::Consumer::Replay.export`. The actual report parser, replay reader/renderer and WebM reader now live under lib/domstride/consumer. Legacy Report.capture and Video.attach remain in the producer-facing compatibility files; legacy export/read methods delegate to the same consumer implementation. Existing shared protocol/errors and the original replay.html stay at their paths; template bytes and v1 wire formats are unchanged. No public Viewer brand or package chosen. The isolated CI stages only the consumer allowlist plus a test CLI, invokes Ruby with --disable-gems, tests external framework results, video import and symlink/no-overwrite rejection, and reuses existing offline browser contract tests with no engine present. This is an internal extraction boundary, not a separately published product. Living Documentation exporter separation, real video playback through the staged consumer and independent package versioning are follow-up verification gates. CI pending.

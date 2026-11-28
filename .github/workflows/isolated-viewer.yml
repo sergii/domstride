@@ -1,0 +1,41 @@
+name: SpecDrive isolated Viewer boundary
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - '.github/workflows/isolated-viewer.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  consumer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Stage only consumer and protocol dependencies
+        run: |
+          temp="$RUNNER_TEMP/isolated-viewer"
+          mkdir -p "$temp/lib/domstride"
+          cp -R lib/domstride/consumer "$temp/lib/domstride/"
+          cp lib/domstride/{consumer.rb,errors.rb,protocol.rb,replay.html} "$temp/lib/domstride/"
+          cp test/isolated_viewer_cli.rb "$temp/cli.rb"
+          cp test/isolated_viewer_test.rb "$temp/test.rb"
+          cd "$temp"
+          ruby --disable-gems -Ilib test.rb
+          echo "ISOLATED_VIEWER_LIB=$temp/lib" >> "$GITHUB_ENV"
+          echo "ISOLATED_VIEWER_CLI=$temp/cli.rb" >> "$GITHUB_ENV"
+      - name: Browser contract against isolated consumer
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install chromium
+          node --test test/replay_viewer_test.cjs
