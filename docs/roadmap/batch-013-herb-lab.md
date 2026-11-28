@@ -23,3 +23,7 @@ Separate runtime-only lab Gemfile uses the local Specdrive gem and Herb. Render 
 ### Source mapping first runtime result
 
 [Run 46100365460](https://github.com/sergii/specdrive/actions/runs/46100365460) verified static inventory on Ruby 3.3.14, 3.4.13 and 4.0.10. The source-mapping job reached the Specdrive evaluation call, but failed with SyntaxError: Unexpected token 'return'. Native Session.evaluate_script evaluates an expression; remove the top-level return from this probe only. All mapping expectations remain unchanged. Reaching this point is not proof that any source stamp or interaction mapping is correct.
+
+### Partial composition diagnostic
+
+[Run 46100620856](https://github.com/sergii/specdrive/actions/runs/46100620856) static inventory passed on all three Ruby versions. The source-mapping probe passed expression evaluation but failed the exact two repeated partial buttons expectation. Hypothesis: the standalone engine's escaping mode differs from the intended Rails-style escaped/raw output behavior. Explicitly select escape: true, retaining the existing raw partial output tag. Add an independent synthetic rendered-markup precondition before mounting and include actual count in the DOM failure. No assertion weakened and no production changes. The hypothesis remains unverified until CI completes. Engine option documentation: https://herb-tools.dev/projects/engine.

@@ -14,7 +14,7 @@ class SyntheticRenderer
 
   def render(relative, context = binding)
     path = File.join(@root, relative)
-    engine = Herb::Engine.new(File.read(path), filename: path, project_path: @root,
+    engine = Herb::Engine.new(File.read(path), filename: path, project_path: @root, escape: true,
       visitors: [Herb::Engine::SourceAttributionVisitor.new])
     # Only checked-in synthetic fixtures, never evaluate scanned application templates.
     eval(engine.src, context, path)
@@ -42,7 +42,13 @@ reports = [false, true].map do |archive|
     observed = nil
     Specdrive::Session.open(engine: "jsdom31", recording_directory: dir, recording_html: false) do |page|
       recorder_path = page.recorder.path
-      page.mount_html("<!doctype html><html><body>#{SyntheticRenderer.new(ROOT, archive: archive).render('pets/index.html.erb')}</body></html>")
+      rendered = SyntheticRenderer.new(ROOT, archive: archive).render("pets/index.html.erb")
+      # Synthetic fixture only: retain diagnostic markup if partial composition fails.
+      unless rendered.scan(/<button\b[^>]*\bclass="open"/).size == 2
+        warn "Synthetic rendered HTML:\n#{rendered}"
+        raise "Partial composition failed before DOM mount"
+      end
+      page.mount_html("<!doctype html><html><body>#{rendered}</body></html>")
       page.execute_script(<<~JS)
         document.querySelector("#dynamic").innerHTML = '<button id="dynamic-button">Dynamic</button>';
         const fake = document.createElement("button");
@@ -61,7 +67,8 @@ reports = [false, true].map do |archive|
           return {tag: node.localName, source: node.getAttribute("data-herb-source"), path};
         });
       JS
-      raise "Unexpected repeated partial count" unless page.count("button.open") == 2
+      partial_count = page.count("button.open")
+      raise "Unexpected repeated partial count: #{partial_count}" unless partial_count == 2
       page.click("article:nth-of-type(2) button.open")
       page.assert_text("#result", "Luna")
     end
