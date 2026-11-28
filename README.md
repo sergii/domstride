@@ -1,4 +1,4 @@
-# Specdrive (formerly Domstride)
+# Specdrive
 
 Specdrive is the new product name for the Ruby testing engine. The canonical source-built gem is now `specdrive` (not yet published); `require "specdrive"`, `Specdrive::Session`, `require "specdrive/capybara"`, `:specdrive` and the `specdrive` CLI are canonical public entrypoints. The historical Domstride namespace and require paths remain supported. See [product separation and migration](docs/product-separation.md).
 
