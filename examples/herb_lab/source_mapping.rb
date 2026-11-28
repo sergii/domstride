@@ -108,4 +108,5 @@ reports = [false, true].map do |archive|
   end
 end
 puts JSON.pretty_generate(format: "specdrive.research.source-mapping", version: 1,
+  source_revision: ENV.fetch("GITHUB_SHA", "local-unversioned"),
   scope: "synthetic mounted page and recorded click, not full UI coverage", runs: reports)

@@ -66,6 +66,8 @@ jobs:
           mkdir -p herb-mapping-results
           bundle exec ruby examples/herb_lab/source_mapping.rb > herb-mapping-results/mapping.json
           cat herb-mapping-results/mapping.json
+          bundle exec ruby examples/herb_lab/coverage_test.rb herb-mapping-results/mapping.json
+          bundle exec ruby examples/herb_lab/coverage.rb herb-mapping-results/mapping.json herb-mapping-results
           cp examples/herb_lab/runtime/Gemfile.lock herb-mapping-results/
       - uses: actions/upload-artifact@v4
         if: always()
