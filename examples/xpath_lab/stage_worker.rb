@@ -6,7 +6,7 @@ abort "Set isolated SPECDRIVE_RUNTIME_HOME" if ENV.fetch("SPECDRIVE_RUNTIME_HOME
 root = File.realpath(File.join(__dir__, "../.."))
 cache = Specdrive::Runtime.cache_path
 abort "Cache already exists" if File.exist?(cache)
-candidate = File.realpath(File.join(__dir__, "node_modules/wicked-good-xpath"))
+adapter = File.realpath(File.join(__dir__, "install.cjs"))
 dependencies = File.realpath(File.join(root, "node_modules"))
 FileUtils.mkdir_p(cache)
 Specdrive::Runtime::FILES.each { |name| FileUtils.cp(File.join(Specdrive::Runtime.source, name), cache) }
@@ -18,7 +18,7 @@ needle = '    if (typeof window.document.evaluate !== "function") throw new Erro
 abort "Worker boundary changed" unless source.scan(needle).length == 1
 replacement = <<~JS.chomp
     if (engine === "happy-dom" && typeof window.document.evaluate !== "function") {
-      require(#{JSON.generate(candidate)}).install(window);
+      require(#{JSON.generate(adapter)})(window);
     }
 JS
 File.write(worker, source.sub(needle, replacement + "\n" + needle))

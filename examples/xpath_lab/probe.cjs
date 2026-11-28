@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { performance } = require("node:perf_hooks");
 const { JSDOM } = require("jsdom");
-const wgxpath = require("wicked-good-xpath");
+const installXPath = require("./install.cjs");
 
 const fixture = fs.readFileSync(path.join(__dirname, "../locator_compatibility/fixture.html"), "utf8");
 const queries = [
@@ -65,7 +65,7 @@ function measure(doc) {
   try {
     happy.document.write(fixture);
     assert.equal(typeof happy.document.evaluate, "undefined");
-    wgxpath.install(happy);
+    installXPath(happy);
     assert.equal(typeof happy.document.evaluate, "function");
     verify(reference.window.document);
     verify(happy.document);
