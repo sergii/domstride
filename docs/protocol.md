@@ -1,6 +1,6 @@
 # Domstride Protocol v1
 
-One product and repository, separate execution and evidence boundaries. Studio consumes files, never needs a running Domstride worker or Rails app. The Ruby exporter remains a packaging implementation detail, not a requirement for evidence producers. Existing report directories remain compatible.
+Two planned product boundaries, currently one repository, with separate local preview distributions. Specdrive is the execution/evidence producer; the independent Viewer (name TBD) is the evidence consumer. Existing v1 wire identifiers remain unchanged. Studio consumes files, never needs a running Domstride worker or Rails app. The Ruby exporter remains a packaging implementation detail, not a requirement for evidence producers. Existing report directories remain compatible.
 
 ## Local case bundle
 
@@ -18,7 +18,7 @@ examples/protocol/write_case.cjs writes a case using Node standard library, inde
 
 ## Architectural direction
 
-Runner: execute browserless interactions. Studio: inspect artifacts produced by any runner. Protocol: versioned artifact boundary. Keep a single product and repo for now; separate package distribution, actual Playwright Test reporter, Selenium/Cuprite recording adapters, mobile evidence and richer suite identities are subsequent work, not implemented claims.
+Runner: execute browserless interactions. Studio: inspect artifacts produced by any runner. Protocol: versioned artifact boundary. Two product boundaries in one repository. The independent Viewer preview distribution is an artifact-only candidate; mobile evidence and richer suite identities remain follow-ups.
 
 The native [Playwright Test reporter](playwright-reporter.md) is a source-checkout adapter using adapters/protocol/write_case.cjs; CI pending.
 
@@ -35,3 +35,7 @@ A video may declare `focus` segments (max 300): kind fill/click/select/assert, s
 ## Optional observed focus intervals
 
 A video can declare `timing_quality: visual_candidates_unvalidated` with normalized `focus` intervals. Each observed interval must identify an existing `step_sequence` and a bounded plain-text `label`; do not mix with point `cues`. Intervals are ordered, non-overlapping and have positive duration. These observations describe visible focus in the encoded media, not exact action boundaries; uncovered time has no active step or caption. The Core Replay creates reusable native caption/chapter tracks and displays captions outside the zoomed viewport. The recorded outline is baked into the media. Legacy videos without this timing quality keep their original point cue and overlay behavior. Reference-only visual detection is not a general clock calibration guarantee.
+
+## Compatibility and distribution
+
+The [compatibility inventory](../protocol/compatibility-v1.json) records the accepted v1 artifact profiles. Wire identifiers remain domstride.* for compatibility; recording events use their existing header without a format field. The independent Viewer preview has its own release version in viewer/VERSION. Its build is an allowlist of consumer, protocol, template and optional static docs modules, not a runner installation. No new wire version, public registry or production publication support is introduced.

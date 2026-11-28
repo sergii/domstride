@@ -1,0 +1,3 @@
+#!/usr/bin/env ruby
+# Delegate to the existing command implementation during the namespace transition.
+load File.expand_path("domstride", __dir__)

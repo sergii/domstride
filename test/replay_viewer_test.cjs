@@ -7,6 +7,13 @@ const { execFileSync } = require("node:child_process");
 const { pathToFileURL } = require("node:url");
 const { chromium } = require("playwright");
 
+function exportArtifact(command, directory) {
+  if (process.env.ISOLATED_VIEWER_LIB) {
+    return execFileSync("ruby", ["-I", process.env.ISOLATED_VIEWER_LIB, process.env.ISOLATED_VIEWER_CLI, command, directory], {stdio:"pipe"});
+  }
+  return execFileSync("bundle", ["exec", "ruby", "exe/domstride", command, directory], {stdio:"pipe"});
+}
+
 test("offline viewer switches panels without losing selection or executing snapshot code", async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "domstride-viewer-"));
   let browser;
@@ -23,7 +30,7 @@ test("offline viewer switches panels without losing selection or executing snaps
       {type:"footer", event_count:2}
     ];
     fs.writeFileSync(path.join(directory,"events.jsonl"), events.map(row=>JSON.stringify(row)).join("\n")+"\n");
-    execFileSync("bundle", ["exec", "ruby", "exe/domstride", "replay", directory], {stdio:"pipe"});
+    exportArtifact("replay", directory);
     browser = await chromium.launch({headless:true});
     const page = await browser.newPage({viewport:{width:1280,height:800}});
     const requests = [], errors = [];
@@ -86,7 +93,7 @@ test("suite report filters cases and selects recordings independently of operati
       ].map(row=>JSON.stringify(row)).join("\n")+"\n");
       fs.writeFileSync(path.join(recording,"000001-after.html"),"<p>"+name+"</p>");
     }
-    execFileSync("bundle",["exec","ruby","exe/domstride","report",directory],{stdio:"pipe"});
+    exportArtifact("report", directory);
     browser = await chromium.launch({headless:true});
     const page = await browser.newPage({viewport:{width:1280,height:800}});
     const errors = [];

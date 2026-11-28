@@ -1,0 +1,54 @@
+{
+  "format": "artifact.compatibility",
+  "schema_version": 1,
+  "profiles": [
+    {
+      "format": "domstride.case",
+      "schema_versions": [
+        1
+      ],
+      "consumer": "report",
+      "legacy_missing_format": true,
+      "schema": "case-v1.schema.json"
+    },
+    {
+      "format": "domstride.recording",
+      "schema_versions": [
+        1
+      ],
+      "consumer": "replay",
+      "encoding": "events.jsonl",
+      "header_format_field_required": false
+    },
+    {
+      "format": "domstride.specification",
+      "schema_versions": [
+        1
+      ],
+      "consumer": "docs export",
+      "schema": "specification-v1.schema.json"
+    },
+    {
+      "format": "domstride.run",
+      "schema_versions": [
+        1
+      ],
+      "consumer": "docs export",
+      "schema": "run-v1.schema.json"
+    },
+    {
+      "format": "domstride.reference-video-pair",
+      "schema_versions": [
+        1
+      ],
+      "consumer": "docs export"
+    }
+  ],
+  "policy": {
+    "unknown_versions": "reject",
+    "producer_identity": "not restricted to Specdrive",
+    "docs_export": "trusted synthetic paired runs only",
+    "timing": "do not infer unobserved timing",
+    "versioning": "consumer release version independent of artifact schema version"
+  }
+}

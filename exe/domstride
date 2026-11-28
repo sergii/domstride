@@ -7,20 +7,20 @@ begin
   when "setup"
     require "domstride"
     abort "Usage: domstride setup" unless ARGV.empty?
-    puts "Domstride runtime: #{Domstride::Runtime.setup!}"
+    puts "Domstride runtime: #{Specdrive::Runtime.setup!}"
   when "doctor"
     require "domstride"
     json = ARGV == ["--json"]
     abort "Usage: domstride doctor [--json]" unless ARGV.empty? || json
-    settings = Domstride::Configuration.resolve
+    settings = Specdrive::Configuration.resolve
     version, status = Open3.capture2e(settings.fetch(:runtime), "--version")
-    raise Domstride::Error, "Runtime version check failed" unless status.success?
-    report = { domstride: Domstride::VERSION, ruby: RUBY_VERSION, runtime: settings[:runtime],
+    raise Specdrive::Error, "Runtime version check failed" unless status.success?
+    report = { domstride: Specdrive::VERSION, ruby: RUBY_VERSION, runtime: settings[:runtime],
                runtime_version: version.strip, engine: settings[:engine],
                clock: settings[:clock], assets: settings[:assets],
                websocket_configured: !settings[:websocket_url].nil?,
-               worker: Domstride::Runtime.worker_path }
-    Domstride::Session.open(websocket_url: nil) do |page|
+               worker: Specdrive::Runtime.worker_path }
+    Specdrive::Session.open(websocket_url: nil) do |page|
       page.mount_html('<p id="status">Ready</p>')
       page.assert_text("#status", "Ready")
     end
@@ -34,18 +34,18 @@ begin
   when "replay"
     require "domstride/replay"
     abort "Usage: domstride replay RECORDING_DIRECTORY [OUTPUT_HTML]" unless (1..2).cover?(ARGV.size)
-    puts Domstride::Replay.export(ARGV[0], output: ARGV[1])
+    puts Specdrive::Replay.export(ARGV[0], output: ARGV[1])
   when "docs"
     abort "Usage: domstride docs export --synthetic-reference RUN_DIRECTORY" unless ARGV.length == 3 && ARGV.shift == "export" && ARGV.shift == "--synthetic-reference"
     script = File.expand_path("../lib/domstride/documentation/export-docs.cjs", __dir__)
-    raise Domstride::Error, "Documentation export failed (Node.js required)" unless system("node", script, "--synthetic-reference", ARGV.fetch(0))
+    raise Specdrive::Error, "Documentation export failed (Node.js required)" unless system("node", script, "--synthetic-reference", ARGV.fetch(0))
   when "report"
     require "domstride/report"
     abort "Usage: domstride report CASE_DIRECTORY [OUTPUT_HTML]" unless (1..2).cover?(ARGV.size)
-    puts Domstride::Report.export(ARGV[0], output: ARGV[1])
+    puts Specdrive::Report.export(ARGV[0], output: ARGV[1])
   else
     abort "Usage: domstride setup | doctor [--json] | replay RECORDING_DIRECTORY [OUTPUT_HTML] | report CASE_DIRECTORY [OUTPUT_HTML] | docs export --synthetic-reference RUN_DIRECTORY"
   end
-rescue Domstride::Error, SystemCallError, ArgumentError => e
+rescue Specdrive::Error, SystemCallError, ArgumentError => e
   abort "Domstride: #{e.message}"
 end

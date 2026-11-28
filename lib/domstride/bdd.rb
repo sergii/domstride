@@ -1,6 +1,7 @@
+require_relative "namespace"
 require_relative "rails"
 
-module Domstride
+module Specdrive
   module BDD
     # An explicit session per scenario; no global Capybara driver changes.
     class Scenario
@@ -17,7 +18,7 @@ module Domstride
 
       # Metadata only: no step text, selector, field values or HTML by default.
       def step(kind: :custom)
-        raise Domstride::Error, "Scenario is closed" if @closed
+        raise Specdrive::Error, "Scenario is closed" if @closed
         raise ArgumentError, "Unknown step kind" unless STEP_KINDS.include?(kind)
         @sequence += 1
         sequence = @sequence
@@ -66,17 +67,17 @@ module Domstride
 
     module World
       def start_domstride_scenario(**options)
-        raise Domstride::Error, "Scenario already started" if @domstride_scenario
+        raise Specdrive::Error, "Scenario already started" if @domstride_scenario
         @domstride_scenario = Scenario.new(**options)
       end
 
       def domstride_page
-        raise Domstride::Error, "No active scenario" unless @domstride_scenario
+        raise Specdrive::Error, "No active scenario" unless @domstride_scenario
         @domstride_scenario.page
       end
 
       def domstride_step(kind: :custom, &block)
-        raise Domstride::Error, "No active scenario" unless @domstride_scenario
+        raise Specdrive::Error, "No active scenario" unless @domstride_scenario
         @domstride_scenario.step(kind: kind, &block)
       end
 

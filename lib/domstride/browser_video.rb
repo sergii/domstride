@@ -1,3 +1,4 @@
+require_relative "namespace"
 require "tmpdir"
 require "fileutils"
 require "open3"
@@ -5,7 +6,7 @@ require "json"
 require_relative "errors"
 require_relative "video"
 
-module Domstride
+module Specdrive
   # Explicit Linux X11 display capture. Never changes DISPLAY or starts a browser.
   # The caller must allocate an isolated display for one test worker.
   class BrowserVideo

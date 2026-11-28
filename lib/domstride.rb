@@ -1,3 +1,4 @@
+require_relative "domstride/namespace"
 require "json"
 require "open3"
 require "uri"
@@ -12,7 +13,7 @@ require_relative "domstride/recording"
 require_relative "domstride/report_case"
 require_relative "domstride/assertion"
 
-module Domstride
+module Specdrive
   class Session
     WORKER = File.expand_path("../runtime/worker.cjs", __dir__)
 
@@ -23,7 +24,7 @@ module Domstride
       session&.close
     end
 
-    def initialize(app: nil, performance_profile: nil, recording_directory: ENV["DOMSTRIDE_RECORD_DIR"], recording_html: ENV["DOMSTRIDE_RECORD_HTML"] == "1", **options)
+    def initialize(app: nil, performance_profile: nil, recording_directory: Configuration.env_value("DOMSTRIDE_RECORD_DIR"), recording_html: Configuration.env_value("DOMSTRIDE_RECORD_HTML") == "1", **options)
       settings = Configuration.resolve(performance_profile: performance_profile, **options)
       runtime, engine, profile, wait_strategy, bundle_cache, settling, clock, clock_epoch_ms =
         settings.values_at(:runtime, :engine, :profile, :wait_strategy, :bundle_cache, :settling, :clock, :clock_epoch_ms)

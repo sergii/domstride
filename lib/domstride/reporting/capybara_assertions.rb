@@ -1,7 +1,8 @@
+require_relative "../namespace"
 require "capybara"
 require_relative "../assertion"
 
-module Domstride
+module Specdrive
   module Reporting
     module CapybaraAssertions
       METHODS = %i[assert_selector assert_no_selector assert_text assert_no_text

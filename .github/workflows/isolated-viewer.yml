@@ -1,0 +1,50 @@
+name: Specdrive isolated Viewer boundary
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, labeled, unlabeled]
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name != 'ci:full' && github.event.label.name != 'ci:release' && format('-ignored-{0}', github.run_id) || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions:
+  contents: read
+jobs:
+  consumer:
+    if: ${{ (github.event.action != 'labeled' && github.event.action != 'unlabeled' || github.event.label.name == 'ci:full' || github.event.label.name == 'ci:release') && (github.event_name != 'pull_request' || !github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'ci:full') || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build independent Viewer preview distribution
+        run: |
+          temp="$RUNNER_TEMP/isolated-viewer"
+          ruby viewer/build.rb "$temp"
+          test "$("$temp/bin/viewer" --version)" = "$(cat viewer/VERSION)"
+          test ! -e "$temp/lib/domstride.rb"
+          test ! -e "$temp/lib/domstride/report_case.rb"
+          test ! -e "$temp/lib/domstride/documentation/playwright-recorder.cjs"
+          test ! -e "$temp/runtime"
+          ruby -rjson -rdigest -e 'root=ARGV.fetch(0); m=JSON.parse(File.read(File.join(root,"manifest.json"))); m.fetch("files").each { |f| p=File.join(root,f.fetch("file")); abort unless File.size(p)==f.fetch("size_bytes") && Digest::SHA256.file(p).hexdigest==f.fetch("sha256") }' "$temp"
+          cp test/support/isolated_viewer_smoke.rb "$RUNNER_TEMP/viewer-smoke.rb"
+          (cd "$temp"; env -u RUBYOPT -u RUBYLIB ruby -Ilib "$RUNNER_TEMP/viewer-smoke.rb")
+          node test/documentation_package_test.cjs "$temp/bin/viewer"
+          echo "ISOLATED_VIEWER_LIB=$temp/lib" >> "$GITHUB_ENV"
+          echo "ISOLATED_VIEWER_CLI=$temp/bin/viewer" >> "$GITHUB_ENV"
+      - name: Browser contract against isolated consumer
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install chromium
+          node --test test/replay_viewer_test.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: independent-viewer-preview
+          path: ${{ runner.temp }}/isolated-viewer/
+          if-no-files-found: error

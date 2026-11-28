@@ -1,9 +1,11 @@
+require_relative "namespace"
 require "digest"
 require "fileutils"
 require "tmpdir"
 require "json"
+require_relative "configuration"
 
-module Domstride
+module Specdrive
   module Runtime
     ROOT = File.expand_path("../..", __dir__)
     FILES = %w[worker.cjs virtual_clock.cjs assets.cjs forms.cjs websocket.cjs media.cjs logical_dom.cjs observers.cjs package.json].freeze
@@ -15,16 +17,16 @@ module Domstride
     def self.cache_path
       digest = Digest::SHA256.new
       FILES.each { |name| digest.update(name).update(File.binread(File.join(source, name))) }
-      base = ENV["DOMSTRIDE_RUNTIME_HOME"] || File.join(Dir.home, ".cache", "domstride")
+      base = Configuration.env_value("DOMSTRIDE_RUNTIME_HOME") || File.join(Dir.home, ".cache", "domstride")
       File.join(File.expand_path(base), digest.hexdigest[0, 24])
     end
 
     def self.worker_path
       # Use checkout dependencies for development; explicit runtime home always uses the installed cache.
-      return File.join(source, "worker.cjs") if !ENV.key?("DOMSTRIDE_RUNTIME_HOME") && File.directory?(File.join(ROOT, "node_modules"))
+      return File.join(source, "worker.cjs") if Configuration.env_value("DOMSTRIDE_RUNTIME_HOME").nil? && File.directory?(File.join(ROOT, "node_modules"))
       path = cache_path
       return File.join(path, "worker.cjs") if ready?(path)
-      raise Domstride::Error, "JavaScript dependencies missing. Run domstride setup (requires Node.js and npm)."
+      raise Specdrive::Error, "JavaScript dependencies missing. Run domstride setup (requires Node.js and npm)."
     end
 
     def self.ready?(path)
@@ -43,9 +45,9 @@ module Domstride
         begin
           FILES.each { |name| FileUtils.cp(File.join(source, name), staging) }
           ok = system("npm", "install", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund", chdir: staging)
-          raise Domstride::Error, "npm install failed; runtime was not installed" unless ok
+          raise Specdrive::Error, "npm install failed; runtime was not installed" unless ok
           File.write(File.join(staging, ".ready"), "ready\n")
-          raise Domstride::Error, "Runtime dependencies incomplete" unless ready?(staging)
+          raise Specdrive::Error, "Runtime dependencies incomplete" unless ready?(staging)
           FileUtils.rm_rf(path)
           File.rename(staging, path)
         ensure

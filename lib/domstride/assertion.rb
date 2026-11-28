@@ -1,4 +1,5 @@
-module Domstride
+require_relative "namespace"
+module Specdrive
   # One outermost assertion boundary, not a guess based on operation status.
   module Assertion
     def self.capture(kind, failure_classes: [])

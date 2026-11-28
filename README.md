@@ -1,4 +1,6 @@
-# Domstride
+# Specdrive (formerly Domstride)
+
+Specdrive is the new product name for the Ruby testing engine. The canonical source-built gem is now `specdrive` (not yet published); `require "specdrive"`, `Specdrive::Session`, `require "specdrive/capybara"`, `:specdrive` and the `specdrive` CLI are canonical public entrypoints. The historical Domstride namespace and require paths remain supported. See [product separation and migration](docs/product-separation.md).
 
 Fast interactions. Real behavior.
 
@@ -61,7 +63,7 @@ The upstream workflow pins rails-jsdom 0.2.1 at commit 66dc701a48df7038db8e56e8d
 
 ## JavaScript failures
 
-Domstride raises `Domstride::JavaScriptError` for captured JavaScript exceptions and unhandled rejections at command checkpoints. Use `page.check_javascript!` for an explicit checkpoint. This does not drain all timers or guarantee deterministic settling. Plain console.error strings remain diagnostic; Error objects logged by frameworks are treated as failures.
+Domstride raises `Specdrive::JavaScriptError` for captured JavaScript exceptions and unhandled rejections at command checkpoints. Use `page.check_javascript!` for an explicit checkpoint. This does not drain all timers or guarantee deterministic settling. Plain console.error strings remain diagnostic; Error objects logged by frameworks are treated as failures.
 
 ## Profiling and event-driven text waits
 
@@ -91,13 +93,13 @@ The combined workflow compares baseline and candidate native/Capybara configurat
 
 ## Named performance profiles
 
-`Domstride::Session.new(performance_profile: :fast)` or `DOMSTRIDE_PERFORMANCE_PROFILE=fast` selects a profile. `compatible` uses jsdom31 with real clock, `fast` uses Happy DOM with real clock, and `deterministic` uses jsdom31 compiled cache, observer waits, tracked settling and virtual clock. Explicit keyword arguments override environment settings, which override the profile. No profile preserves existing defaults (jsdom26). `profile: true` still enables instrumentation, not profile selection. The deterministic profile is native DSL only until Capybara virtual retries are supported. All profiles remain experimental; Happy DOM XPath is incomplete.
+`Specdrive::Session.new(performance_profile: :fast)` or `DOMSTRIDE_PERFORMANCE_PROFILE=fast` selects a profile. `compatible` uses jsdom31 with real clock, `fast` uses Happy DOM with real clock, and `deterministic` uses jsdom31 compiled cache, observer waits, tracked settling and virtual clock. Explicit keyword arguments override environment settings, which override the profile. No profile preserves existing defaults (jsdom26). `profile: true` still enables instrumentation, not profile selection. The deterministic profile is native DSL only until Capybara virtual retries are supported. All profiles remain experimental; Happy DOM XPath is incomplete.
 
 ## Rails system tests
 
     require "domstride/rails"
     class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
-      include Domstride::RailsSystemTestSupport
+      include Specdrive::RailsSystemTestSupport
       driven_by :domstride
     end
 
@@ -105,7 +107,7 @@ The support module suppresses automatic failure screenshots for Domstride becaus
 
 ## Installed gem preview
 
-Build/install the gem locally, then run `domstride setup` and `domstride doctor`. Setup explicitly installs pinned direct runtime dependencies using npm into a content-addressed user cache (default ~/.cache/domstride; override DOMSTRIDE_RUNTIME_HOME). Test execution never installs packages implicitly. Development checkout uses root node_modules when available. Node 22.23.5 is the verified runtime; npm is required for setup. Direct dependency versions are pinned; transitive npm resolution is not locked yet. No RubyGems release is published.
+Build/install the gem locally with `gem build specdrive.gemspec` and `gem install ./specdrive-0.0.1.gem`, then run `specdrive setup` and `specdrive doctor`. Existing CLI and require paths continue to work after installing the new package. The legacy package name is not shipped by this build. Setup explicitly installs pinned direct runtime dependencies using npm into a content-addressed user cache (default ~/.cache/domstride; override DOMSTRIDE_RUNTIME_HOME). Test execution never installs packages implicitly. Development checkout uses root node_modules when available. Node 22.23.5 is the verified runtime; npm is required for setup. Direct dependency versions are pinned; transitive npm resolution is not locked yet. No RubyGems release is published.
 
 ## Capybara contract
 
@@ -175,9 +177,9 @@ Page-level Capybara `send_keys` dispatches to the active element and supports or
 
 See [suite reports](docs/reporting.md) for explicit case capture and `bundle exec domstride report CASE_DIRECTORY`. Case results are separate from interaction results; automatic framework integration is follow-up.
 
-Optional automatic reporting adapters: `require "domstride/reporting/rspec"` or `require "domstride/reporting/minitest"`, then `Domstride::Reporting::RSpec.install!(directory: "tmp/domstride-suite")` or corresponding `Minitest.install!`. Actual final framework status; Minitest assertion count. HTML opt-in.
+Optional automatic reporting adapters: `require "domstride/reporting/rspec"` or `require "domstride/reporting/minitest"`, then `Specdrive::Reporting::RSpec.install!(directory: "tmp/domstride-suite")` or corresponding `Minitest.install!`. Actual final framework status; Minitest assertion count. HTML opt-in.
 
-Experimental browser video evidence: attach finalized local WebM to an active report case with `Domstride::Video.attach(path, label: "Chromium")` after requiring `domstride/report`. See examples/browser_video and reporting docs. No automatic browser-driver capture or video/step synchronization yet.
+Experimental browser video evidence: attach finalized local WebM to an active report case with `Specdrive::Video.attach(path, label: "Chromium")` after requiring `domstride/report`. See examples/browser_video and reporting docs. No automatic browser-driver capture or video/step synchronization yet.
 
 Domstride Studio is the runner-independent reporting direction within the same product. See [Protocol v1](docs/protocol.md) for external producers and standalone source-checkout report export without loading the execution runtime.
 

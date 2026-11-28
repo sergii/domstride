@@ -1,8 +1,9 @@
+require_relative "../namespace"
 require "rspec/expectations"
 require "rspec/expectations/handler"
 require_relative "../assertion"
 
-module Domstride
+module Specdrive
   module Reporting
     module RSpecAssertions
       KEY = :domstride_rspec_assertion_owner

@@ -1,17 +1,16 @@
 name: Domstride real Rails applications discovery
 on:
   pull_request:
-    paths:
-      - 'lib/**'
-      - 'runtime/**'
-      - 'examples/real_apps/**'
-      - 'domstride.gemspec'
-      - '.github/workflows/real-apps.yml'
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, labeled, unlabeled]
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name != 'ci:full' && github.event.label.name != 'ci:release' && format('-ignored-{0}', github.run_id) || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 jobs:
   discover:
+    if: ${{ (github.event.action != 'labeled' && github.event.action != 'unlabeled' || github.event.label.name == 'ci:full' || github.event.label.name == 'ci:release') && (github.event_name != 'pull_request' || !github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'ci:full') || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
@@ -73,7 +72,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          printf '\n# Domstride discovery only\ngem "domstride", path: "%s"\n' "$GITHUB_WORKSPACE" >> Gemfile
+          printf '\n# Domstride discovery only\ngem "specdrive", path: "%s"\n' "$GITHUB_WORKSPACE" >> Gemfile
           bundle config unset frozen
           bundle install 2>&1 | tee "$GITHUB_WORKSPACE/real-app-results/bundle.log"
       - name: Original system test discovery

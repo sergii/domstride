@@ -1,8 +1,9 @@
+require_relative "../namespace"
 require "cucumber/formatter/ast_lookup"
 require_relative "lifecycle"
 require_relative "capybara_assertions"
 
-module Domstride
+module Specdrive
   module Reporting
     module Cucumber
       class Listener

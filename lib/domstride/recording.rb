@@ -1,8 +1,9 @@
+require_relative "namespace"
 require "fileutils"
 require "tmpdir"
 require "json"
 
-module Domstride
+module Specdrive
   # Bounded, per-worker recording. Never record request bodies, command arguments or results.
   class Recording
     MAX_EVENTS = 1000

@@ -1,8 +1,10 @@
+require_relative "../../domstride/namespace"
 require "rails/generators"
 
-module Domstride
+module Specdrive
   module Generators
     class InstallGenerator < ::Rails::Generators::Base
+      namespace "domstride:install"
       source_root File.expand_path("templates", __dir__)
       desc "Install an opt-in Domstride Rails system test base without replacing existing tests."
 

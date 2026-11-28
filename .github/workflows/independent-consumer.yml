@@ -1,11 +1,16 @@
 name: Domstride independent installed consumer
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, labeled, unlabeled]
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name != 'ci:full' && github.event.label.name != 'ci:release' && format('-ignored-{0}', github.run_id) || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 jobs:
   independent:
+    if: ${{ (github.event.action != 'labeled' && github.event.action != 'unlabeled' || github.event.label.name == 'ci:full' || github.event.label.name == 'ci:release') && (github.event_name != 'pull_request' || !github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'ci:full') || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -22,15 +27,17 @@ jobs:
         run: |
           temp="$RUNNER_TEMP/independent-consumer"
           mkdir -p "$temp"
-          gem build domstride.gemspec --output "$temp/domstride.gem"
+          ruby viewer/build.rb "$RUNNER_TEMP/independent-viewer"
+          export INDEPENDENT_VIEWER_CLI="$RUNNER_TEMP/independent-viewer/bin/viewer"
+          gem build specdrive.gemspec --output "$temp/specdrive.gem"
           export GEM_HOME="$temp/gems" GEM_PATH="$temp/gems"
-          gem install "$temp/domstride.gem" --no-document
+          gem install "$temp/specdrive.gem" --no-document
           cp examples/independent_consumer/* "$temp/"
           cd "$temp"
-          gem_root="$(ruby -e 'print Gem::Specification.find_by_name("domstride").full_gem_path')"
+          gem_root="$(ruby -e 'print Gem::Specification.find_by_name("specdrive").full_gem_path')"
           case "$gem_root" in "$GEM_HOME"/*) ;; *) exit 1 ;; esac
           export INSTALLED_DOCS_LIB="$gem_root/lib/domstride/documentation"
-          export INSTALLED_DOMSTRIDE_CLI="$GEM_HOME/bin/domstride"
+          export INSTALLED_DOMSTRIDE_CLI="$GEM_HOME/bin/specdrive"
           export SOURCE_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}"
           npm install --no-audit --no-fund
           npx playwright install chromium

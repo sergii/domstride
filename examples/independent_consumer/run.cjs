@@ -13,7 +13,8 @@ const server=http.createServer((req,res)=>{if(req.url!=='/'){res.writeHead(404);
 const root=path.resolve('artifacts');
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
 const write=(p,v)=>fs.writeFileSync(p,JSON.stringify(v,null,2));
-const exec=(args)=>execFileSync(cli,args,{stdio:'inherit'});
+const viewer=process.env.INDEPENDENT_VIEWER_CLI||cli;
+const exec=(args)=>execFileSync(viewer,args,{stdio:'inherit'});
 async function cucumber(directory,mode,url){
  await new Promise((resolve,reject)=>{
   const child=spawn(path.resolve('node_modules/.bin/cucumber-js'),['--require','steps.cjs','--format','progress','--format','message:'+path.join(directory,'messages.ndjson'),'library.feature'],{stdio:'inherit',env:{...process.env,ARTIFACT_ROOT:directory,RUN_MODE:mode,LIBRARY_URL:url}});
@@ -56,6 +57,12 @@ async function main(){
  assert.ok(!fs.existsSync(path.join(publication,'messages.ndjson')));
  const replay=path.join(root,'replay.html');
  exec(['report',guided,replay]);
+ if(viewer!==cli){
+  const legacy=path.join(root,'legacy-replay.html');
+  execFileSync(cli,['report',guided,legacy],{stdio:'inherit'});
+  const payload=p=>fs.readFileSync(p,'utf8').split('<script type="application/json" id="recording-data">')[1].split('</script>')[0];
+  assert.deepEqual(JSON.parse(payload(replay)),JSON.parse(payload(legacy)));
+ }
  const browser=await chromium.launch();
  try{
   const page=await browser.newPage(),errors=[];
@@ -72,6 +79,6 @@ async function main(){
   assert.deepEqual(errors,[]);
   await page.screenshot({path:path.join(root,'replay.png')});
  }finally{await browser.close();}
- console.log('Verified independent installed-gem consumer: actual Cucumber, Chromium, three modes, protocol, static export and offline video replay.');
+ console.log('Verified installed-gem producer and artifact consumer: actual Cucumber, Chromium, three modes, protocol, static export and offline video replay.');
 }
 main().catch(e=>{server.close();console.error(e);process.exitCode=1;});

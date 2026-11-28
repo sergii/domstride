@@ -1,9 +1,10 @@
+require_relative "../namespace"
 require "minitest/test"
 require_relative "lifecycle"
 require_relative "minitest_assertions"
 require_relative "capybara_assertions"
 
-module Domstride
+module Specdrive
   module Reporting
     module Minitest
       def self.install!(directory:, html: false)

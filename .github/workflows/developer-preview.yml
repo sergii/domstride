@@ -1,0 +1,101 @@
+name: Specdrive developer preview audit
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, labeled, unlabeled]
+  workflow_dispatch:
+    inputs:
+      base_sha:
+        description: Optional full baseline commit SHA for A/B benchmark
+        required: false
+        type: string
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name != 'ci:full' && github.event.label.name != 'ci:release' && format('-ignored-{0}', github.run_id) || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: ${{ (github.event.action != 'labeled' && github.event.action != 'unlabeled' || github.event.label.name == 'ci:full' || github.event.label.name == 'ci:release') && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.5'
+      - name: Build local release candidates and inspect file inventory
+        run: |
+          mkdir -p "$RUNNER_TEMP/preview-audit"
+          out="$RUNNER_TEMP/preview-audit"
+          gem build specdrive.gemspec --output "$out/specdrive.gem"
+          ruby viewer/build.rb "$out/viewer"
+          ruby -rrubygems/package -rjson -rdigest -e '
+            file=ARGV.fetch(0); pkg=Gem::Package.new(file); spec=pkg.spec
+            abort "Incorrect gem" unless spec.name=="specdrive" && spec.executables.sort==%w[domstride specdrive]
+            paths=pkg.contents.sort
+            abort "Unexpected file" unless paths.all? { |p| p.match?(%r{\A(?:lib/|runtime/|exe/|protocol/|adapters/|README\.md\z|LICENSE\z|package\.json\z)}) && !p.match?(%r{(?:\A|/)(?:\.env(?:\.|\z)|node_modules(?:/|\z)|artifacts(?:/|\z))}) }
+            puts JSON.pretty_generate(name:spec.name,version:spec.version,size_bytes:File.size(file),sha256:Digest::SHA256.file(file).hexdigest,files:paths)
+          ' "$out/specdrive.gem" > "$out/gem-inventory.json"
+          ruby -rjson -rdigest -e '
+            root=ARGV.fetch(0); m=JSON.parse(File.read(File.join(root,"manifest.json"))); m.fetch("files").each { |f| p=File.join(root,f.fetch("file")); abort unless File.size(p)==f.fetch("size_bytes") && Digest::SHA256.file(p).hexdigest==f.fetch("sha256") }
+            puts JSON.pretty_generate(version:m.fetch("version"),files:m.fetch("files").length,payload_bytes:m.fetch("files").sum { |f| f.fetch("size_bytes") })
+          ' "$out/viewer" > "$out/viewer-inventory.json"
+      - name: Validate lockfile migration fixtures
+        run: |
+          ruby scripts/test_normalize_preview_lock.rb
+          ruby scripts/test_compare_preview_locks.rb
+      - name: Prepare comparable base and candidate
+        if: github.event_name == 'pull_request' || inputs.base_sha != ''
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          out="$RUNNER_TEMP/preview-audit"
+          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] && [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git worktree add --detach "$RUNNER_TEMP/preview-base" "$BASE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/preview-head" "$HEAD_SHA"
+          base="$RUNNER_TEMP/preview-base"
+          head="$RUNNER_TEMP/preview-head"
+          cmp "$base/package.json" "$head/package.json"
+          (cd "$base"; bundle install; npm install --no-audit --no-fund; npm run build:reference)
+          # Reuse exactly the resolved baseline dependencies, allowing only the local gem rename.
+          cp "$base/Gemfile.lock" "$out/base-original.lock"
+          ruby scripts/normalize_preview_lock.rb "$base/Gemfile.lock" "$out/base-normalized.lock"
+          cp "$out/base-normalized.lock" "$head/Gemfile.lock"
+          cp "$base/package-lock.json" "$head/package-lock.json"
+          # Bundler owns lockfile serialization. Resolve only from locally installed gems.
+          # Compare the complete dependency graph and external checksums before frozen install.
+          (cd "$head"; BUNDLE_FROZEN=false bundle lock --local)
+          cp "$head/Gemfile.lock" "$out/head.lock"
+          ruby scripts/compare_preview_locks.rb "$out/base-normalized.lock" "$out/head.lock" "$out"
+          (cd "$head"; BUNDLE_FROZEN=true bundle install; npm ci --no-audit --no-fund; npm run build:reference)
+          diff -u "$out/head.lock" "$head/Gemfile.lock"
+          cmp "$base/examples/rails_reference/capybara_benchmark.rb" "$head/examples/rails_reference/capybara_benchmark.rb"
+          cmp "$base/examples/rails_reference/application.bundle.js" "$head/examples/rails_reference/application.bundle.js"
+          { echo "base=$BASE_SHA"; echo "head=$HEAD_SHA"; ruby -v; node -v; lscpu; } > "$out/environment.txt"
+          cp "$head/Gemfile.lock" "$head/package-lock.json" "$out/"
+      - name: Same-runner alternating Capybara benchmark
+        if: github.event_name == 'pull_request' || inputs.base_sha != ''
+        run: |
+          out="$RUNNER_TEMP/preview-audit"
+          for engine in jsdom jsdom31; do
+            for round in 1 2 3 4; do
+              if (( round % 2 )); then order="base head"; else order="head base"; fi
+              for variant in $order; do
+                (cd "$RUNNER_TEMP/preview-$variant"; RUBY_YJIT_ENABLE=0 CAPYBARA_DRIVER=domstride DOMSTRIDE_ENGINE="$engine" ITERATIONS=10 REPEATS=5 bundle exec ruby examples/rails_reference/capybara_benchmark.rb) > "$out/$engine-$round-$variant.json"
+              done
+            done
+          done
+          ruby scripts/release_benchmark_summary.rb "$out" | tee "$out/benchmark-summary.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: developer-preview-audit
+          path: ${{ runner.temp }}/preview-audit/
+          if-no-files-found: error
