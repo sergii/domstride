@@ -276,7 +276,7 @@ module Specdrive
         raise ArgumentError, "Expected file paths" unless paths.all? { |path| path.is_a?(String) && File.file?(path) }
         remaining = 8 * 1024 * 1024
         files = paths.map do |path|
-          data = File.binread(path, remaining + 1)
+          data = File.binread(path, remaining + 1) || "".b
           remaining -= data.bytesize
           raise ArgumentError, "Upload byte limit exceeded" if remaining.negative?
           { name: File.basename(path), type: MiniMime.lookup_by_filename(path)&.content_type || "application/octet-stream",
