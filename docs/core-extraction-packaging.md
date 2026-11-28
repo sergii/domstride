@@ -1,4 +1,4 @@
-# Core extraction and packaging: phase 1
+# Core extraction and packaging
 
 Scope: reusable documentation model and static Markdown/MDX exporter, shipped via the existing Ruby gem lib/ packaging. No changes to engine, runtime cache, capture, Viewer, or default test execution. The implementation uses Node built-ins only; no npm install or Rails server required to export an existing run.
 
@@ -42,4 +42,14 @@ Phase 5: 18/19 workflows passed on 765d9ac; Fizzy failed separately.
 
 A separate workflow builds and installs the gem into an isolated temporary directory and copies only the independent library fixture there. Actual Cucumber.js and Chromium run three distinct modes against a loopback HTTP application; the installed recorder and adapter create real media and manifests. The installed CLI exports Markdown/MDX with checksummed media and generates a standalone Ruby report. A fresh Chromium instance loads Replay offline and tests video playback. No Petstore, Rails server, runtime setup, or source-checkout imports. The fixture supplies the trusted synthetic pair explicitly; a generalized pairing API and independent third-party Viewer are not implemented. Unmapped video must not imply synchronized actions. CI uploads synthetic evidence for review.
 
-Status: phase 6 implementation candidate; CI pending. No merge or release. Full security validation, redaction, stable example IDs, npm packaging, generalized focus/clock mapping and broader framework conformance remain separate follow-ups.
+Phase 6: independent installed consumer passed on 03d8d50. No merge or release. Full security validation, redaction, stable example IDs, npm packaging, generalized focus/clock mapping and broader framework conformance remain separate follow-ups.
+
+## Final consolidation review (2026-11-28)
+
+Reviewed all 32 changed paths on 03d8d50: no changes to the Ruby execution core, runtime worker, Capybara driver or Replay rendering templates. 19/20 workflows passed, including installed consumer (46085282412), product readiness (46085282279), and Rails reference / Petstore / both static sites (46085282494). Offline replay and actual browser playback are confirmed by CI, not a manual visual review. The synthetic independent consumer is not a third-party production application. See [PR #19](https://github.com/sergii/domstride/pull/19).
+
+Fizzy 46085282265 matches accepted baseline 46068831277: join_account passed; create_card fails ambiguous Add a card; navigation/lightbox fail missing ResizeObserver; lightbox also reports ElementInternals.setValidity. No workflow suppression. Experimental Bun/Happy DOM still fails some tests despite a green aggregate workflow; Happy DOM reference also has a pending example. These are not full browser parity claims.
+
+Capybara/Cuprite benchmark 46085282237: medians of five samples of ten iterations, Domstride/jsdom 1.8665 s, Domstride/Happy DOM 0.4291 s, Cuprite/Chromium 10.4159 s. These are comparative driver measurements, not main-vs-PR regression measurements; no controlled A/B baseline was collected. Gem preview artifact ZIP 86,653 bytes versus phase 1 ZIP 78,068 bytes; actual installed footprint and pre-extraction baseline not measured.
+
+Audit hardening: validate pair format/version and distinct attempts, match the paired execution manifest ID and require clean execution evidence, compare resolved steps and arguments across the selected recordings, and distinguish scenarios not executed in this run from historically verified scenarios. Added negative installed CLI fixtures. This is still trusted synthetic publication only; no general security guarantee, no stable example identity, no atomic export, no dependency lockfile for the independent fixture. Review hardening commit CI pending. Maintainer approval required before merge/tag/publication.

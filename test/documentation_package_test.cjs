@@ -14,12 +14,24 @@ try{
  save(path.join(root,'case-one'),'case.json',record);
  save(execution,'run.json',{...run,run_id:'execution',mode:'execution',cases:[{folder:'case-one',attempt_id:'attempt-execution',scenario_id:'LIB-001-01',status:'passed'}]});
  save(path.join(execution,'case-one'),'case.json',{...record,attempt_id:'attempt-execution',videos:[{file:'video-01.webm',label:'Chromium',role:'execution',run_id:'execution',attempt_id:'attempt-execution'}]});
- save(root,'video-pair.json',{scenario_id:'LIB-001-01',run_id:'execution',attempt_id:'attempt-execution',guided_run_id:'guided',guided_attempt_id:'attempt-guided'});
+ save(root,'video-pair.json',{format:'domstride.reference-video-pair',schema_version:1,scenario_id:'LIB-001-01',run_id:'execution',attempt_id:'attempt-execution',guided_run_id:'guided',guided_attempt_id:'attempt-guided'});
  for(const dir of [root,execution])fs.writeFileSync(path.join(dir,'case-one','video-01.webm'),Buffer.from('1a45dfa3','hex'));
  const cli=process.argv[2];
  assert.ok(cli,'Provide domstride executable');
  assert.throws(()=>execFileSync(cli,['docs','export',root],{stdio:'pipe'}));
  assert.ok(!fs.existsSync(path.join(root,'static-export')));
+ const pair=JSON.parse(fs.readFileSync(path.join(root,'video-pair.json')));
+ for(const bad of [{...pair,schema_version:2},{...pair,guided_attempt_id:pair.attempt_id}]){
+  save(root,'video-pair.json',bad);
+  assert.throws(()=>execFileSync(cli,['docs','export','--synthetic-reference',root],{stdio:'pipe'}));
+  assert.ok(!fs.existsSync(path.join(root,'static-export')));
+ }
+ save(root,'video-pair.json',pair);
+ const executionRecord={...record,attempt_id:'attempt-execution',videos:[{file:'video-01.webm',label:'Chromium',role:'execution',run_id:'execution',attempt_id:'attempt-execution'}]};
+ save(path.join(execution,'case-one'),'case.json',{...executionRecord,steps:[{sequence:1,runtime_id:'different-step',keyword:'When',text:'Different book',status:'passed',duration_ms:1}]});
+ assert.throws(()=>execFileSync(cli,['docs','export','--synthetic-reference',root],{stdio:'pipe'}));
+ assert.ok(!fs.existsSync(path.join(root,'static-export')));
+ save(path.join(execution,'case-one'),'case.json',executionRecord);
  execFileSync(cli,['docs','export','--synthetic-reference',root],{stdio:'pipe',cwd:temp});
  const output=path.join(root,'static-export');
  const manifest=JSON.parse(fs.readFileSync(path.join(output,'manifest.json'),'utf8'));

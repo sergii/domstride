@@ -54,4 +54,4 @@ See [MVP consolidation review](mvp-consolidation.md) and [Petstore performance e
 
 ## Core Extraction & Packaging
 
-[Phase 1: packaged documentation export](core-extraction-packaging.md). CI pending; normalizer, recorder and general publication remain separate phases.
+[Six-phase Core Extraction & Packaging](core-extraction-packaging.md): independent installed consumer verified on 03d8d50 (19/20 workflows, known Fizzy limitation). Final audit hardening CI pending. No merge or release. General publication, redaction, npm distribution and independent third-party Viewer remain follow-ups.
