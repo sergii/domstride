@@ -1,0 +1,11 @@
+<main>
+  <button id="save">Save</button>
+  <% if @can_archive %>
+    <button id="archive">Archive</button>
+  <% end %>
+  <% @pets.each do |pet| %>
+    <%== render_card(pet) %>
+  <% end %>
+  <output id="result">Pending</output>
+  <div id="dynamic"></div>
+</main>

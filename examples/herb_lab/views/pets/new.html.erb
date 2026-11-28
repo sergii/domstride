@@ -1,0 +1,16 @@
+<form action="/pets" method="post">
+  <label for="pet-name">Pet name</label>
+  <input id="pet-name" data-testid="pet-name" name="pet[name]">
+  <button type="submit" data-testid="save-pet">Save</button>
+  <% if @can_archive %>
+    <button type="button" data-testid="archive-pet">Archive</button>
+  <% end %>
+  <%= link_to "All pets", "/pets", data: { testid: "all-pets" } %>
+</form>
+<% @pets.each do |pet| %>
+  <%= render "pets/card", pet: pet %>
+<% end %>
+<div id="dynamic-controls"></div>
+<script>
+  document.querySelector("#dynamic-controls").innerHTML = '<button>Dynamic</button>';
+</script>
