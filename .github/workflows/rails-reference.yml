@@ -77,6 +77,7 @@ jobs:
           name: rails-reference-results
           path: benchmark-results/
   petstore-living-documentation:
+    if: ${{ (github.event.action != 'labeled' && github.event.action != 'unlabeled' || github.event.label.name == 'ci:full' || github.event.label.name == 'ci:release') && (github.event_name != 'pull_request' || !github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'ci:full') || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
     timeout-minutes: 15
     runs-on: ubuntu-24.04
     env:
