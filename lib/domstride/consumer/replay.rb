@@ -23,7 +23,9 @@ module Specdrive
           raise Error, "Invalid event sequence" unless sequence.is_a?(Integer) && sequence.positive?
           %w[before after].each do |phase|
             frame = event[phase]
-            next unless frame.is_a?(Hash) && frame["snapshot"]
+            next unless frame.is_a?(Hash)
+            frame.delete("target_identity") unless Protocol.target_identity(frame["target_identity"])
+            next unless frame["snapshot"]
             name = format("%06d-%s.html", sequence, phase)
             raise Error, "Invalid snapshot reference" unless frame["snapshot"] == name
             path = File.join(root, name)
