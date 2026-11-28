@@ -1,0 +1,9 @@
+<main>
+  <button id="save">Save</button>
+  <% if @can_archive %>
+    <button id="archive">Archive</button>
+  <% end %>
+  <%= render partial: "pets/card", collection: @pets, as: :pet %>
+  <output id="result">Pending</output>
+  <div id="dynamic"></div>
+</main>

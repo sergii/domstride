@@ -13,6 +13,8 @@ mapping = {
   "viewer/VERSION" => "VERSION",
   "viewer/bin/viewer" => "bin/viewer",
   "viewer/README.md" => "README.md",
+  "viewer/lib/coverage.rb" => "lib/coverage.rb",
+  "viewer/lib/coverage_bundle.rb" => "lib/coverage_bundle.rb",
   "LICENSE" => "LICENSE"
 }
 %w[
