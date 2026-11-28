@@ -12,14 +12,14 @@ module Domstride
         @app = app
         @generation = 0
         @settings = Configuration.resolve(performance_profile: performance_profile, **options)
-        name = performance_profile || ENV["DOMSTRIDE_PERFORMANCE_PROFILE"]
+        name = performance_profile || Configuration.env_value("DOMSTRIDE_PERFORMANCE_PROFILE")
         if name.to_s == "deterministic" && @settings[:clock] == "virtual"
           raise ArgumentError, "Deterministic profile requires the native DSL; Capybara virtual retries are not supported"
         end
         @query_prefetch = @settings[:query_prefetch]
-        @reuse_worker = ENV["DOMSTRIDE_REUSE_WORKER"] == "1"
+        @reuse_worker = Configuration.env_value("DOMSTRIDE_REUSE_WORKER") == "1"
         if @reuse_worker && (@settings[:runtime] != "node" || !%w[jsdom jsdom31].include?(@settings[:engine]) ||
-            @settings[:clock] != "real" || @settings[:websocket_url] || ENV["DOMSTRIDE_RECORD_DIR"].to_s != "")
+            @settings[:clock] != "real" || @settings[:websocket_url] || Configuration.env_value("DOMSTRIDE_RECORD_DIR").to_s != "")
           raise ArgumentError, "Persistent worker requires Node/jsdom, real clock, no websocket and no recording"
         end
         @mounted = false

@@ -37,7 +37,7 @@ jobs:
         run: |
           bundle exec rake test
           bundle exec ruby examples/counter.rb
-          gem build domstride.gemspec
+          gem build specdrive.gemspec
       - name: Experimental compatibility tests
         run: |
           for pair in 'bun jsdom' 'node happy-dom' 'bun happy-dom'; do

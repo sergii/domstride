@@ -1,6 +1,6 @@
 # SpecDrive (formerly Domstride)
 
-SpecDrive is the new product name for the Ruby testing engine. During the transition the existing `domstride` gem remains the package name; `require "specdrive"`, `SpecDrive::Session`, `require "specdrive/capybara"`, `:specdrive` and the `specdrive` CLI are additive compatibility entrypoints. Existing names remain supported. See [product separation and migration](docs/product-separation.md).
+SpecDrive is the new product name for the Ruby testing engine. The canonical source-built gem is now `specdrive` (not yet published); `require "specdrive"`, `SpecDrive::Session`, `require "specdrive/capybara"`, `:specdrive` and the `specdrive` CLI are additive compatibility entrypoints. Existing names remain supported. See [product separation and migration](docs/product-separation.md).
 
 Fast interactions. Real behavior.
 
@@ -107,7 +107,7 @@ The support module suppresses automatic failure screenshots for Domstride becaus
 
 ## Installed gem preview
 
-Build/install the gem locally, then run `domstride setup` and `domstride doctor`. Setup explicitly installs pinned direct runtime dependencies using npm into a content-addressed user cache (default ~/.cache/domstride; override DOMSTRIDE_RUNTIME_HOME). Test execution never installs packages implicitly. Development checkout uses root node_modules when available. Node 22.23.5 is the verified runtime; npm is required for setup. Direct dependency versions are pinned; transitive npm resolution is not locked yet. No RubyGems release is published.
+Build/install the gem locally with `gem build specdrive.gemspec` and `gem install ./specdrive-0.0.1.gem`, then run `specdrive setup` and `specdrive doctor`. Existing CLI and require paths continue to work after installing the new package. The legacy package name is not shipped by this build. Setup explicitly installs pinned direct runtime dependencies using npm into a content-addressed user cache (default ~/.cache/domstride; override DOMSTRIDE_RUNTIME_HOME). Test execution never installs packages implicitly. Development checkout uses root node_modules when available. Node 22.23.5 is the verified runtime; npm is required for setup. Direct dependency versions are pinned; transitive npm resolution is not locked yet. No RubyGems release is published.
 
 ## Capybara contract
 

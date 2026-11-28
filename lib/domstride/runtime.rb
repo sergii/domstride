@@ -2,6 +2,7 @@ require "digest"
 require "fileutils"
 require "tmpdir"
 require "json"
+require_relative "configuration"
 
 module Domstride
   module Runtime
@@ -15,13 +16,13 @@ module Domstride
     def self.cache_path
       digest = Digest::SHA256.new
       FILES.each { |name| digest.update(name).update(File.binread(File.join(source, name))) }
-      base = ENV["DOMSTRIDE_RUNTIME_HOME"] || File.join(Dir.home, ".cache", "domstride")
+      base = Configuration.env_value("DOMSTRIDE_RUNTIME_HOME") || File.join(Dir.home, ".cache", "domstride")
       File.join(File.expand_path(base), digest.hexdigest[0, 24])
     end
 
     def self.worker_path
       # Use checkout dependencies for development; explicit runtime home always uses the installed cache.
-      return File.join(source, "worker.cjs") if !ENV.key?("DOMSTRIDE_RUNTIME_HOME") && File.directory?(File.join(ROOT, "node_modules"))
+      return File.join(source, "worker.cjs") if Configuration.env_value("DOMSTRIDE_RUNTIME_HOME").nil? && File.directory?(File.join(ROOT, "node_modules"))
       path = cache_path
       return File.join(path, "worker.cjs") if ready?(path)
       raise Domstride::Error, "JavaScript dependencies missing. Run domstride setup (requires Node.js and npm)."

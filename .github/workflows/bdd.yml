@@ -7,7 +7,7 @@ on:
       - 'test/**'
       - 'examples/bdd/**'
       - 'examples/rails_reference/**'
-      - 'domstride.gemspec'
+      - 'specdrive.gemspec'
       - '.github/workflows/bdd.yml'
   workflow_dispatch:
 permissions:

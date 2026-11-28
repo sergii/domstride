@@ -22,15 +22,15 @@ jobs:
         run: |
           temp="$RUNNER_TEMP/independent-consumer"
           mkdir -p "$temp"
-          gem build domstride.gemspec --output "$temp/domstride.gem"
+          gem build specdrive.gemspec --output "$temp/specdrive.gem"
           export GEM_HOME="$temp/gems" GEM_PATH="$temp/gems"
-          gem install "$temp/domstride.gem" --no-document
+          gem install "$temp/specdrive.gem" --no-document
           cp examples/independent_consumer/* "$temp/"
           cd "$temp"
-          gem_root="$(ruby -e 'print Gem::Specification.find_by_name("domstride").full_gem_path')"
+          gem_root="$(ruby -e 'print Gem::Specification.find_by_name("specdrive").full_gem_path')"
           case "$gem_root" in "$GEM_HOME"/*) ;; *) exit 1 ;; esac
           export INSTALLED_DOCS_LIB="$gem_root/lib/domstride/documentation"
-          export INSTALLED_DOMSTRIDE_CLI="$GEM_HOME/bin/domstride"
+          export INSTALLED_DOMSTRIDE_CLI="$GEM_HOME/bin/specdrive"
           export SOURCE_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}"
           npm install --no-audit --no-fund
           npx playwright install chromium

@@ -5,7 +5,7 @@ on:
       - 'lib/**'
       - 'runtime/**'
       - 'examples/real_apps/**'
-      - 'domstride.gemspec'
+      - 'specdrive.gemspec'
       - '.github/workflows/real-apps.yml'
   workflow_dispatch:
 permissions:
@@ -73,7 +73,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          printf '\n# Domstride discovery only\ngem "domstride", path: "%s"\n' "$GITHUB_WORKSPACE" >> Gemfile
+          printf '\n# Domstride discovery only\ngem "specdrive", path: "%s"\n' "$GITHUB_WORKSPACE" >> Gemfile
           bundle config unset frozen
           bundle install 2>&1 | tee "$GITHUB_WORKSPACE/real-app-results/bundle.log"
       - name: Original system test discovery

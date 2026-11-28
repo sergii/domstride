@@ -7,7 +7,7 @@ on:
       - 'exe/**'
       - 'test/**'
       - 'examples/rails_reference/**'
-      - 'domstride.gemspec'
+      - 'specdrive.gemspec'
       - '.github/workflows/product-readiness.yml'
   workflow_dispatch:
 permissions:
@@ -71,32 +71,32 @@ jobs:
         run: |
           temp="$(mktemp -d)"
           trap 'rm -rf "$temp"' EXIT
-          gem build domstride.gemspec --output "$temp/domstride.gem"
+          gem build specdrive.gemspec --output "$temp/specdrive.gem"
           export GEM_HOME="$temp/gems"
           export GEM_PATH="$temp/gems"
-          gem install "$temp/domstride.gem" --no-document
+          gem install "$temp/specdrive.gem" --no-document
           gem list --local
           export DOMSTRIDE_RUNTIME_HOME="$temp/runtime"
           cd "$temp"
-          ruby -rdomstride -e 'abort "Not the installed gem" unless Gem.loaded_specs.fetch("domstride").full_gem_path.start_with?(ENV.fetch("GEM_HOME"))'
+          ruby -rdomstride -e 'abort "Not the installed gem" unless Gem.loaded_specs.fetch("specdrive").full_gem_path.start_with?(ENV.fetch("GEM_HOME"))'
           if "$temp/gems/bin/domstride" doctor; then echo "Unexpected runtime before setup"; exit 1; fi
           "$temp/gems/bin/domstride" setup
           "$temp/gems/bin/domstride" doctor
-          "$temp/gems/bin/specdrive" doctor
+          SPECDRIVE_RUNTIME_HOME="$temp/runtime" "$temp/gems/bin/specdrive" doctor
           ruby -rspecdrive -e 'abort unless SpecDrive.equal?(Domstride)'
           ruby -rspecdrive/capybara -e 'abort unless Capybara.drivers.key?(:specdrive) && Capybara.drivers.key?(:domstride)'
           "$temp/gems/bin/domstride" doctor --json | ruby -rjson -e 'abort unless JSON.parse(STDIN.read).fetch("status") == "ok"'
           "$temp/gems/bin/domstride" setup
-          node "$GITHUB_WORKSPACE/test/documentation_package_test.cjs" "$temp/gems/bin/domstride"
-          gem_root="$(ruby -rdomstride -e 'print Gem.loaded_specs.fetch("domstride").full_gem_path')"
+          node "$GITHUB_WORKSPACE/test/documentation_package_test.cjs" "$temp/gems/bin/specdrive"
+          gem_root="$(ruby -rdomstride -e 'print Gem.loaded_specs.fetch("specdrive").full_gem_path')"
           node "$GITHUB_WORKSPACE/test/framework_integration_test.cjs" "$gem_root/lib/domstride/documentation" "$gem_root/adapters"
           for profile in compatible fast deterministic; do
             DOMSTRIDE_PERFORMANCE_PROFILE="$profile" ruby -rdomstride -e 'Domstride::Session.open { |p| p.mount_html(%q{<p id="status">Ready</p>}); p.assert_text("#status", "Ready") }; puts "Installed profile OK"'
           done
           ruby -rdomstride/capybara -e 'abort unless Capybara.drivers.key?(:domstride); app = ->(_) { [200, {"content-type" => "text/html"}, ["<p id=ready>Ready</p>"]] }; page = Capybara::Session.new(:domstride, app); begin; page.visit("/"); abort unless page.has_css?("#ready", text: "Ready"); ensure; page.driver.quit; end'
           mkdir -p "$GITHUB_WORKSPACE/package-results"
-          cp "$temp/domstride.gem" "$GITHUB_WORKSPACE/package-results/"
+          cp "$temp/specdrive.gem" "$GITHUB_WORKSPACE/package-results/"
       - uses: actions/upload-artifact@v4
         with:
-          name: domstride-gem-preview
+          name: specdrive-gem-preview
           path: package-results/
