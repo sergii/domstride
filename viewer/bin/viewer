@@ -2,8 +2,9 @@
 # Internal preview CLI; branding and public distribution are not decided.
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "domstride/consumer"
+require "json"
 
-usage = "Usage: viewer --version | report DIRECTORY [OUTPUT_HTML] | replay DIRECTORY [OUTPUT_HTML] | docs export --synthetic-reference RUN_DIRECTORY"
+usage = "Usage: viewer --version | report DIRECTORY [OUTPUT_HTML] | replay DIRECTORY [OUTPUT_HTML] | coverage MAPPING_JSON OUTPUT_HTML | docs export --synthetic-reference RUN_DIRECTORY"
 begin
   case ARGV.shift
   when "--version"
@@ -15,6 +16,15 @@ begin
   when "replay"
     abort usage unless (1..2).cover?(ARGV.size)
     puts Specdrive::Consumer::Replay.export(ARGV[0], output: ARGV[1])
+  when "coverage"
+    abort usage unless ARGV.size == 2
+    require_relative "../lib/coverage"
+    input, output = ARGV
+    raise ArgumentError, "Expected regular non-symlink input file" unless File.file?(input) && !File.symlink?(input)
+    raise ArgumentError, "Mapping too large for research preview" if File.size(input) > 10 * 1024 * 1024
+    report = UICoverage.aggregate(JSON.parse(File.read(input)))
+    File.open(output, File::WRONLY | File::CREAT | File::EXCL, 0o600) { |file| file.write(UICoverage.render(report)) }
+    puts File.expand_path(output)
   when "docs"
     abort usage unless ARGV.size == 3 && ARGV[0] == "export" && ARGV[1] == "--synthetic-reference"
     script = File.expand_path("../lib/domstride/documentation/export-docs.cjs", __dir__)
@@ -22,6 +32,6 @@ begin
   else
     abort usage
   end
-rescue Specdrive::Error, SystemCallError, ArgumentError => error
+rescue Specdrive::Error, SystemCallError, ArgumentError, JSON::ParserError, KeyError => error
   abort error.message
 end
