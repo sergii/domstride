@@ -322,11 +322,11 @@ module Specdrive
       def attach_files(value)
         ensure_current_generation!
         raise ::Capybara::NotSupportedByDriverError, "File inputs require jsdom" if driver.worker.settings[:engine] == "happy-dom"
-        paths = Array(value)
+        paths = Array(value).map { |path| path.respond_to?(:to_path) ? path.to_path : path }
         raise ArgumentError, "Expected file paths" unless paths.all? { |path| path.is_a?(String) && File.file?(path) }
         remaining = 8 * 1024 * 1024
         files = paths.map do |path|
-          data = File.binread(path, remaining + 1)
+          data = File.binread(path, remaining + 1) || "".b
           remaining -= data.bytesize
           raise ArgumentError, "Upload byte limit exceeded" if remaining.negative?
           { name: File.basename(path), type: MiniMime.lookup_by_filename(path)&.content_type || "application/octet-stream",
