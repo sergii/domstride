@@ -1,6 +1,7 @@
+require_relative "../namespace"
 require_relative "../errors"
 
-module Domstride
+module Specdrive
   module Consumer
     module Video
       MAX_BYTES = 8 * 1024 * 1024

@@ -1,7 +1,8 @@
+require_relative "../namespace"
 require_relative "../report"
 require_relative "../browser_video"
 
-module Domstride
+module Specdrive
   module Reporting
     # Framework instrumentation must never replace the original test outcome.
     module Lifecycle

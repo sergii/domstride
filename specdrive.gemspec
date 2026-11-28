@@ -2,8 +2,8 @@ require_relative "lib/domstride/version"
 
 Gem::Specification.new do |spec|
   spec.name = "specdrive"
-  spec.version = Domstride::VERSION
-  spec.authors = ["Domstride contributors"]
+  spec.version = Specdrive::VERSION
+  spec.authors = ["Specdrive contributors"]
   spec.summary = "Experimental browserless interaction testing for Ruby"
   spec.homepage = "https://github.com/sergii/domstride"
   spec.license = "MIT"

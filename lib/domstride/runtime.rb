@@ -1,10 +1,11 @@
+require_relative "namespace"
 require "digest"
 require "fileutils"
 require "tmpdir"
 require "json"
 require_relative "configuration"
 
-module Domstride
+module Specdrive
   module Runtime
     ROOT = File.expand_path("../..", __dir__)
     FILES = %w[worker.cjs virtual_clock.cjs assets.cjs forms.cjs websocket.cjs media.cjs logical_dom.cjs observers.cjs package.json].freeze
@@ -25,7 +26,7 @@ module Domstride
       return File.join(source, "worker.cjs") if Configuration.env_value("DOMSTRIDE_RUNTIME_HOME").nil? && File.directory?(File.join(ROOT, "node_modules"))
       path = cache_path
       return File.join(path, "worker.cjs") if ready?(path)
-      raise Domstride::Error, "JavaScript dependencies missing. Run domstride setup (requires Node.js and npm)."
+      raise Specdrive::Error, "JavaScript dependencies missing. Run domstride setup (requires Node.js and npm)."
     end
 
     def self.ready?(path)
@@ -44,9 +45,9 @@ module Domstride
         begin
           FILES.each { |name| FileUtils.cp(File.join(source, name), staging) }
           ok = system("npm", "install", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund", chdir: staging)
-          raise Domstride::Error, "npm install failed; runtime was not installed" unless ok
+          raise Specdrive::Error, "npm install failed; runtime was not installed" unless ok
           File.write(File.join(staging, ".ready"), "ready\n")
-          raise Domstride::Error, "Runtime dependencies incomplete" unless ready?(staging)
+          raise Specdrive::Error, "Runtime dependencies incomplete" unless ready?(staging)
           FileUtils.rm_rf(path)
           File.rename(staging, path)
         ensure

@@ -1,4 +1,5 @@
-module Domstride
+require_relative "namespace"
+module Specdrive
   # Shared artifact contract. No execution-engine dependencies.
   module Protocol
     FORMAT = "domstride.case".freeze

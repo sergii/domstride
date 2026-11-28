@@ -1,6 +1,7 @@
+require_relative "namespace"
 require_relative "consumer/replay"
 
-module Domstride
+module Specdrive
   # Compatibility API. Rendering and reading live in the artifact-only consumer.
   module Replay
     def self.load_recording(directory) = Consumer::Replay.load_recording(directory)

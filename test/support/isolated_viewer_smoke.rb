@@ -7,7 +7,9 @@ def check(value, message)
   raise message unless value
 end
 
-consumer = Domstride::Consumer
+consumer = Specdrive::Consumer
+check(Specdrive.equal?(Domstride), "Legacy namespace mismatch")
+check(consumer::Report.name == "Specdrive::Consumer::Report", "Noncanonical consumer namespace")
 check(!defined?(Domstride::Session), "Engine loaded")
 check(!defined?(Domstride::ReportCase), "Producer hooks loaded")
 check(!defined?(Domstride::Runtime), "Runtime loaded")

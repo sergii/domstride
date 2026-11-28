@@ -1,4 +1,4 @@
-name: SpecDrive isolated Viewer boundary
+name: Specdrive isolated Viewer boundary
 on:
   pull_request:
     paths:
@@ -27,7 +27,7 @@ jobs:
           temp="$RUNNER_TEMP/isolated-viewer"
           mkdir -p "$temp/lib/domstride"
           cp -R lib/domstride/consumer "$temp/lib/domstride/"
-          cp lib/domstride/{consumer.rb,errors.rb,protocol.rb,replay.html} "$temp/lib/domstride/"
+          cp lib/domstride/{consumer.rb,namespace.rb,errors.rb,protocol.rb,replay.html} "$temp/lib/domstride/"
           cp test/isolated_viewer_cli.rb "$temp/cli.rb"
           cp test/support/isolated_viewer_smoke.rb "$temp/test.rb"
           cd "$temp"

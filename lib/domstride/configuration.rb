@@ -1,4 +1,5 @@
-module Domstride
+require_relative "namespace"
+module Specdrive
   module Configuration
     DEFAULTS = {
       runtime: "node", engine: "jsdom", profile: false, wait_strategy: "poll",

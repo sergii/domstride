@@ -1,9 +1,10 @@
+require_relative "../namespace"
 require "json"
 require "securerandom"
 require_relative "../errors"
 require_relative "../protocol"
 
-module Domstride
+module Specdrive
   module Consumer
     module Replay
       # Export a single local recording; never run application HTML or requests.

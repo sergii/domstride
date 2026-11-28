@@ -1,10 +1,11 @@
+require_relative "namespace"
 require "tempfile"
 require "fileutils"
 require "tmpdir"
 require "json"
 require_relative "protocol"
 
-module Domstride
+module Specdrive
   # Explicit case boundary. Fiber-local context avoids changing process-wide ENV.
   class ReportCase
     STATUSES = Protocol::CASE_STATUSES

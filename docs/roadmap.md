@@ -56,6 +56,6 @@ See [MVP consolidation review](mvp-consolidation.md) and [Petstore performance e
 
 [Six-phase Core Extraction & Packaging](core-extraction-packaging.md): independent installed consumer verified on 03d8d50 (19/20 workflows, known Fizzy limitation). Final audit hardening CI pending. No merge or release. General publication, redaction, npm distribution and independent third-party Viewer remain follow-ups.
 
-## SpecDrive Product Separation & Rebranding
+## Specdrive Product Separation & Rebranding
 
 See [product separation and migration](product-separation.md). Phase 1 introduces compatible public names; independent Viewer extraction, package rename and release are separate review gates.

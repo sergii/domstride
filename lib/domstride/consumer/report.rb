@@ -1,10 +1,11 @@
+require_relative "../namespace"
 require_relative "../errors"
 require_relative "../protocol"
 require_relative "replay"
 require_relative "video"
 require "base64"
 
-module Domstride
+module Specdrive
   module Consumer
     module Report
       MAX_CASES = 100

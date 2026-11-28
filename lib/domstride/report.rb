@@ -1,9 +1,10 @@
+require_relative "namespace"
 require_relative "consumer/report"
 require_relative "report_case"
 require_relative "replay"
 require_relative "video"
 
-module Domstride
+module Specdrive
   # Compatibility API for existing producers and local report callers.
   module Report
     MAX_CASES = Consumer::Report::MAX_CASES

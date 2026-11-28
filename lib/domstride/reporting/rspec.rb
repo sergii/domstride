@@ -1,9 +1,10 @@
+require_relative "../namespace"
 require "rspec/core"
 require_relative "lifecycle"
 require_relative "rspec_assertions"
 require_relative "capybara_assertions"
 
-module Domstride
+module Specdrive
   module Reporting
     module RSpec
       # Reporter notifications include skipped examples and failures in hooks,

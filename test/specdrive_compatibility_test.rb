@@ -3,25 +3,38 @@ require "open3"
 require "specdrive"
 require "specdrive/capybara"
 
-class SpecDriveCompatibilityTest < Minitest::Test
+class SpecdriveCompatibilityTest < Minitest::Test
   def test_public_namespace_shares_existing_implementation
-    assert_same Domstride, SpecDrive
-    assert_same Domstride::Session, SpecDrive::Session
-    assert_same Domstride::Configuration, SpecDrive::Configuration
-    assert_equal Domstride::VERSION, SpecDrive::VERSION
-    assert_equal "domstride.case", SpecDrive::Protocol::FORMAT
+    assert_equal "Specdrive", Specdrive.name
+    assert_equal "Specdrive::Session", Specdrive::Session.name
+    assert_equal "Specdrive::Error", Specdrive::Error.name
+    refute Object.const_defined?(:SpecDrive, false)
+    assert_same Domstride, Specdrive
+    assert_same Domstride::Session, Specdrive::Session
+    assert_same Domstride::Configuration, Specdrive::Configuration
+    assert_equal Domstride::VERSION, Specdrive::VERSION
+    assert_equal "domstride.case", Specdrive::Protocol::FORMAT
+  end
+
+  def test_entrypoint_load_order_in_fresh_processes
+    [%w[domstride specdrive], %w[specdrive domstride], %w[domstride/errors specdrive],
+     %w[domstride/consumer specdrive], %w[specdrive/report domstride]].each do |requires|
+      code = 'abort unless Specdrive.equal?(Domstride) && Specdrive.name == "Specdrive"; abort if Object.const_defined?(:SpecDrive, false)'
+      output, status = Open3.capture2e(RbConfig.ruby, "-I", File.expand_path("../lib", __dir__), *requires.flat_map { |name| ["-r", name] }, "-e", code)
+      assert status.success?, output
+    end
   end
 
   def test_new_configuration_prefix_overrides_legacy_values
     env = {"DOMSTRIDE_ENGINE" => "jsdom", "SPECDRIVE_ENGINE" => "jsdom31",
            "DOMSTRIDE_PROFILE" => "1", "SPECDRIVE_PROFILE" => "0"}
-    settings = SpecDrive::Configuration.resolve(env: env)
+    settings = Specdrive::Configuration.resolve(env: env)
     assert_equal "jsdom31", settings.fetch(:engine)
     assert_equal false, settings.fetch(:profile)
     assert_equal "jsdom", env.fetch("DOMSTRIDE_ENGINE")
-    assert_equal "happy-dom", SpecDrive::Configuration.resolve(env: {"SPECDRIVE_PERFORMANCE_PROFILE" => "fast"}).fetch(:engine)
-    assert_equal "jsdom", SpecDrive::Configuration.resolve(env: {"DOMSTRIDE_ENGINE" => "jsdom"}).fetch(:engine)
-    assert_equal "jsdom31", SpecDrive::Configuration.resolve(env: env, engine: "jsdom31").fetch(:engine)
+    assert_equal "happy-dom", Specdrive::Configuration.resolve(env: {"SPECDRIVE_PERFORMANCE_PROFILE" => "fast"}).fetch(:engine)
+    assert_equal "jsdom", Specdrive::Configuration.resolve(env: {"DOMSTRIDE_ENGINE" => "jsdom"}).fetch(:engine)
+    assert_equal "jsdom31", Specdrive::Configuration.resolve(env: env, engine: "jsdom31").fetch(:engine)
   end
 
   def test_both_driver_names_remain_available

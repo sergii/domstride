@@ -1,7 +1,8 @@
+require_relative "../namespace"
 require "minitest/assertions"
 require_relative "../assertion"
 
-module Domstride
+module Specdrive
   module Reporting
     module MinitestAssertions
       # Deliberately bounded public method list. Nested primitive asserts are

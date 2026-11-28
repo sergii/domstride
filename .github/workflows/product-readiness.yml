@@ -42,7 +42,7 @@ jobs:
         run: node test/documentation_protocol_test.cjs
       - name: Independent framework adapter
         run: node test/framework_integration_test.cjs
-      - name: SpecDrive compatibility entrypoints
+      - name: Specdrive compatibility entrypoints
         run: bundle exec ruby -Ilib test/specdrive_compatibility_test.rb
       - name: Configuration
         run: bundle exec ruby -Ilib test/configuration_test.rb
@@ -83,7 +83,7 @@ jobs:
           "$temp/gems/bin/domstride" setup
           "$temp/gems/bin/domstride" doctor
           SPECDRIVE_RUNTIME_HOME="$temp/runtime" "$temp/gems/bin/specdrive" doctor
-          ruby -rspecdrive -e 'abort unless SpecDrive.equal?(Domstride)'
+          ruby -rspecdrive -e 'abort unless Specdrive.equal?(Domstride) && Specdrive::Session.name == "Specdrive::Session"'
           ruby -rspecdrive/capybara -e 'abort unless Capybara.drivers.key?(:specdrive) && Capybara.drivers.key?(:domstride)'
           "$temp/gems/bin/domstride" doctor --json | ruby -rjson -e 'abort unless JSON.parse(STDIN.read).fetch("status") == "ok"'
           "$temp/gems/bin/domstride" setup

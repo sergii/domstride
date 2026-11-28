@@ -1,11 +1,12 @@
+require_relative "namespace"
 require "capybara"
 require "base64"
 require "mini_mime"
 require_relative "../domstride"
 
-module Domstride
+module Specdrive
   module CapybaraAdapter
-    class StaleElement < Domstride::Error; end
+    class StaleElement < Specdrive::Error; end
 
     class Driver < ::Capybara::Driver::Base
       def initialize(app, performance_profile: nil, **options)
@@ -29,14 +30,14 @@ module Domstride
       attr_reader :generation
 
       def worker
-        if @reuse_worker && Domstride::ReportCase.current
+        if @reuse_worker && Specdrive::ReportCase.current
           raise ArgumentError, "Persistent worker does not support report-case recording"
         end
         if @reuse_worker && !@exit_cleanup_registered
           @exit_cleanup_registered = true
           at_exit { quit if Process.pid == @owner_pid }
         end
-        @worker ||= Domstride::Session.new(app: @app, **@settings).tap { |session| session.recording_step = @recording_step }
+        @worker ||= Specdrive::Session.new(app: @app, **@settings).tap { |session| session.recording_step = @recording_step }
       end
 
       def recording_step=(sequence)
@@ -84,7 +85,7 @@ module Domstride
 
       def command(name, **args)
         worker.dom_command(name, **args)
-      rescue Domstride::Error => e
+      rescue Specdrive::Error => e
         raise StaleElement, e.message if e.message == "STALE_ELEMENT"
         raise ::Capybara::NotSupportedByDriverError, e.message if e.message.start_with?("UNSUPPORTED_")
         raise
@@ -149,14 +150,14 @@ module Domstride
             arg.ensure_current_generation!
             { kind: "element", handle: arg.native }
           else
-            { kind: "json", value: Domstride::Session.json_script_argument(arg) }
+            { kind: "json", value: Specdrive::Session.json_script_argument(arg) }
           end
         end
       end
 
       def diagnostics
         {
-          version: Domstride::VERSION,
+          version: Specdrive::VERSION,
           engine: @settings[:engine],
           runtime: @settings[:runtime],
           clock: @settings[:clock],
@@ -308,4 +309,4 @@ module Domstride
   end
 end
 
-Capybara.register_driver(:domstride) { |app| Domstride::CapybaraAdapter::Driver.new(app) }
+Capybara.register_driver(:domstride) { |app| Specdrive::CapybaraAdapter::Driver.new(app) }

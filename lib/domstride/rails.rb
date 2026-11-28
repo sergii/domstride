@@ -1,8 +1,9 @@
+require_relative "namespace"
 require_relative "capybara"
 require "fileutils"
 require "tmpdir"
 
-module Domstride
+module Specdrive
   module RailsSupport
     def self.driver_name(env: ENV)
       case env.fetch("DOMSTRIDE_DRIVER", "domstride")
@@ -34,14 +35,14 @@ module Domstride
   module RailsSystemTestSupport
     def take_failed_screenshot
       driver = page.driver
-      return super unless driver.is_a?(Domstride::CapybaraAdapter::Driver)
+      return super unless driver.is_a?(Specdrive::CapybaraAdapter::Driver)
       return unless !passed? && !skipped? && ENV["DOMSTRIDE_FAILURE_DIR"].to_s != ""
       path = RailsSupport.save_failure(driver, directory: ENV.fetch("DOMSTRIDE_FAILURE_DIR"),
                                       include_html: ENV["DOMSTRIDE_FAILURE_HTML"] == "1")
       warn "Domstride failure diagnostics: #{path}"
     rescue StandardError => error
       # Never mask the original test failure with a diagnostics error.
-      raise unless driver.is_a?(Domstride::CapybaraAdapter::Driver)
+      raise unless driver.is_a?(Specdrive::CapybaraAdapter::Driver)
       warn "Domstride failure diagnostics unavailable: #{error.class}"
     end
   end

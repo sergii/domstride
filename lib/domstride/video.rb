@@ -1,7 +1,8 @@
+require_relative "namespace"
 require "base64"
 require_relative "consumer/video"
 
-module Domstride
+module Specdrive
   # Producer attachment API; the consumer owns bounded WebM reading.
   module Video
     MAX_BYTES = Consumer::Video::MAX_BYTES

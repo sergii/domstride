@@ -1,3 +1,4 @@
+require_relative "domstride/namespace"
 require "json"
 require "open3"
 require "uri"
@@ -12,7 +13,7 @@ require_relative "domstride/recording"
 require_relative "domstride/report_case"
 require_relative "domstride/assertion"
 
-module Domstride
+module Specdrive
   class Session
     WORKER = File.expand_path("../runtime/worker.cjs", __dir__)
 
