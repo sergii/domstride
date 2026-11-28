@@ -4,6 +4,8 @@ require "specdrive"
 require "rack/mock"
 require "tmpdir"
 require_relative "../coverage"
+require_relative "../../../viewer/lib/coverage_bundle"
+require "fileutils"
 
 enabled = ENV.fetch("HERB_SOURCE_ATTRIBUTION", "1") == "1"
 root = Rails.root.join("app/views")
@@ -27,7 +29,7 @@ reports = [false, true].map do |archive|
     raise "Rails response failed: #{response.status}" unless response.status == 200
     raise "Unexpected partial rendering" unless response.body.scan(/<button\b[^>]*\bclass="open"/).size == 2
     # Use the actual Rails Rack application through Specdrive, not standalone engine eval.
-    Specdrive::Session.open(app: Rails.application, engine: "jsdom31", recording_directory: dir, recording_html: false) do |page|
+    Specdrive::Session.open(app: Rails.application, engine: "jsdom31", recording_directory: dir, recording_html: enabled && !ARGV[0].nil?) do |page|
       path = page.recorder.path
       page.visit(url)
       nodes = page.evaluate_script(<<~JS)
@@ -60,7 +62,16 @@ reports = [false, true].map do |archive|
       raise "Unexpected source stamps in response" if response.body.include?("data-herb-source")
     end
     if enabled
+      ref = nil
+      if ARGV[0]
+        name = "recording-#{mapping_runs.size + 1}"
+        destination = File.join(ARGV.fetch(0),name)
+        raise "Recording destination exists" if File.exist?(destination) || File.symlink?(destination)
+        FileUtils.cp_r(path,destination)
+        ref = {directory: name, sha256: CoverageBundle.recording_digest(destination), event_sequence: click.fetch("sequence")}
+      end
       mapping_runs << {
+        recording_ref: ref,
         archive_enabled: archive, candidates: candidates,
         nodes: nodes.map do |node|
           {path: node.fetch("path"), candidate_ids: [index.fetch(node.fetch("source")).fetch(:candidate_id)],

@@ -4,7 +4,7 @@ $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "domstride/consumer"
 require "json"
 
-usage = "Usage: viewer --version | report DIRECTORY [OUTPUT_HTML] | replay DIRECTORY [OUTPUT_HTML] | coverage MAPPING_JSON OUTPUT_HTML | docs export --synthetic-reference RUN_DIRECTORY"
+usage = "Usage: viewer --version | report DIRECTORY [OUTPUT_HTML] | replay DIRECTORY [OUTPUT_HTML] | coverage MAPPING_JSON OUTPUT_HTML | coverage-bundle MAPPING_JSON NEW_DIRECTORY | docs export --synthetic-reference RUN_DIRECTORY"
 begin
   case ARGV.shift
   when "--version"
@@ -25,6 +25,10 @@ begin
     report = UICoverage.aggregate(JSON.parse(File.read(input)))
     File.open(output, File::WRONLY | File::CREAT | File::EXCL, 0o600) { |file| file.write(UICoverage.render(report)) }
     puts File.expand_path(output)
+  when "coverage-bundle"
+    abort usage unless ARGV.size == 2
+    require_relative "../lib/coverage_bundle"
+    puts CoverageBundle.export(ARGV[0],ARGV[1])
   when "docs"
     abort usage unless ARGV.size == 3 && ARGV[0] == "export" && ARGV[1] == "--synthetic-reference"
     script = File.expand_path("../lib/domstride/documentation/export-docs.cjs", __dir__)
