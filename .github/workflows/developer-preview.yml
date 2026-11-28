@@ -47,7 +47,9 @@ jobs:
             puts JSON.pretty_generate(version:m.fetch("version"),files:m.fetch("files").length,payload_bytes:m.fetch("files").sum { |f| f.fetch("size_bytes") })
           ' "$out/viewer" > "$out/viewer-inventory.json"
       - name: Validate lockfile migration fixtures
-        run: ruby scripts/test_normalize_preview_lock.rb
+        run: |
+          ruby scripts/test_normalize_preview_lock.rb
+          ruby scripts/test_compare_preview_locks.rb
       - name: Prepare comparable base and candidate
         if: github.event_name == 'pull_request' || inputs.base_sha != ''
         env:
@@ -67,9 +69,13 @@ jobs:
           ruby scripts/normalize_preview_lock.rb "$base/Gemfile.lock" "$out/base-normalized.lock"
           cp "$out/base-normalized.lock" "$head/Gemfile.lock"
           cp "$base/package-lock.json" "$head/package-lock.json"
-          (cd "$head"; BUNDLE_FROZEN=true bundle install; npm ci --no-audit --no-fund; npm run build:reference)
+          # Bundler owns lockfile serialization. Resolve only from locally installed gems.
+          # Compare the complete dependency graph and external checksums before frozen install.
+          (cd "$head"; BUNDLE_FROZEN=false bundle lock --local)
           cp "$head/Gemfile.lock" "$out/head.lock"
-          diff -u "$out/base-normalized.lock" "$out/head.lock"
+          ruby scripts/compare_preview_locks.rb "$out/base-normalized.lock" "$out/head.lock" "$out"
+          (cd "$head"; BUNDLE_FROZEN=true bundle install; npm ci --no-audit --no-fund; npm run build:reference)
+          diff -u "$out/head.lock" "$head/Gemfile.lock"
           cmp "$base/examples/rails_reference/capybara_benchmark.rb" "$head/examples/rails_reference/capybara_benchmark.rb"
           cmp "$base/examples/rails_reference/application.bundle.js" "$head/examples/rails_reference/application.bundle.js"
           { echo "base=$BASE_SHA"; echo "head=$HEAD_SHA"; ruby -v; node -v; lscpu; } > "$out/environment.txt"
