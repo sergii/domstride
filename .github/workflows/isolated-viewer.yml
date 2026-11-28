@@ -29,7 +29,7 @@ jobs:
           cp -R lib/domstride/consumer "$temp/lib/domstride/"
           cp lib/domstride/{consumer.rb,errors.rb,protocol.rb,replay.html} "$temp/lib/domstride/"
           cp test/isolated_viewer_cli.rb "$temp/cli.rb"
-          cp test/isolated_viewer_test.rb "$temp/test.rb"
+          cp test/support/isolated_viewer_smoke.rb "$temp/test.rb"
           cd "$temp"
           env -u RUBYOPT -u RUBYLIB ruby -Ilib test.rb
           echo "ISOLATED_VIEWER_LIB=$temp/lib" >> "$GITHUB_ENV"
