@@ -1,19 +1,16 @@
 name: Domstride Cucumber and Turnip integration
 on:
   pull_request:
-    paths:
-      - 'lib/**'
-      - 'runtime/**'
-      - 'test/**'
-      - 'examples/bdd/**'
-      - 'examples/rails_reference/**'
-      - 'specdrive.gemspec'
-      - '.github/workflows/bdd.yml'
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, labeled, unlabeled]
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name != 'ci:full' && github.event.label.name != 'ci:release' && format('-ignored-{0}', github.run_id) || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 jobs:
   bdd:
+    if: ${{ (github.event.action != 'labeled' && github.event.action != 'unlabeled' || github.event.label.name == 'ci:full' || github.event.label.name == 'ci:release') && (github.event_name != 'pull_request' || !github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'ci:full') || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     strategy:

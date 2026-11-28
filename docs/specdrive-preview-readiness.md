@@ -38,3 +38,7 @@ ruby viewer/build.rb ./dist/viewer
 ```
 
 Use an isolated GEM_HOME for evaluation. To roll back the local preview, remove that isolated installation and Viewer build directory; return to the pinned pre-rebrand commit if needed. Existing v1 evidence and runtime cache are not rewritten. If a public version is eventually published, follow RubyGems release and yank policies; never overwrite a published version. No merge, tag, rename or publish executed.
+
+## CI policy update
+
+See [CI execution policy](ci-policy.md). The first audit built both candidates but stopped at an independently resolved Ruby lockfile mismatch. Seed candidate from normalized baseline lock and require frozen installation rather than comparing independently resolved locks. PR #20 is labeled ci:release; all checks remain required for this review. Concurrency cancels superseded PR runs in the same group. Earlier runs without the policy may still occupy runners. No new A/B result yet.

@@ -1,9 +1,13 @@
 name: Domstride vs rails-jsdom
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, labeled, unlabeled]
   push:
     branches: [main]
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name != 'ci:full' && github.event.label.name != 'ci:release' && format('-ignored-{0}', github.run_id) || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 defaults:
@@ -11,6 +15,7 @@ defaults:
     shell: bash
 jobs:
   compare:
+    if: ${{ (github.event.action != 'labeled' && github.event.action != 'unlabeled' || github.event.label.name == 'ci:full' || github.event.label.name == 'ci:release') && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:

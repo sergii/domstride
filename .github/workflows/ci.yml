@@ -3,7 +3,11 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, labeled, unlabeled]
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}${{ (github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name != 'ci:full' && github.event.label.name != 'ci:release' && format('-ignored-{0}', github.run_id) || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 defaults:
@@ -11,6 +15,7 @@ defaults:
     shell: bash
 jobs:
   test-and-benchmark:
+    if: ${{ (github.event.action != 'labeled' && github.event.action != 'unlabeled' || github.event.label.name == 'ci:full' || github.event.label.name == 'ci:release') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -25,13 +30,14 @@ jobs:
         with:
           node-version: '22.23.5'
       - uses: oven-sh/setup-bun@v2
+        if: ${{ (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
         with:
           bun-version: '1.3.0'
       - run: npm install --no-audit --no-fund
       - name: Environment
         run: |
           mkdir -p benchmark-results
-          { lscpu; free -h; ruby -v; node -v; bun -v; npm ls --all; } > benchmark-results/environment.txt
+          { lscpu; free -h; ruby -v; node -v; if command -v bun >/dev/null; then bun -v; fi; npm ls --all; } > benchmark-results/environment.txt
           cp package-lock.json Gemfile.lock benchmark-results/
       - name: Required Node jsdom tests and gem build
         run: |
@@ -39,6 +45,7 @@ jobs:
           bundle exec ruby examples/counter.rb
           gem build specdrive.gemspec
       - name: Experimental compatibility tests
+        if: ${{ (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
         run: |
           for pair in 'bun jsdom' 'node happy-dom' 'bun happy-dom'; do
             read -r runtime engine <<< "$pair"
@@ -50,6 +57,7 @@ jobs:
             cat "benchmark-results/test-$runtime-$engine.txt"
           done
       - name: Matrix benchmark
+        if: ${{ (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:release')) }}
         run: bundle exec ruby benchmarks/matrix.rb | tee benchmark-results/matrix.json
       - name: Benchmark summary
         if: always()
