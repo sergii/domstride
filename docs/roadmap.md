@@ -1,4 +1,4 @@
-# Domstride roadmap
+# Specdrive roadmap
 
 Ordered work, not a commitment to a release date. Keep related changes in one functional batch with tests and documentation.
 
@@ -11,7 +11,8 @@ Ordered work, not a commitment to a release date. Keep related changes in one fu
 | 5 | 011 | Performance optimization and benchmarks | Planned |
 | 6 | 012 | [Executable Living Documentation](roadmap/batch-012-living-documentation.md) | Reference implementation; CI pending |
 | 7 | 013 | [Rails UI Intelligence: Herb static analysis + runtime evidence](#batch-013-rails-ui-intelligence) | Research backlog; optional, non-blocking |
-| 8 | 007.2 | Webpack and legacy frontend asset compatibility, informed by local experiment | Deferred to last |
+| 8 | 014 | [Locator Compatibility & Semantic Target Identity](roadmap/batch-014-locator-compatibility.md) | Phase 1 initial matrix; CI pending |
+| 9 | 007.2 | Webpack and legacy frontend asset compatibility, informed by local experiment | Deferred to last |
 
 Replay viewer must support viewport left / steps right and steps left / viewport right, without changing the current event or before/after selection. Default viewport left. On narrow screens stack panels in selected order. Selected operation and exact corresponding target must be clearly outlined in green. The preview is reconstructed from saved state and does not execute application scripts or repeat actions. Full visual browser fidelity is not promised. Existing recording is opt-in; raw snapshots and replay reports are sensitive. No automatic publishing or upload.
 
@@ -27,7 +28,7 @@ Replay viewer must support viewport left / steps right and steps left / viewport
 - 013: optional Herb integration research after Living Documentation foundations; does not block compatibility, performance or release readiness.
 - 007.2: Webpack/legacy frontend compatibility remains last, as requested.
 
-No separate product or repository. Further cross-platform adapters are backlog, not a prerequisite for resuming the original plan.
+The product separation decision below supersedes the original single-product plan. Further cross-platform adapters remain backlog.
 
 ## BATCH-013: Rails UI Intelligence
 
@@ -60,4 +61,4 @@ See [MVP consolidation review](mvp-consolidation.md) and [Petstore performance e
 
 See [product separation and migration](product-separation.md). Phase 1 introduces compatible public names; independent Viewer extraction, package rename and release are separate review gates.
 
-Developer preview preparation: [Specdrive readiness audit](specdrive-preview-readiness.md). Final CI, package inspection, controlled A/B and release approvals are still open.
+Developer preview preparation: [Specdrive readiness audit](specdrive-preview-readiness.md). PR #20 merged at 92e493f after 22/23 workflows passed (accepted Fizzy limitation); controlled A/B and Selenium/Cuprite video verification passed. Public release security, dependency and publication approvals remain open. Repository renamed to sergii/specdrive.

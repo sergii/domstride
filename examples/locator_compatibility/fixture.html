@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Locator contract</title></head>
+<body>
+  <h1>Pet adoption</h1>
+  <label for="pet-name">Pet name</label>
+  <input id="pet-name" name="pet_name">
+  <label>Notes <textarea id="pet-notes"></textarea></label>
+  <input id="aria-only" aria-label="Contact phone">
+  <span id="contact-description">Contact email</span>
+  <input id="labelled-by" aria-labelledby="contact-description">
+  <label for="native-name">Visible name</label>
+  <input id="native-name" aria-label="Accessible name">
+  <button id="save" type="button" onclick="document.querySelector('#result').textContent = 'Saved'">Save</button>
+  <button id="remove" type="button" aria-label="Remove pet" onclick="document.querySelector('#result').textContent = 'Removed'"><span aria-hidden="true">×</span></button>
+  <label for="localized">Name</label>
+  <input id="localized" data-testid="adoption-name" data-qa="adoption-custom">
+  <button id="translate" type="button" onclick="document.querySelector('label[for=localized]').textContent = 'Nom'">Translate</button>
+  <button id="add" type="button" onclick="document.querySelector('#dynamic').innerHTML = '<label for=dynamic-name>New name</label><input id=dynamic-name data-testid=new-name>'">Add field</button>
+  <button id="replace" type="button" onclick="document.querySelector('#localized').outerHTML = '<input id=localized data-testid=adoption-name value=replaced>'">Replace field</button>
+  <div id="dynamic"></div>
+  <section id="first"><input id="first-name" data-testid="duplicate-name"></section>
+  <section id="second"><input id="second-name" data-testid="duplicate-name"></section>
+  <label for="hidden-name" hidden>Hidden name</label>
+  <input id="hidden-name" data-testid="hidden-name-target" hidden>
+  <label for="disabled-name">Disabled name</label>
+  <input id="disabled-name" data-testid="disabled-name-target" disabled>
+  <div id="role-status" role="status">Ready</div>
+  <output id="result">Pending</output>
+</body>
+</html>
