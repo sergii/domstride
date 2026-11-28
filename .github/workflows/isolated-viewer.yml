@@ -31,7 +31,7 @@ jobs:
           cp test/isolated_viewer_cli.rb "$temp/cli.rb"
           cp test/isolated_viewer_test.rb "$temp/test.rb"
           cd "$temp"
-          ruby --disable-gems -Ilib test.rb
+          env -u RUBYOPT -u RUBYLIB ruby -Ilib test.rb
           echo "ISOLATED_VIEWER_LIB=$temp/lib" >> "$GITHUB_ENV"
           echo "ISOLATED_VIEWER_CLI=$temp/cli.rb" >> "$GITHUB_ENV"
       - name: Browser contract against isolated consumer

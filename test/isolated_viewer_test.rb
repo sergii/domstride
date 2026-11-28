@@ -1,4 +1,4 @@
-# Standalone consumer contract: run with --disable-gems and only the staged file allowlist.
+# Standalone consumer contract: run without Bundler and with only the staged file allowlist.
 require "domstride/consumer"
 require "tmpdir"
 require "fileutils"
@@ -44,4 +44,4 @@ Dir.mktmpdir do |dir|
   rescue Domstride::Error
   end
 end
-puts "Independent artifact-only consumer verified without RubyGems, engine or producer hooks."
+puts "Independent artifact-only consumer verified without engine or producer hooks."

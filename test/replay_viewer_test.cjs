@@ -9,7 +9,7 @@ const { chromium } = require("playwright");
 
 function exportArtifact(command, directory) {
   if (process.env.ISOLATED_VIEWER_LIB) {
-    return execFileSync("ruby", ["--disable-gems", "-I", process.env.ISOLATED_VIEWER_LIB, process.env.ISOLATED_VIEWER_CLI, command, directory], {stdio:"pipe"});
+    return execFileSync("ruby", ["-I", process.env.ISOLATED_VIEWER_LIB, process.env.ISOLATED_VIEWER_CLI, command, directory], {stdio:"pipe"});
   }
   return execFileSync("bundle", ["exec", "ruby", "exe/domstride", command, directory], {stdio:"pipe"});
 }
