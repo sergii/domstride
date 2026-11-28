@@ -1,0 +1,45 @@
+name: Specdrive Herb research
+on:
+  pull_request:
+    paths:
+      - 'examples/herb_lab/**'
+      - '.github/workflows/herb-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  static-inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.3.14', '3.4.13', '4.0.10']
+    env:
+      BUNDLE_GEMFILE: examples/herb_lab/Gemfile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - name: Parse synthetic templates without rendering
+        run: |
+          mkdir -p herb-lab-results
+          bundle exec ruby examples/herb_lab/inventory.rb > herb-lab-results/inventory.json
+          bundle exec ruby examples/herb_lab/verify.rb herb-lab-results/inventory.json
+          cp examples/herb_lab/Gemfile.lock herb-lab-results/
+          ruby -v > herb-lab-results/environment.txt
+          bundle exec ruby -rherb -e 's=Gem.loaded_specs.fetch("herb"); puts "Herb #{s.version}, platform #{s.platform}, licenses #{s.licenses.join(",")}"' >> herb-lab-results/environment.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: herb-lab-ruby-${{ matrix.ruby }}
+          path: herb-lab-results/
+          if-no-files-found: warn
+          retention-days: 7
