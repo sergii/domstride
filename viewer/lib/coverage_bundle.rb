@@ -1,7 +1,7 @@
 require "digest"
 require "json"
 require_relative "coverage"
-require_relative "domstride/consumer/replay"
+require "domstride/consumer/replay"
 
 # Trusted synthetic research only. Render a verified event, not a live page.
 module CoverageBundle
