@@ -1,6 +1,6 @@
 # Domstride Protocol v1
 
-One product and repository, separate execution and evidence boundaries. Studio consumes files, never needs a running Domstride worker or Rails app. The Ruby exporter remains a packaging implementation detail, not a requirement for evidence producers. Existing report directories remain compatible.
+Two planned product boundaries, currently one repository and distribution. SpecDrive is the execution/evidence producer; the independent Viewer (name TBD) is the evidence consumer. Existing v1 wire identifiers remain unchanged. Studio consumes files, never needs a running Domstride worker or Rails app. The Ruby exporter remains a packaging implementation detail, not a requirement for evidence producers. Existing report directories remain compatible.
 
 ## Local case bundle
 

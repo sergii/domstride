@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.files = Dir["lib/**/*", "runtime/**/*", "README.md", "LICENSE", "package.json", "exe/*", "protocol/**/*", "adapters/**/*.cjs"]
   spec.require_paths = ["lib"]
   spec.bindir = "exe"
-  spec.executables = ["domstride"]
+  spec.executables = ["domstride", "specdrive"]
   spec.add_dependency "base64", ">= 0.2", "< 1"
   spec.add_dependency "mini_mime", "~> 1.1"
   spec.add_dependency "rack-test", "~> 2.2"
