@@ -9,7 +9,7 @@ module Specdrive
     class StaleElement < Specdrive::Error; end
 
     class Driver < ::Capybara::Driver::Base
-      def initialize(app, performance_profile: nil, **options)
+      def initialize(app, performance_profile: nil, reuse_worker: nil, **options)
         @app = app
         @generation = 0
         @settings = Configuration.resolve(performance_profile: performance_profile, **options)
@@ -18,26 +18,65 @@ module Specdrive
           raise ArgumentError, "Deterministic profile requires the native DSL; Capybara virtual retries are not supported"
         end
         @query_prefetch = @settings[:query_prefetch]
-        @reuse_worker = Configuration.env_value("DOMSTRIDE_REUSE_WORKER") == "1"
-        if @reuse_worker && (@settings[:runtime] != "node" || !%w[jsdom jsdom31].include?(@settings[:engine]) ||
-            @settings[:clock] != "real" || @settings[:websocket_url] || Configuration.env_value("DOMSTRIDE_RECORD_DIR").to_s != "")
+        @reuse_worker_mode = normalize_reuse_mode(reuse_worker.nil? ? Configuration.env_value("DOMSTRIDE_REUSE_WORKER") : reuse_worker)
+        if @reuse_worker_mode == true && !reuse_compatible?
           raise ArgumentError, "Persistent worker requires Node/jsdom, real clock, no websocket and no recording"
         end
+        @worker_reusable = false
         @mounted = false
         @owner_pid = Process.pid
       end
 
       attr_reader :generation
 
+      def normalize_reuse_mode(value)
+        case value
+        when nil, :auto, "auto" then :auto
+        when true, "1" then true
+        when false, "0" then false
+        else raise ArgumentError, "reuse_worker must be :auto, true or false (ENV: auto, 1 or 0)"
+        end
+      end
+
+      def reuse_compatible?
+        @settings[:runtime] == "node" && %w[jsdom jsdom31].include?(@settings[:engine]) &&
+          @settings[:clock] == "real" && !@settings[:websocket_url] &&
+          Configuration.env_value("DOMSTRIDE_RECORD_DIR").to_s.empty?
+      end
+
+      def reuse_allowed?
+        compatible = reuse_compatible? && !Specdrive::ReportCase.current
+        if @reuse_worker_mode == true && !compatible
+          raise ArgumentError, "Persistent worker requires Node/jsdom, real clock, no websocket and no recording"
+        end
+        @reuse_worker_mode != false && compatible
+      end
+      private :normalize_reuse_mode, :reuse_compatible?, :reuse_allowed?
+
       def worker
-        if @reuse_worker && Specdrive::ReportCase.current
-          raise ArgumentError, "Persistent worker does not support report-case recording"
+        if Process.pid != @owner_pid
+          raise Specdrive::Error, "Cannot use an inherited live worker after fork; create a new driver in the child" if @worker
+          @owner_pid = Process.pid
+          @exit_cleanup_registered = false
         end
-        if @reuse_worker && !@exit_cleanup_registered
-          @exit_cleanup_registered = true
-          at_exit { quit if Process.pid == @owner_pid }
+        reusable = reuse_allowed?
+        if @worker && @worker_reusable && !reusable
+          # Recording may begin after the driver was initialized, but never
+          # silently replace the active document in the middle of a test.
+          raise Specdrive::Error, "Reset the active session before starting recording" if @mounted
+          quit
         end
-        @worker ||= Specdrive::Session.new(app: @app, **@settings).tap { |session| session.recording_step = @recording_step }
+        if !@worker
+          @worker = Specdrive::Session.new(app: @app, **@settings)
+          @worker.recording_step = @recording_step
+          @worker_reusable = reusable
+          if reusable && !@exit_cleanup_registered
+            @exit_cleanup_registered = true
+            owner_pid = Process.pid
+            at_exit { quit if Process.pid == owner_pid }
+          end
+        end
+        @worker
       end
 
       def recording_step=(sequence)
@@ -50,11 +89,11 @@ module Specdrive
       end
 
       def current_url
-        @worker && (!@reuse_worker || @mounted) ? command("current_url") : "about:blank"
+        @worker && (!@worker_reusable || @mounted) ? command("current_url") : "about:blank"
       end
 
       def html
-        @worker && (!@reuse_worker || @mounted) ? command("html") : ""
+        @worker && (!@worker_reusable || @mounted) ? command("html") : ""
       end
 
       def refresh
@@ -167,6 +206,9 @@ module Specdrive
           query_prefetch: @settings[:query_prefetch],
           websocket_enabled: !@settings[:websocket_url].nil?,
           worker_started: !@worker.nil?,
+          reuse_worker_mode: @reuse_worker_mode,
+          worker_reusable: @worker_reusable,
+          worker_pid: @worker&.worker_pid,
           profile: @worker && @settings[:profile] ? @worker.profile : nil
         }
       end
@@ -184,7 +226,8 @@ module Specdrive
       def invalid_element_errors = [StaleElement]
 
       def reset!
-        return quit unless @reuse_worker
+        raise Specdrive::Error, "Cannot reset an inherited live worker after fork" if @worker && Process.pid != @owner_pid
+        return quit unless @worker_reusable
         begin
           @worker&.reset_document!
         rescue StandardError
@@ -198,11 +241,16 @@ module Specdrive
       end
 
       def quit
-        @worker&.close
-      ensure
-        @worker = nil
-        @mounted = false
-        @generation += 1
+        raise Specdrive::Error, "Cannot quit an inherited live worker after fork" if @worker && Process.pid != @owner_pid
+        begin
+          @worker&.close
+        ensure
+          @worker = nil
+          @worker_reusable = false
+          @mounted = false
+          @recording_step = nil
+          @generation += 1
+        end
       end
     end
 
