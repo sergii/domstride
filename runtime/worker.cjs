@@ -561,6 +561,13 @@ async function execute(message) {
     let websocketCookie = message.websocket_cookie;
     if (message.assets === "bundle" && message.bridge) {
       const { prepareAssets } = require("./assets.cjs");
+      // Happy DOM execution is experimental. Reuse the proven inert jsdom31
+      // asset parser, loaded only when the asset bridge is explicitly enabled.
+      if (engine === "happy-dom" && !assetParser) {
+        const { JSDOM, VirtualConsole } = require("jsdom31");
+        assetParser = JSDOM;
+        assetVirtualConsole = VirtualConsole;
+      }
       const resolved = await prepareAssets(prepared.html, message.url, async url => {
         const reply = await rackRequest(url, "GET");
         if (typeof reply.websocket_cookie === "string") websocketCookie = reply.websocket_cookie;

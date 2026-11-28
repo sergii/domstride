@@ -69,8 +69,8 @@ module Specdrive
         end
       end
       raise ArgumentError, "Unknown assets mode" unless %w[off bundle].include?(@assets)
-      if @assets == "bundle" && (!%w[jsdom jsdom31].include?(engine) || runtime != "node" || bundle_cache != "off")
-        raise ArgumentError, "Asset bundling requires Node/jsdom and bundle_cache off"
+      if @assets == "bundle" && (!%w[jsdom jsdom31 happy-dom].include?(engine) || runtime != "node" || bundle_cache != "off")
+        raise ArgumentError, "Asset bundling requires Node with jsdom or experimental Happy DOM and bundle_cache off"
       end
       raise ArgumentError, "Unknown DOM engine" unless %w[jsdom jsdom31 happy-dom].include?(engine)
       raise ArgumentError, "Unknown wait strategy" unless %w[poll observer].include?(wait_strategy)

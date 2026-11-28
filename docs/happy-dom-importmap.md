@@ -1,0 +1,7 @@
+# Experimental Happy DOM Importmap bridge
+
+Goal: determine whether Happy DOM's warm inline-fixture performance advantage transfers to a real Rails Importmap application.
+
+Explicit `engine: "happy-dom", runtime: "node", assets: "bundle", bundle_cache: "off"` allows the existing Rack asset preparation path. Happy DOM is the document execution engine. The proven inert jsdom31 parser is loaded lazily for asset extraction only. This is deliberately a two-engine experiment, not an optimized Happy DOM-native asset parser. No additional runtime dependency and no change to defaults. Existing same-origin restrictions, warning checks, MIME/UTF-8 checks and bounded Importmap cache revalidation apply unchanged. Classic compiled bundles, WebSockets and Bun asset boot remain unsupported. Capybara persistent-worker eligibility is unchanged; native reset is separately exercised.
+
+Tests check real Stimulus dynamic controller imports, classic script execution once per document, cache hit and dependency invalidation across native document resets, remote asset rejection, and explicit JavaScript errors. Core CI is required. Passing these tests is not a claim of full Turbo or CRM compatibility. Next gate: original TestBench CRM and separate Happy DOM native comparison pinned to this branch, then measure with matched jsdom31 settings. Parser cost and two-engine RSS must be reported. If failures occur, retain the experimental restriction or fix the actual behavior before merging. No benchmark result yet.

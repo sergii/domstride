@@ -207,3 +207,5 @@ Optional headed browser capture for Selenium/Cuprite: [Linux Xvfb video backend]
 ### Experimental local documentation export
 
 `domstride docs export --synthetic-reference RUN_DIRECTORY` exports explicitly approved trusted synthetic paired-run evidence to Markdown/MDX and local media. Node.js required; no browser or test rerun. See [scope and limitations](docs/core-extraction-packaging.md).
+
+Experimental Happy DOM Importmap bridge: see [scope and validation gates](docs/happy-dom-importmap.md). No default change.
