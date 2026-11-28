@@ -4,7 +4,7 @@ require "fileutils"
 require "open3"
 require_relative "../../../viewer/lib/coverage_bundle"
 
-input,cli = ARGV
+input,cli = ARGV.map { |path| File.expand_path(path) }
 mapping = JSON.parse(File.read(input))
 root = File.dirname(File.realpath(input))
 Dir.mktmpdir do |dir|
