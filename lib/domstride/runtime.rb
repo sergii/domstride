@@ -8,7 +8,7 @@ require_relative "configuration"
 module Specdrive
   module Runtime
     ROOT = File.expand_path("../..", __dir__)
-    FILES = %w[worker.cjs virtual_clock.cjs assets.cjs forms.cjs websocket.cjs media.cjs logical_dom.cjs observers.cjs package.json].freeze
+    FILES = %w[worker.cjs virtual_clock.cjs assets.cjs forms.cjs websocket.cjs media.cjs logical_dom.cjs observers.cjs happy_xpath.cjs package.json].freeze
 
     def self.source
       File.join(ROOT, "runtime")
@@ -32,7 +32,7 @@ module Specdrive
     def self.ready?(path)
       File.file?(File.join(path, ".ready")) &&
         FILES.all? { |name| File.file?(File.join(path, name)) } &&
-        %w[jsdom jsdom31 happy-dom esbuild acorn ws].all? { |name| File.file?(File.join(path, "node_modules", name, "package.json")) }
+        %w[jsdom jsdom31 happy-dom esbuild acorn ws xpath].all? { |name| File.file?(File.join(path, "node_modules", name, "package.json")) }
     end
 
     def self.setup!

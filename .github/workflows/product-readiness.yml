@@ -91,6 +91,7 @@ jobs:
             DOMSTRIDE_PERFORMANCE_PROFILE="$profile" ruby -rdomstride -e 'Domstride::Session.open { |p| p.mount_html(%q{<p id="status">Ready</p>}); p.assert_text("#status", "Ready") }; puts "Installed profile OK"'
           done
           ruby -rdomstride/capybara -e 'abort unless Capybara.drivers.key?(:domstride); app = ->(_) { [200, {"content-type" => "text/html"}, ["<p id=ready>Ready</p>"]] }; page = Capybara::Session.new(:domstride, app); begin; page.visit("/"); abort unless page.has_css?("#ready", text: "Ready"); ensure; page.driver.quit; end'
+          SPECDRIVE_ENGINE=happy-dom ruby -rspecdrive/capybara -e 'app = ->(_) { [200, {"content-type" => "text/html"}, [%q{<label for="name">Name</label><input id="name" data-testid="pet-name">}]] }; page = Capybara::Session.new(:specdrive, app); begin; page.visit("/"); page.fill_in("Name", with: "Milo"); abort unless page.find(:css, "#name").value == "Milo"; ensure; page.driver.quit; end'
           mkdir -p "$GITHUB_WORKSPACE/package-results"
           cp "$temp/specdrive.gem" "$GITHUB_WORKSPACE/package-results/"
       - uses: actions/upload-artifact@v4

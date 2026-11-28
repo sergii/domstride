@@ -87,6 +87,8 @@ function findHandles(message) {
   let nodes;
   if (message.kind_of_query === "css") {
     nodes = Array.from(root.querySelectorAll(message.query));
+  } else if (engine === "happy-dom" && typeof window.document.evaluate !== "function") {
+    nodes = require("./happy_xpath.cjs").select(message.query, root);
   } else {
     if (typeof window.document.evaluate !== "function") throw new Error("UNSUPPORTED_XPATH");
     const result = window.document.evaluate(message.query, root, null, 7, null);

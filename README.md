@@ -20,6 +20,23 @@ Set DOMSTRIDE_RUNTIME=bun to try the alternative runtime.
 
 Domstride exercises real JavaScript DOM events via a persistent JSON-lines worker and has an experimental stateful Rails reference. It does not provide full browser parity. See docs/architecture.md.
 
+
+## Capybara worker lifecycle
+
+Specdrive's Capybara adapter defaults to automatic persistent worker reuse for Node with jsdom/jsdom31, real clock, and no WebSocket or recording. A worker belongs to a Capybara driver instance (normally a default session per Ruby test process), not a global pool. Multiple named sessions may have separate workers.
+
+Each reset discards the document and Rack cookie jar, invalidates old element handles, and cancels document timers; the Node process remains alive. A failed or unsafe reset closes the process and raises instead of silently continuing. Bundle cache and query prefetch remain independent settings.
+
+```ruby
+Capybara.register_driver(:specdrive_isolated) do |app|
+  Specdrive::CapybaraAdapter::Driver.new(app, reuse_worker: false)
+end
+```
+
+The adapter accepts `reuse_worker: :auto`, `true` or `false`. Explicit keywords override `SPECDRIVE_REUSE_WORKER=auto|1|0` (legacy `DOMSTRIDE_REUSE_WORKER` is still accepted). Auto falls back to process-per-reset for unsupported runtimes/engines, virtual clock, WebSocket and recording. Forced reuse rejects incompatible modes; no driver/browser fallback. A report case must start on a fresh or reset session; an already mounted document cannot silently switch recording mode. The native Session API is unchanged.
+
+Driver diagnostics expose `reuse_worker_mode`, `worker_reusable`, and `worker_pid`. Create drivers independently after fork; inherited live sessions are not supported. Persistent mode is not a process security boundary; use explicit isolation for tests requiring a fresh Node process.
+
 ## Experimental performance matrix
 
     DOMSTRIDE_ENGINE=happy-dom bundle exec rake test
@@ -93,7 +110,7 @@ The combined workflow compares baseline and candidate native/Capybara configurat
 
 ## Named performance profiles
 
-`Specdrive::Session.new(performance_profile: :fast)` or `DOMSTRIDE_PERFORMANCE_PROFILE=fast` selects a profile. `compatible` uses jsdom31 with real clock, `fast` uses Happy DOM with real clock, and `deterministic` uses jsdom31 compiled cache, observer waits, tracked settling and virtual clock. Explicit keyword arguments override environment settings, which override the profile. No profile preserves existing defaults (jsdom26). `profile: true` still enables instrumentation, not profile selection. The deterministic profile is native DSL only until Capybara virtual retries are supported. All profiles remain experimental; Happy DOM XPath is incomplete.
+`Specdrive::Session.new(performance_profile: :fast)` or `DOMSTRIDE_PERFORMANCE_PROFILE=fast` selects a profile. `compatible` uses jsdom31 with real clock, `fast` uses Happy DOM with real clock, and `deterministic` uses jsdom31 compiled cache, observer waits, tracked settling and virtual clock. Explicit keyword arguments override environment settings, which override the profile. No profile preserves existing defaults (jsdom26). `profile: true` still enables instrumentation, not profile selection. The deterministic profile is native DSL only until Capybara virtual retries are supported. All profiles remain experimental. Happy DOM supports an XPath 1.0 element-query subset through xpath 0.0.34; see the compatibility contract.
 
 ## Rails system tests
 
@@ -103,7 +120,7 @@ The combined workflow compares baseline and candidate native/Capybara configurat
       driven_by :domstride
     end
 
-The support module suppresses automatic failure screenshots for Domstride because it has no rendered browser. HTML can be saved with Capybara's save_page if explicitly requested; avoid exposing sensitive test data. Standard XPath-based selectors are supported on jsdom, not established on Happy DOM. Do not use this driver for layout or screenshot tests. No automatic browser fallback.
+The support module suppresses automatic failure screenshots for Domstride because it has no rendered browser. HTML can be saved with Capybara's save_page if explicitly requested; avoid exposing sensitive test data. Standard XPath-based selectors use native jsdom XPath or the experimental Happy DOM XPath adapter. No full XPath namespace, accessibility or browser parity is claimed. Do not use this driver for layout or screenshot tests. No automatic browser fallback.
 
 ## Installed gem preview
 

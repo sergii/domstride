@@ -17,8 +17,7 @@ class DomstrideSystemTest < ActionDispatch::SystemTestCase
     assert_selector "#persisted", exact_text: "Lunch: 25"
   end
 
-  test "uses Rails assertions and normal field locators on jsdom" do
-    skip "Happy DOM XPath is experimental" if page.driver.worker.settings[:engine] == "happy-dom"
+  test "uses Rails assertions and normal field locators" do
     visit "/"
     assert_selector "#identity", text: "Anonymous"
     fill_in "Email", with: "tester@example.test"

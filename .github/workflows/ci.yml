@@ -42,6 +42,7 @@ jobs:
       - name: Required Node jsdom tests and gem build
         run: |
           bundle exec rake test
+          node test/happy_xpath_test.cjs
           bundle exec ruby examples/counter.rb
           gem build specdrive.gemspec
       - name: Experimental compatibility tests
