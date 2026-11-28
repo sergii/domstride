@@ -20,6 +20,23 @@ Set DOMSTRIDE_RUNTIME=bun to try the alternative runtime.
 
 Domstride exercises real JavaScript DOM events via a persistent JSON-lines worker and has an experimental stateful Rails reference. It does not provide full browser parity. See docs/architecture.md.
 
+
+## Capybara worker lifecycle
+
+Specdrive's Capybara adapter defaults to automatic persistent worker reuse for Node with jsdom/jsdom31, real clock, and no WebSocket or recording. A worker belongs to a Capybara driver instance (normally a default session per Ruby test process), not a global pool. Multiple named sessions may have separate workers.
+
+Each reset discards the document and Rack cookie jar, invalidates old element handles, and cancels document timers; the Node process remains alive. A failed or unsafe reset closes the process and raises instead of silently continuing. Bundle cache and query prefetch remain independent settings.
+
+```ruby
+Capybara.register_driver(:specdrive_isolated) do |app|
+  Specdrive::CapybaraAdapter::Driver.new(app, reuse_worker: false)
+end
+```
+
+The adapter accepts `reuse_worker: :auto`, `true` or `false`. Explicit keywords override `SPECDRIVE_REUSE_WORKER=auto|1|0` (legacy `DOMSTRIDE_REUSE_WORKER` is still accepted). Auto falls back to process-per-reset for unsupported runtimes/engines, virtual clock, WebSocket and recording. Forced reuse rejects incompatible modes; no driver/browser fallback. A report case must start on a fresh or reset session; an already mounted document cannot silently switch recording mode. The native Session API is unchanged.
+
+Driver diagnostics expose `reuse_worker_mode`, `worker_reusable`, and `worker_pid`. Create drivers independently after fork; inherited live sessions are not supported. Persistent mode is not a process security boundary; use explicit isolation for tests requiring a fresh Node process.
+
 ## Experimental performance matrix
 
     DOMSTRIDE_ENGINE=happy-dom bundle exec rake test
